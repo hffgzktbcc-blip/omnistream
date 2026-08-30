@@ -1,0 +1,43 @@
+{
+  "name": "omnistream",
+  "version": "1.0.0",
+  "description": "OmniStream All-in-One Entertainment Hub — Comics, Anime, Movies & TV, E-Books, Audiobooks, Live Sports & RSS Feeds",
+  "type": "module",
+  "scripts": {
+    "clean": "lsof -ti:5200,3001 | xargs kill -9 2>/dev/null || true",
+    "dev": "npm run clean && concurrently \"npm run server\" \"npm run client\"",
+    "client": "vite",
+    "server": "node --watch server/index.js",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "framer-motion": "^12.4.10",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.16.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.1"
+  }
+}

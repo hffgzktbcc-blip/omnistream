@@ -1,0 +1,151 @@
+[
+  {
+    "id": "req_1787842191401",
+    "prompt": "Make anime subtitles high contrast",
+    "context": {
+      "currentTab": "anime"
+    },
+    "timestamp": 1787842191401,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1787843366559",
+    "prompt": "<improve the Netflix experience, some buttons don't work>",
+    "context": {
+      "currentTab": "media",
+      "currentMedia": "none"
+    },
+    "timestamp": 1787843366559,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1787843516055",
+    "prompt": "<improve Netflix experience>",
+    "context": {
+      "currentTab": "media",
+      "currentMedia": "none"
+    },
+    "timestamp": 1787843516055,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1787850807009",
+    "prompt": "I need to improve the nextflix, Disney +, prime video, max, Apple TV+, hulls experiences etc. make them feel like im really in their platform",
+    "context": {
+      "currentTab": "media",
+      "currentMedia": "none"
+    },
+    "timestamp": 1787850807009,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1787850849548",
+    "prompt": "I want to customize the player subtitle style.",
+    "context": {
+      "currentTab": "media",
+      "currentMedia": "none"
+    },
+    "timestamp": 1787850849548,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1787852183949",
+    "prompt": "make live changes",
+    "context": {
+      "currentTab": "media",
+      "currentMedia": "none"
+    },
+    "timestamp": 1787852183949,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1787852255759",
+    "prompt": "Take me to the Anime Hub with simulcast schedules.",
+    "context": {
+      "currentTab": "media",
+      "currentMedia": "none"
+    },
+    "timestamp": 1787852255759,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1787852260038",
+    "prompt": "Take me to the Anime Hub with simulcast schedules.",
+    "context": {
+      "currentTab": "home",
+      "currentMedia": "none"
+    },
+    "timestamp": 1787852260038,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1787906854558",
+    "prompt": "Clear memory cache to refresh all media feeds.",
+    "context": {
+      "currentTab": "media",
+      "currentMedia": "none"
+    },
+    "timestamp": 1787906854558,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1787911151964",
+    "prompt": "Clear memory cache to refresh all media feeds.",
+    "context": {
+      "currentTab": "media",
+      "currentMedia": "none"
+    },
+    "timestamp": 1787911151964,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1788099224251",
+    "prompt": "please fix the ebook section. i importated an ebook but its still asking me to download or the reader is only showing one page",
+    "context": {
+      "currentTab": "ebooks",
+      "currentMedia": "none"
+    },
+    "timestamp": 1788099224251,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1788100317801",
+    "prompt": "ebook functianlity still sucks",
+    "context": {
+      "currentTab": "home",
+      "currentMedia": "none"
+    },
+    "timestamp": 1788100317801,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1788100348581",
+    "prompt": "ebook functionality still sucks",
+    "context": {
+      "currentTab": "home",
+      "currentMedia": "none"
+    },
+    "timestamp": 1788100348581,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1788100609506",
+    "prompt": "this section still sukcs",
+    "context": {
+      "currentTab": "ebooks",
+      "currentMedia": "Fourth Wing (The Empyrean #1)"
+    },
+    "timestamp": 1788100609506,
+    "status": "QUEUED"
+  },
+  {
+    "id": "req_1788102888833",
+    "prompt": "ebooks direct download sucks. you try it and see what i mean on modern books",
+    "context": {
+      "currentTab": "ebooks",
+      "currentMedia": ""
+    },
+    "timestamp": 1788102888833,
+    "status": "QUEUED"
+  }
+]

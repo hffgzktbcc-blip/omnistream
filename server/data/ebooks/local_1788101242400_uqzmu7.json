@@ -1,0 +1,23 @@
+{
+  "id": "local_1788101242400_uqzmu7",
+  "title": "Fourth Wing (The Empyrean #1)",
+  "author": "Rebecca Yarros",
+  "description": "Twenty-year-old Violet Sorrengail enters the lethal dragon rider quadrant at Basgiath War College where candidates either graduate or die.",
+  "cover": "https://covers.openlibrary.org/b/id/14407898-L.jpg",
+  "subjects": [
+    "Local Import"
+  ],
+  "chapters": [
+    {
+      "id": "ch_1",
+      "title": "Fourth Wing (The Empyrean #1)",
+      "content": "\n  <h2>Fourth Wing (The Empyrean #1)</h2>\n  <div class=\"content\"><p class=\"leading-relaxed\">Twenty-year-old Violet Sorrengail enters the lethal dragon rider quadrant at Basgiath War College where candidates either graduate or die.</p></div>\n\n",
+      "href": "chapter_1.xhtml",
+      "order": 1
+    }
+  ],
+  "totalChapters": 1,
+  "currentChapter": 1,
+  "isLocalUpload": true,
+  "updatedAt": 1788101242400
+}

@@ -1,0 +1,23 @@
+{
+  "id": "local_1788102854629_5dgnz1",
+  "title": "The Women",
+  "author": "Kristin Hannah",
+  "description": "An intimate, epic portrait of the nurses and women who served in the Vietnam War and fought for recognition upon coming home.",
+  "cover": "https://covers.openlibrary.org/b/id/8314147-L.jpg",
+  "subjects": [
+    "Local Import"
+  ],
+  "chapters": [
+    {
+      "id": "ch_1",
+      "title": "The Women",
+      "content": "\n  <h2>The Women</h2>\n  <div class=\"content\"><p class=\"leading-relaxed\">An intimate, epic portrait of the nurses and women who served in the Vietnam War and fought for recognition upon coming home.</p></div>\n\n",
+      "href": "chapter_1.xhtml",
+      "order": 1
+    }
+  ],
+  "totalChapters": 1,
+  "currentChapter": 1,
+  "isLocalUpload": true,
+  "updatedAt": 1788102854629
+}

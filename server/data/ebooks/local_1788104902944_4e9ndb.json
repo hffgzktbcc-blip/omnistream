@@ -1,0 +1,23 @@
+{
+  "id": "local_1788104902944_4e9ndb",
+  "title": "Lightbringer",
+  "author": "Claire Legrand",
+  "description": "Complete modern publication by Claire Legrand. Released in 2020. Direct downloads and EPUB chapter reading available.",
+  "cover": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop",
+  "subjects": [
+    "Local Import"
+  ],
+  "chapters": [
+    {
+      "id": "ch_1",
+      "title": "Lightbringer",
+      "content": "\n  <h2>Lightbringer</h2>\n  <div class=\"content\"><p class=\"leading-relaxed\">Complete modern publication by Claire Legrand. Released in 2020. Direct downloads and EPUB chapter reading available.</p></div>\n\n",
+      "href": "chapter_1.xhtml",
+      "order": 1
+    }
+  ],
+  "totalChapters": 1,
+  "currentChapter": 1,
+  "isLocalUpload": true,
+  "updatedAt": 1788104902944
+}

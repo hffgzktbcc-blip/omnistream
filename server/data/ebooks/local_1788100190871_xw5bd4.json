@@ -1,0 +1,23 @@
+{
+  "id": "local_1788100190871_xw5bd4",
+  "title": "Fourth Wing (The Empyrean #1)",
+  "author": "Rebecca Yarros",
+  "description": "Twenty-year-old Violet Sorrengail enters the lethal dragon rider quadrant at Basgiath War College where candidates either graduate or die.",
+  "cover": "https://covers.openlibrary.org/b/id/14407898-L.jpg",
+  "subjects": [
+    "Local Import"
+  ],
+  "chapters": [
+    {
+      "id": "ch_1",
+      "title": "Full Online Reader",
+      "content": "\n  <h2>Full Online Reader</h2>\n  <div class=\"content\"><div class=\"prose-body space-y-4 text-center py-8\">\n            <h3 class=\"text-xl font-bold text-white\">Full Book Online Reader</h3>\n            <p class=\"text-slate-300 max-w-md mx-auto\">This title is ready for high-speed offline and online reading. You can download the complete DRM-free EPUB directly from OceanOfPDF or Anna's Archive below, or drag &amp; drop any .EPUB file to read instantly with custom themes, bionic reading, and Text-to-Speech audio.</p>\n          </div></div>\n\n",
+      "href": "chapter_1.xhtml",
+      "order": 1
+    }
+  ],
+  "totalChapters": 1,
+  "currentChapter": 1,
+  "isLocalUpload": true,
+  "updatedAt": 1788100190871
+}
