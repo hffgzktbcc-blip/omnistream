@@ -10,6 +10,13 @@ interface SportsCardProps {
 export const SportsCard: React.FC<SportsCardProps> = ({ match, onWatch }) => {
   const isLive = match.status === 'LIVE';
 
+  const homeName = typeof match.homeTeam === 'object' ? match.homeTeam?.name || 'Home Team' : String(match.homeTeam || 'Home Team');
+  const awayName = typeof match.awayTeam === 'object' ? match.awayTeam?.name || 'Away Team' : String(match.awayTeam || 'Away Team');
+  const homeLogo = typeof match.homeTeam === 'object' ? match.homeTeam?.logo : undefined;
+  const awayLogo = typeof match.awayTeam === 'object' ? match.awayTeam?.logo : undefined;
+  const homeScore = typeof match.homeTeam === 'object' ? match.homeTeam?.score : undefined;
+  const awayScore = typeof match.awayTeam === 'object' ? match.awayTeam?.score : undefined;
+
   return (
     <div
       onClick={() => onWatch(match)}
@@ -20,18 +27,18 @@ export const SportsCard: React.FC<SportsCardProps> = ({ match, onWatch }) => {
         <div className="flex items-center gap-1.5 min-w-0">
           <Trophy className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
           <span className="text-[11px] font-black text-amber-400/90 uppercase tracking-wider truncate">
-            {match.league}
+            {match.league || 'SuperSport Championship'}
           </span>
         </div>
 
         <div>
           {isLive ? (
-            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black tracking-wide animate-pulse shadow-md shadow-rose-600/30">
+            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black tracking-wide animate-pulse shadow-md shadow-rose-600/30 flex-shrink-0">
               <Radio className="w-2.5 h-2.5" />
               LIVE NOW
             </span>
           ) : (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-950 text-blue-300 text-[10px] font-bold border border-blue-800/40">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-950 text-blue-300 text-[10px] font-bold border border-blue-800/40 flex-shrink-0">
               <Clock className="w-2.5 h-2.5" />
               {match.statusText || 'Scheduled'}
             </span>
@@ -44,24 +51,24 @@ export const SportsCard: React.FC<SportsCardProps> = ({ match, onWatch }) => {
         {/* Home Team */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
-            {match.homeTeam.logo ? (
+            {homeLogo ? (
               <img
-                src={match.homeTeam.logo}
-                alt={match.homeTeam.name}
+                src={homeLogo}
+                alt={homeName}
                 className="w-6 h-6 object-contain rounded-full bg-blue-950 p-0.5 flex-shrink-0 border border-blue-800/50"
               />
             ) : (
               <div className="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center text-[10px] font-bold text-amber-300 flex-shrink-0">
-                {match.homeTeam.name.slice(0, 2).toUpperCase()}
+                {homeName.slice(0, 2).toUpperCase()}
               </div>
             )}
             <span className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors truncate">
-              {match.homeTeam.name}
+              {homeName}
             </span>
           </div>
-          {match.homeTeam.score !== undefined && (
+          {homeScore !== undefined && (
             <span className="text-base font-black text-amber-400 font-mono flex-shrink-0 pl-2">
-              {match.homeTeam.score}
+              {homeScore}
             </span>
           )}
         </div>
@@ -69,24 +76,24 @@ export const SportsCard: React.FC<SportsCardProps> = ({ match, onWatch }) => {
         {/* Away Team */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
-            {match.awayTeam.logo ? (
+            {awayLogo ? (
               <img
-                src={match.awayTeam.logo}
-                alt={match.awayTeam.name}
+                src={awayLogo}
+                alt={awayName}
                 className="w-6 h-6 object-contain rounded-full bg-blue-950 p-0.5 flex-shrink-0 border border-blue-800/50"
               />
             ) : (
               <div className="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center text-[10px] font-bold text-amber-300 flex-shrink-0">
-                {match.awayTeam.name.slice(0, 2).toUpperCase()}
+                {awayName.slice(0, 2).toUpperCase()}
               </div>
             )}
             <span className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors truncate">
-              {match.awayTeam.name}
+              {awayName}
             </span>
           </div>
-          {match.awayTeam.score !== undefined && (
+          {awayScore !== undefined && (
             <span className="text-base font-black text-amber-400 font-mono flex-shrink-0 pl-2">
-              {match.awayTeam.score}
+              {awayScore}
             </span>
           )}
         </div>

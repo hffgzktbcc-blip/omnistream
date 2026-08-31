@@ -92,6 +92,11 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
 
   if (!match) return null;
 
+  const homeName = typeof match.homeTeam === 'object' ? match.homeTeam?.name || 'Home Team' : String(match.homeTeam || 'Home Team');
+  const awayName = typeof match.awayTeam === 'object' ? match.awayTeam?.name || 'Away Team' : String(match.awayTeam || 'Away Team');
+  const homeScore = typeof match.homeTeam === 'object' ? match.homeTeam?.score : undefined;
+  const awayScore = typeof match.awayTeam === 'object' ? match.awayTeam?.score : undefined;
+
   const matchServers = (match.servers || []).map((s) => ({
     name: s.name,
     url: s.url,
@@ -142,7 +147,7 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
                   SUPERSPORT
                 </span>
                 <span className="text-xs sm:text-sm font-black text-white truncate">
-                  {match.homeTeam.name} vs {match.awayTeam.name}
+                  {homeName} vs {awayName}
                 </span>
                 <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-rose-600 text-white flex items-center gap-1 flex-shrink-0">
                   <Radio className="w-2.5 h-2.5 animate-pulse" />
@@ -150,7 +155,7 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-blue-200/70 font-mono mt-0.5 truncate">
-                {match.league} • {match.homeTeam.score !== undefined ? `Score: ${match.homeTeam.score} - ${match.awayTeam.score}` : 'Match Center'}
+                {match.league || 'SuperSport Championship'} • {homeScore !== undefined ? `Score: ${homeScore} - ${awayScore}` : 'Match Center'}
               </p>
             </div>
           </div>
