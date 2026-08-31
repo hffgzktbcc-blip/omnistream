@@ -4497,15 +4497,39 @@ app.get('/api/sports/live', async (req, res) => {
 });
 
 app.get('/api/sports/search', async (req, res) => {
-  const q = (req.query.q || '').toLowerCase();
-  const cached = getCache('sports_v3_all') || [];
-  const results = cached.filter(
-    m =>
-      m.homeTeam.name.toLowerCase().includes(q) ||
-      m.awayTeam.name.toLowerCase().includes(q) ||
-      m.league.toLowerCase().includes(q)
-  );
-  res.json(results);
+  const q = (req.query.q || '').trim().toLowerCase();
+  if (!q) return res.json([]);
+
+  try {
+    let matches = getCache('sports_v3_all');
+    if (!matches || matches.length === 0) {
+      // Trigger full sports load if cache is empty
+      const allRes = await safeFetch(`http://localhost:3001/api/sports/live?sport=all`);
+      matches = await allRes.json();
+    }
+
+    if (!Array.isArray(matches)) matches = [];
+
+    const results = matches.filter((m) => {
+      const home = (m.homeTeam?.name || '').toLowerCase();
+      const away = (m.awayTeam?.name || '').toLowerCase();
+      const league = (m.league || '').toLowerCase();
+      const sport = (m.sport || '').toLowerCase();
+      const status = (m.statusText || '').toLowerCase();
+      return (
+        home.includes(q) ||
+        away.includes(q) ||
+        league.includes(q) ||
+        sport.includes(q) ||
+        status.includes(q)
+      );
+    });
+
+    res.json(results);
+  } catch (err) {
+    console.error('Sports search error:', err);
+    res.json([]);
+  }
 });
 
 // -------------------------------------------------------------

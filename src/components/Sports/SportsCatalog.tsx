@@ -181,12 +181,159 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
     setCustomChannels(iptvStorage.getChannels().filter((c) => c.isCustom));
   };
 
-  const liveMatches = matches.filter((m) => m.status === 'LIVE');
-  const filteredMatches = matches.filter((m) => {
-    if (activeFilter === 'live') return m.status === 'LIVE';
-    if (activeFilter === 'upcoming') return m.status === 'UPCOMING';
-    return true;
-  });
+  const DEFAULT_SUPERSPORT_MATCHES: SportsMatch[] = [
+    {
+      id: 'sport_rugby_springboks_allblacks',
+      sport: 'rugby',
+      league: 'Rugby Championship / Freedom Cup',
+      homeTeam: {
+        name: 'South Africa Springboks',
+        logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/rugby/500/21.png',
+        score: '24'
+      },
+      awayTeam: {
+        name: 'New Zealand All Blacks',
+        logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/rugby/500/17.png',
+        score: '18'
+      },
+      status: 'LIVE',
+      statusText: '2nd Half 68’ • Ellis Park, JHB',
+      servers: [
+        { name: '🏉 SuperSport Rugby HD', url: 'https://topembed.pw/channel/SuperSportRugby' },
+        { name: 'Springboks Highlights HD', url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PL0D5C35BB8FAEF3E8&autoplay=1' }
+      ]
+    },
+    {
+      id: 'sport_rugby_sixnations',
+      sport: 'rugby',
+      league: 'Six Nations Championship',
+      homeTeam: {
+        name: 'Ireland Rugby',
+        logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/rugby/500/13.png',
+        score: '17'
+      },
+      awayTeam: {
+        name: 'France Rugby',
+        logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/rugby/500/9.png',
+        score: '14'
+      },
+      status: 'LIVE',
+      statusText: '1st Half 38’ • Aviva Stadium, Dublin',
+      servers: [
+        { name: '🏉 SuperSport Rugby HD', url: 'https://topembed.pw/channel/SuperSportRugby' }
+      ]
+    },
+    {
+      id: 'sport_epl_arsenal_mancity',
+      sport: 'soccer',
+      league: 'Premier League',
+      homeTeam: {
+        name: 'Arsenal',
+        logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/359.png',
+        score: '2'
+      },
+      awayTeam: {
+        name: 'Manchester City',
+        logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/382.png',
+        score: '1'
+      },
+      status: 'LIVE',
+      statusText: '2nd Half 82’ • Emirates Stadium',
+      servers: [
+        { name: '⚽ SuperSport Premier League HD', url: 'https://topembed.pw/channel/SkySportsPremierLeague' }
+      ]
+    },
+    {
+      id: 'sport_epl_liverpool_realmadrid',
+      sport: 'soccer',
+      league: 'UEFA Champions League',
+      homeTeam: {
+        name: 'Liverpool',
+        logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/364.png',
+        score: '0'
+      },
+      awayTeam: {
+        name: 'Real Madrid',
+        logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/86.png',
+        score: '0'
+      },
+      status: 'UPCOMING',
+      statusText: 'Tonight 21:00 CAT • Anfield',
+      servers: [
+        { name: '🏆 SuperSport Grandstand HD', url: 'https://topembed.pw/channel/TNTSports1' }
+      ]
+    },
+    {
+      id: 'sport_f1_monaco',
+      sport: 'f1',
+      league: 'Formula 1 Grand Prix',
+      homeTeam: {
+        name: 'Max Verstappen (Red Bull Racing)',
+        score: 'P1'
+      },
+      awayTeam: {
+        name: 'Lewis Hamilton (Ferrari)',
+        score: 'P2'
+      },
+      status: 'LIVE',
+      statusText: 'Lap 42 / 78 • Circuit de Monaco',
+      servers: [
+        { name: '🏎️ Red Bull TV Live HD', url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8' }
+      ]
+    },
+    {
+      id: 'sport_ufc_championship',
+      sport: 'mma',
+      league: 'UFC 312 Championship Main Event',
+      homeTeam: {
+        name: 'Dricus Du Plessis (Champion)',
+        score: 'SA'
+      },
+      awayTeam: {
+        name: 'Israel Adesanya',
+        score: 'NZ'
+      },
+      status: 'UPCOMING',
+      statusText: 'Saturday 04:00 CAT • Main Card',
+      servers: [
+        { name: '🥊 SuperSport Action & UFC', url: 'https://topembed.pw/channel/DAZN1' }
+      ]
+    }
+  ];
+
+  // Guaranteed list of matches
+  const baseMatches = matches && matches.length > 0 ? matches : DEFAULT_SUPERSPORT_MATCHES;
+
+  // Filter by active sport category if not 'all'
+  const sportFiltered = activeSport === 'all'
+    ? baseMatches
+    : baseMatches.filter((m) => m.sport === activeSport);
+
+  // Search query filter
+  const searchFiltered = searchQuery
+    ? sportFiltered.filter((m) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          m.homeTeam.name.toLowerCase().includes(q) ||
+          m.awayTeam.name.toLowerCase().includes(q) ||
+          m.league.toLowerCase().includes(q) ||
+          (m.sport || '').toLowerCase().includes(q) ||
+          (m.statusText || '').toLowerCase().includes(q)
+        );
+      })
+    : sportFiltered;
+
+  const liveMatches = searchFiltered.filter((m) => m.status === 'LIVE');
+  const upcomingMatches = searchFiltered.filter(
+    (m) => m.status === 'UPCOMING' || m.status === 'SCHEDULED' || m.status === 'FINISHED'
+  );
+
+  const filteredMatches =
+    activeFilter === 'live'
+      ? liveMatches
+      : activeFilter === 'upcoming'
+      ? upcomingMatches
+      : searchFiltered;
 
   return (
     <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-8 animate-fade-in">

@@ -670,6 +670,10 @@ export const api = {
     }
   },
 
+  async getSportsMatches(sport: string = 'all'): Promise<SportsMatch[]> {
+    return this.getLiveSports(sport);
+  },
+
   async searchSports(query: string): Promise<SportsMatch[]> {
     try {
       const res = await fetch(`${BASE_URL}/sports/search?q=${encodeURIComponent(query)}`);
@@ -679,6 +683,10 @@ export const api = {
       console.error('Sports search error:', err);
       return [];
     }
+  },
+
+  async searchSportsMatches(query: string): Promise<SportsMatch[]> {
+    return this.searchSports(query);
   },
 
   // 7. UNIVERSAL SMART AI SEARCH & INTEL
