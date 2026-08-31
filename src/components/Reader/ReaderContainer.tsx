@@ -92,6 +92,21 @@ export const ReaderContainer: React.FC<ReaderContainerProps> = ({
     });
   }, [comic, chapter, currentPage, panelIndex, mode, pages.length]);
 
+  // Zero-Buffering Page Preloader (Tachiyomi Pro feature)
+  useEffect(() => {
+    if (!pages || pages.length === 0) return;
+    const preloadIndices = [currentPage, currentPage + 1, currentPage + 2];
+    preloadIndices.forEach((idx) => {
+      if (idx <= pages.length) {
+        const page = pages[idx - 1];
+        if (page && page.url) {
+          const img = new Image();
+          img.src = page.url;
+        }
+      }
+    });
+  }, [currentPage, pages]);
+
   // UNIFIED NEXT STEP
   const handleNextStep = useCallback(() => {
     if (mode === 'panel') {

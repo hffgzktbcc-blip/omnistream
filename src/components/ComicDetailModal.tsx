@@ -2,7 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { Comic, Chapter, ReadingProgress } from '../types/comic';
 import { api } from '../services/api';
 import { storage } from '../services/storage';
-import { X, Play, Bookmark, Heart, BookOpen, Clock, Calendar, Sparkles, Loader2 } from 'lucide-react';
+import { offlineStorage } from '../services/offlineStorage';
+import {
+  X,
+  Play,
+  Bookmark,
+  Heart,
+  BookOpen,
+  Clock,
+  Calendar,
+  Sparkles,
+  Loader2,
+  Download,
+  CheckCircle2,
+  Trash2,
+  HardDrive
+} from 'lucide-react';
 
 interface ComicDetailModalProps {
   comic: Comic | null;
@@ -19,16 +34,27 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
   const [loading, setLoading] = useState(true);
   const [isFav, setIsFav] = useState(false);
   const [progress, setProgress] = useState<ReadingProgress | undefined>(undefined);
+  const [downloadedMap, setDownloadedMap] = useState<Record<string, boolean>>({});
+  const [downloadingMap, setDownloadingMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!comic) return;
     setIsFav(storage.isFavorite(comic.id));
     setProgress(storage.getComicProgress(comic.id));
 
-    // If comic already has chapters (e.g. sample or local), use directly
+    const checkDownloads = async (chaptersList: Chapter[]) => {
+      const map: Record<string, boolean> = {};
+      for (const ch of chaptersList) {
+        const isDl = await offlineStorage.isChapterDownloaded(ch.id);
+        if (isDl) map[ch.id] = true;
+      }
+      setDownloadedMap(map);
+    };
+
     if (comic.chapters && comic.chapters.length > 0) {
       setDetails(comic);
       setLoading(false);
+      checkDownloads(comic.chapters);
       return;
     }
 
@@ -36,14 +62,16 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
     api.getComicDetails(comic.source, comic.id)
       .then((fullComic) => {
         setDetails(fullComic);
+        if (fullComic.chapters) checkDownloads(fullComic.chapters);
       })
       .catch((err) => {
         console.warn('Failed to load full comic details:', err);
-        // Fallback to basic comic
-        setDetails({
+        const fallback: Comic = {
           ...comic,
           chapters: [{ id: `${comic.id}_full`, chapter: '1', title: comic.title, pages: 24 }]
-        });
+        };
+        setDetails(fallback);
+        if (fallback.chapters) checkDownloads(fallback.chapters);
       })
       .finally(() => setLoading(false));
   }, [comic]);
@@ -54,6 +82,39 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
     if (!details) return;
     const newState = storage.toggleFavorite(details);
     setIsFav(newState);
+  };
+
+  const handleDownloadChapter = async (e: React.MouseEvent, ch: Chapter) => {
+    e.stopPropagation();
+    if (!activeComic) return;
+
+    if (downloadedMap[ch.id]) {
+      // Delete offline chapter
+      await offlineStorage.deleteChapter(activeComic.id, ch.id);
+      setDownloadedMap((prev) => ({ ...prev, [ch.id]: false }));
+      return;
+    }
+
+    try {
+      setDownloadingMap((prev) => ({ ...prev, [ch.id]: 0 }));
+      const pages = await api.getChapterPages(activeComic.source, ch.id);
+      if (!pages || pages.length === 0) throw new Error('No pages found');
+
+      await offlineStorage.downloadChapter(activeComic, ch, pages, (done, total) => {
+        setDownloadingMap((prev) => ({ ...prev, [ch.id]: Math.round((done / total) * 100) }));
+      });
+
+      setDownloadedMap((prev) => ({ ...prev, [ch.id]: true }));
+    } catch (err) {
+      console.error('Failed to download chapter:', err);
+      alert('Failed to download chapter for offline reading.');
+    } finally {
+      setDownloadingMap((prev) => {
+        const next = { ...prev };
+        delete next[ch.id];
+        return next;
+      });
+    }
   };
 
   const activeComic = details || comic;
@@ -70,16 +131,15 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/50 hover:bg-black/80 text-slate-300 hover:text-white transition-all backdrop-blur-sm"
+          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/50 hover:bg-black/80 text-slate-300 hover:text-white transition-all backdrop-blur-sm cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Content Body (Scrollable) */}
+        {/* Content Body */}
         <div className="overflow-y-auto p-6 md:p-8 space-y-6">
           {/* Header Info Grid */}
           <div className="flex flex-col sm:flex-row gap-6 items-start">
-            {/* Cover Art */}
             <div className="w-36 sm:w-48 aspect-[2/3] rounded-2xl overflow-hidden bg-slate-800 shadow-xl flex-shrink-0 border border-slate-700/60">
               <img
                 src={coverUrl}
@@ -88,7 +148,6 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
               />
             </div>
 
-            {/* Title & Metadata */}
             <div className="flex-1 space-y-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
@@ -120,7 +179,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
                 {activeComic.chapters && activeComic.chapters.length > 0 && (
                   <button
                     onClick={() => onStartReading(activeComic, activeComic.chapters![0])}
-                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-105"
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
                   >
                     <Play className="w-4 h-4 fill-current" />
                     <span>{progress ? 'Resume Reading' : 'Start Issue #1'}</span>
@@ -129,7 +188,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
 
                 <button
                   onClick={handleToggleFavorite}
-                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                     isFav
                       ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
                       : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
@@ -150,45 +209,6 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
                   ))}
                 </div>
               )}
-
-              {/* Multi-Source Online Reading Mirrors */}
-              <div className="space-y-1.5 pt-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Direct Online Mirrors:</span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <a
-                    href={`https://mangadex.org/search?q=${encodeURIComponent(activeComic.title)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 hover:border-orange-500 flex items-center gap-1 transition-all"
-                  >
-                    <span>MangaDex</span>
-                  </a>
-                  <a
-                    href={activeComic.webtoonUrl || `https://www.webtoons.com/en/search?keyword=${encodeURIComponent(activeComic.title)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500 flex items-center gap-1 transition-all"
-                  >
-                    <span>Webtoons</span>
-                  </a>
-                  <a
-                    href={`https://readcomiconline.li/Search/Comic?keyword=${encodeURIComponent(activeComic.title)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 hover:border-blue-500 flex items-center gap-1 transition-all"
-                  >
-                    <span>ReadComicOnline</span>
-                  </a>
-                  <a
-                    href={`https://archive.org/search?query=${encodeURIComponent(activeComic.title)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 hover:border-purple-500 flex items-center gap-1 transition-all"
-                  >
-                    <span>Archive CBZ</span>
-                  </a>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -202,7 +222,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
             </div>
           )}
 
-          {/* Chapters / Issues List */}
+          {/* Chapters / Issues List with Offline Downloads */}
           <div className="space-y-3 border-t border-slate-800 pt-4">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
@@ -222,26 +242,63 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto pr-1">
                 {activeComic.chapters && activeComic.chapters.length > 0 ? (
-                  activeComic.chapters.map((ch) => (
-                    <div
-                      key={ch.id}
-                      onClick={() => onStartReading(activeComic, ch)}
-                      className="group flex items-center justify-between p-3 rounded-xl bg-slate-800/60 hover:bg-blue-600/20 border border-slate-700/50 hover:border-blue-500/40 cursor-pointer transition-all"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-slate-700/70 group-hover:bg-blue-600 text-slate-300 group-hover:text-white flex items-center justify-center text-xs font-bold transition-colors">
-                          {ch.chapter || '1'}
+                  activeComic.chapters.map((ch) => {
+                    const isDownloaded = downloadedMap[ch.id];
+                    const isDownloading = typeof downloadingMap[ch.id] === 'number';
+
+                    return (
+                      <div
+                        key={ch.id}
+                        onClick={() => onStartReading(activeComic, ch)}
+                        className="group flex items-center justify-between p-3 rounded-xl bg-slate-800/60 hover:bg-blue-600/20 border border-slate-700/50 hover:border-blue-500/40 cursor-pointer transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-slate-700/70 group-hover:bg-blue-600 text-slate-300 group-hover:text-white flex items-center justify-center text-xs font-bold transition-colors flex-shrink-0">
+                            {ch.chapter || '1'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-200 group-hover:text-blue-300 transition-colors truncate">
+                              {ch.title}
+                            </p>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                              {isDownloaded && (
+                                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                  <HardDrive className="w-3 h-3" />
+                                  <span>Offline Ready</span>
+                                </span>
+                              )}
+                              {ch.size && <span>{ch.size}</span>}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-200 group-hover:text-blue-300 transition-colors line-clamp-1">
-                            {ch.title}
-                          </p>
-                          {ch.size && <span className="text-[10px] text-slate-500">{ch.size}</span>}
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {/* Download Offline Button */}
+                          <button
+                            onClick={(e) => handleDownloadChapter(e, ch)}
+                            className={`p-2 rounded-lg transition-all cursor-pointer ${
+                              isDownloaded
+                                ? 'bg-emerald-600/20 text-emerald-400 hover:bg-red-600/20 hover:text-red-400'
+                                : isDownloading
+                                ? 'bg-blue-600/30 text-blue-400'
+                                : 'bg-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-700'
+                            }`}
+                            title={isDownloaded ? 'Delete offline copy' : 'Download for offline reading'}
+                          >
+                            {isDownloading ? (
+                              <span className="text-[10px] font-bold">{downloadingMap[ch.id]}%</span>
+                            ) : isDownloaded ? (
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            ) : (
+                              <Download className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          <Play className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
                         </div>
                       </div>
-                      <Play className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="col-span-2 text-center py-6 text-xs text-slate-500">
                     No issues indexed yet. Click Start Reading to load stream.

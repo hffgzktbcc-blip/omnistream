@@ -31,7 +31,8 @@ import { MiniPlayer } from './components/Common/MiniPlayer';
 import { CommandPalette } from './components/Common/CommandPalette';
 import { ReadingStatsModal } from './components/Library/ReadingStatsModal';
 import { GlobalDropzone } from './components/Common/GlobalDropzone';
-import { HomeDashboard } from './components/Home/HomeDashboard';
+import { offlineStorage } from './services/offlineStorage';
+import { ExtensionManagerModal } from './components/Extensions/ExtensionManagerModal';
 import { Loader2, X } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -79,6 +80,7 @@ const AppContent: React.FC = () => {
   const [showUrlModal, setShowUrlModal] = useState<boolean>(false);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
+  const [showExtensionsModal, setShowExtensionsModal] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState<boolean>(false);
   const [loadingTitle, setLoadingTitle] = useState<string>('Loading...');
 
@@ -300,6 +302,19 @@ const AppContent: React.FC = () => {
         comic,
         chapter,
         pages: comic.pages,
+        initialPage,
+        initialPanel
+      });
+      return;
+    }
+
+    // Check if offline downloaded in IndexedDB
+    const offlinePages = await offlineStorage.getOfflineChapterPages(chapter.id);
+    if (offlinePages && offlinePages.length > 0) {
+      setActiveReader({
+        comic,
+        chapter,
+        pages: offlinePages,
         initialPage,
         initialPanel
       });
@@ -553,6 +568,7 @@ const AppContent: React.FC = () => {
             onOpenSample={handleLaunchSample}
             onOpenUpload={() => fileInputRef.current?.click()}
             onOpenUrlModal={() => setShowUrlModal(true)}
+            onOpenExtensions={() => setShowExtensionsModal(true)}
           />
         )}
 
@@ -737,6 +753,13 @@ const AppContent: React.FC = () => {
         isOpen={showUrlModal}
         onClose={() => setShowUrlModal(false)}
         onScrapeSuccess={handleScrapeSuccess}
+      />
+
+      {/* Mihon / Tachiyomi Extension Hub Modal */}
+      <ExtensionManagerModal
+        isOpen={showExtensionsModal}
+        onClose={() => setShowExtensionsModal(false)}
+        onSourcesChanged={() => loadComics(activeCategory)}
       />
 
       {/* App-Wide Universal Drag and Drop Ingestion */}

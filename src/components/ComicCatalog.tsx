@@ -15,7 +15,8 @@ import {
   Zap,
   BookOpen,
   Shield,
-  Star
+  Star,
+  Puzzle
 } from 'lucide-react';
 
 interface ComicCatalogProps {
@@ -29,6 +30,7 @@ interface ComicCatalogProps {
   onOpenSample: () => void;
   onOpenUpload: () => void;
   onOpenUrlModal: () => void;
+  onOpenExtensions?: () => void;
 }
 
 const CATEGORIES = [
@@ -106,7 +108,8 @@ export const ComicCatalog: React.FC<ComicCatalogProps> = ({
   onSearchQuery,
   onOpenSample,
   onOpenUpload,
-  onOpenUrlModal
+  onOpenUrlModal,
+  onOpenExtensions
 }) => {
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
@@ -133,7 +136,7 @@ export const ComicCatalog: React.FC<ComicCatalogProps> = ({
           <div className="relative z-10 max-w-2xl space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-bold tracking-wide">
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span>UNLIMITED MANGA, MARVEL, DC & COMICS ENGINE</span>
+              <span>MIHON & TACHIYOMI MULTI-SOURCE COMICS HUB</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">
@@ -141,24 +144,34 @@ export const ComicCatalog: React.FC<ComicCatalogProps> = ({
             </h1>
 
             <p className="text-sm md:text-base text-slate-300 leading-relaxed">
-              Explore <strong>Spider-Man</strong>, <strong>Batman</strong>, <strong>Invincible</strong>, <strong>MangaDex Top 100</strong>, and <strong>Webtoons</strong> with smart <strong>Guided Panel View</strong> and <strong>Vertical Continuous Scroll</strong>.
+              Powered by modular <strong>Tachiyomi Scraper Extensions</strong>, <strong>Offline Chapter Downloads</strong>, and <strong>Smart Guided Panel View</strong>.
             </p>
 
             <div className="pt-2 flex flex-wrap items-center gap-3">
+              {onOpenExtensions && (
+                <button
+                  onClick={onOpenExtensions}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                >
+                  <Puzzle className="w-4 h-4" />
+                  <span>Extension Manager</span>
+                </button>
+              )}
+
               <button
                 onClick={onOpenSample}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm shadow-lg border border-slate-700 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>Launch Panel View Demo</span>
+                <Sparkles className="w-4 h-4 text-blue-400" />
+                <span>Panel View Demo</span>
               </button>
 
               <button
                 onClick={onOpenUrlModal}
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-lg shadow-purple-600/20 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 border border-purple-500/40 font-bold text-sm shadow-lg flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
               >
                 <Globe className="w-4 h-4" />
-                <span>Scrape Custom Webtoon URL</span>
+                <span>Scrape Webtoon URL</span>
               </button>
             </div>
           </div>
@@ -252,13 +265,25 @@ export const ComicCatalog: React.FC<ComicCatalogProps> = ({
           })}
         </div>
 
-        <button
-          onClick={onOpenUpload}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all whitespace-nowrap border border-slate-700 cursor-pointer flex-shrink-0"
-        >
-          <UploadCloud className="w-3.5 h-3.5 text-blue-400" />
-          <span>Upload Archive</span>
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {onOpenExtensions && (
+            <button
+              onClick={onOpenExtensions}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-950/60 hover:bg-blue-900/60 text-blue-300 hover:text-white text-xs font-bold transition-all whitespace-nowrap border border-blue-800/60 cursor-pointer"
+            >
+              <Puzzle className="w-3.5 h-3.5 text-blue-400" />
+              <span>Extensions</span>
+            </button>
+          )}
+
+          <button
+            onClick={onOpenUpload}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all whitespace-nowrap border border-slate-700 cursor-pointer"
+          >
+            <UploadCloud className="w-3.5 h-3.5 text-blue-400" />
+            <span>Upload Archive</span>
+          </button>
+        </div>
       </div>
 
       {/* Comics Grid */}
