@@ -388,34 +388,41 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {liveSports.slice(0, 3).map((match) => (
-            <div
-              key={match.id}
-              onClick={() => onSelectSportsMatch(match)}
-              className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-rose-500/50 shadow-lg cursor-pointer transition-all hover:scale-102 space-y-3"
-            >
-              <div className="flex items-center justify-between text-[10px] font-bold">
-                <span className="text-slate-400 uppercase tracking-wider font-mono">
-                  {match.league}
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                  {match.status === 'live' ? '🔴 LIVE' : match.time || 'Upcoming'}
-                </span>
-              </div>
+          {liveSports.slice(0, 3).map((match) => {
+            const homeName = typeof match.homeTeam === 'object' ? match.homeTeam?.name || 'Home' : String(match.homeTeam || 'Home');
+            const awayName = typeof match.awayTeam === 'object' ? match.awayTeam?.name || 'Away' : String(match.awayTeam || 'Away');
+            const homeScore = typeof match.homeTeam === 'object' ? match.homeTeam?.score : (match as any).homeScore;
+            const awayScore = typeof match.awayTeam === 'object' ? match.awayTeam?.score : (match as any).awayScore;
 
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-xs font-black text-white truncate">{match.homeTeam}</span>
+            return (
+              <div
+                key={match.id}
+                onClick={() => onSelectSportsMatch(match)}
+                className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-rose-500/50 shadow-lg cursor-pointer transition-all hover:scale-102 space-y-3"
+              >
+                <div className="flex items-center justify-between text-[10px] font-bold">
+                  <span className="text-slate-400 uppercase tracking-wider font-mono">
+                    {match.league || 'Live Sports'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                    {match.status === 'LIVE' ? '🔴 LIVE' : match.statusText || (match as any).time || 'Scheduled'}
+                  </span>
                 </div>
-                <div className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono font-black text-amber-300">
-                  {match.homeScore ?? '0'} - {match.awayScore ?? '0'}
-                </div>
-                <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                  <span className="text-xs font-black text-white truncate text-right">{match.awayTeam}</span>
+
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-xs font-black text-white truncate">{homeName}</span>
+                  </div>
+                  <div className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono font-black text-amber-300">
+                    {homeScore ?? '0'} - {awayScore ?? '0'}
+                  </div>
+                  <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                    <span className="text-xs font-black text-white truncate text-right">{awayName}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
