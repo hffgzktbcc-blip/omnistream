@@ -31,6 +31,7 @@ import { MiniPlayer } from './components/Common/MiniPlayer';
 import { CommandPalette } from './components/Common/CommandPalette';
 import { ReadingStatsModal } from './components/Library/ReadingStatsModal';
 import { GlobalDropzone } from './components/Common/GlobalDropzone';
+import { HomeDashboard } from './components/Home/HomeDashboard';
 import { offlineStorage } from './services/offlineStorage';
 import { ExtensionManagerModal } from './components/Extensions/ExtensionManagerModal';
 import { Loader2, X } from 'lucide-react';
