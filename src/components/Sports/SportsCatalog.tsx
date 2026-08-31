@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SportsMatch } from '../../types/sports';
 import { SportsCard } from './SportsCard';
+import { iptvStorage, IPTVChannel } from '../../services/iptvStorage';
 import {
   Trophy,
   Radio,
@@ -18,7 +19,10 @@ import {
   Play,
   Share2,
   Medal,
-  Crown
+  Crown,
+  Plus,
+  Trash2,
+  Video
 } from 'lucide-react';
 
 interface SportsCatalogProps {
@@ -44,65 +48,65 @@ const SUPERSPORT_CATEGORIES = [
   { id: 'basketball', label: '🏀 NBA & Basketball', icon: Zap }
 ];
 
-const SUPERSPORT_247_CHANNELS = [
+const SUPERSPORT_247_FEEDS = [
   {
-    id: 'channel_ss_rugby',
-    name: 'SuperSport Rugby HD',
-    badge: '🏉 Rugby Flagship',
+    id: 'feed_ss_rugby_highlights',
+    name: 'SuperSport Rugby Highlights HD',
+    badge: '🏉 Springboks & URC',
     sport: 'rugby',
     icon: '🏉',
-    desc: 'Springboks, Six Nations, Rugby Championship, Super Rugby & URC',
-    url: 'https://topembed.pw/channel/SuperSportRugby',
+    desc: 'Official Springboks, Six Nations, Rugby Championship & URC match highlights',
+    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PL0D5C35BB8FAEF3E8&autoplay=1',
     gradient: 'from-amber-600/30 via-[#00173d] to-[#000c1e] border-amber-400/40 text-amber-300'
   },
   {
-    id: 'channel_ss_pl',
-    name: 'SuperSport Premier League',
-    badge: '⚽ 24/7 EPL Live',
+    id: 'feed_ss_epl_live',
+    name: 'Premier League Goals & Action',
+    badge: '⚽ 24/7 EPL Highlights',
     sport: 'soccer',
     icon: '⚽',
-    desc: 'Premier League Matchdays, Tactical Cam, Press Conferences & Highlights',
-    url: 'https://topembed.pw/channel/SkySportsPremierLeague',
+    desc: 'Official Premier League matchday goals, tactical cam & press conferences',
+    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PLQ_vl3g3HkWn3R8ZJ0T1kG5kP8V9rV3B_&autoplay=1',
     gradient: 'from-blue-600/30 via-[#00173d] to-[#000c1e] border-blue-400/40 text-blue-300'
   },
   {
-    id: 'channel_ss_f1',
-    name: 'SuperSport Motorsport / F1',
-    badge: '🏎️ Grand Prix',
+    id: 'feed_ss_f1_live',
+    name: 'Red Bull TV (Live 24/7 F1 & Action)',
+    badge: '🏎️ 1080p Native HLS',
     sport: 'f1',
     icon: '🏎️',
-    desc: 'Practice, Qualifying, Sprint Races, Pit-Lane Feed & On-Board Cameras',
-    url: 'https://topembed.pw/channel/SkySportsF1',
+    desc: 'Official 24/7 Red Bull Motorsport, Formula 1 paddock & extreme sports live feed',
+    url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
     gradient: 'from-red-600/30 via-[#00173d] to-[#000c1e] border-red-400/40 text-red-300'
   },
   {
-    id: 'channel_ss_grandstand',
-    name: 'SuperSport Grandstand HD',
-    badge: '🏆 Main Event',
+    id: 'feed_ss_sportsgrid',
+    name: 'SportsGrid 24/7 Live Network',
+    badge: '🏆 Live Satellite HLS',
     sport: 'all',
     icon: '🏆',
-    desc: 'The World of Champions marquee flagship channel streaming top global finals',
-    url: 'https://topembed.pw/channel/TNTSports1',
+    desc: '24/7 real-time sports odds, match analysis, live scores and commentary',
+    url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
     gradient: 'from-yellow-500/30 via-[#00173d] to-[#000c1e] border-yellow-400/40 text-yellow-300'
   },
   {
-    id: 'channel_ss_action',
-    name: 'SuperSport Action & UFC',
-    badge: '🥊 Combat Live',
-    sport: 'mma',
-    icon: '🥊',
-    desc: 'UFC Pay-Per-View, Fight Nights, World Championship Boxing & PFL',
-    url: 'https://topembed.pw/channel/DAZN1',
+    id: 'feed_ss_f1_paddock',
+    name: 'Formula 1 Paddock & Analysis',
+    badge: '🏎️ Official F1 HD',
+    sport: 'f1',
+    icon: '🏎️',
+    desc: 'Grand Prix on-boards, technical breakdowns, driver interviews & press feeds',
+    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PLfoNZDHitwjWq3qGz5hS5b6XJ3Q1X1Z1Z&autoplay=1',
     gradient: 'from-purple-600/30 via-[#00173d] to-[#000c1e] border-purple-400/40 text-purple-300'
   },
   {
-    id: 'channel_ss_variety',
-    name: 'SuperSport Variety / ESPN',
-    badge: '🏀 NBA & NFL',
-    sport: 'basketball',
-    icon: '🏀',
-    desc: 'NBA Primetime, NFL Sunday Night, SportsCenter & College Sports',
-    url: 'https://topembed.pw/channel/ESPN',
+    id: 'feed_ss_ufc_live',
+    name: 'UFC & Combat Free Fights',
+    badge: '🥊 UFC Live Replays',
+    sport: 'mma',
+    icon: '🥊',
+    desc: 'Official full fight replays, knockout compilations, weigh-ins & press conferences',
+    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PL_Gzvvgow5rw5sP5t3wS0D4v_p68d8x7b&autoplay=1',
     gradient: 'from-emerald-600/30 via-[#00173d] to-[#000c1e] border-emerald-400/40 text-emerald-300'
   }
 ];
@@ -119,6 +123,15 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
   onSearchQuery
 }) => {
   const [localSearch, setLocalSearch] = useState(searchQuery);
+  const [customChannels, setCustomChannels] = useState<IPTVChannel[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newChanName, setNewChanName] = useState('');
+  const [newChanUrl, setNewChanUrl] = useState('');
+  const [newChanSport, setNewChanSport] = useState<any>('all');
+
+  useEffect(() => {
+    setCustomChannels(iptvStorage.getChannels().filter((c) => c.isCustom));
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,22 +143,42 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
     onSearchQuery('');
   };
 
-  const handleWatchChannel = (channel: typeof SUPERSPORT_247_CHANNELS[0]) => {
+  const handleWatchFeed = (feed: typeof SUPERSPORT_247_FEEDS[0] | IPTVChannel) => {
     const dummyMatch: SportsMatch = {
-      id: channel.id,
-      sport: channel.sport as any,
-      league: channel.name,
-      homeTeam: { name: channel.name, score: 'LIVE' },
-      awayTeam: { name: '24/7 Satellite Broadcast Feed', score: '1080p' },
+      id: feed.id,
+      sport: feed.sport as any,
+      league: feed.name,
+      homeTeam: { name: feed.name, score: 'LIVE' },
+      awayTeam: { name: 'Direct Stream Feed', score: 'HD' },
       status: 'LIVE',
-      statusText: channel.desc,
+      statusText: (feed as any).desc || 'Live Feed',
       servers: [
-        { name: `${channel.name} Direct HD`, url: channel.url },
-        { name: 'Streamed.su Global Mirror', url: 'https://streamed.su' },
-        { name: 'VIPRow Universal Backup', url: 'https://www.viprow.nu/sports-online' }
+        { name: `${feed.name}`, url: feed.url },
+        { name: 'Red Bull TV 1080p Backup', url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8' }
       ]
     };
     onWatchMatch(dummyMatch);
+  };
+
+  const handleAddCustomChannel = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChanName || !newChanUrl) return;
+    const added = iptvStorage.addCustomChannel({
+      name: newChanName,
+      url: newChanUrl,
+      sport: newChanSport
+    });
+    setCustomChannels(iptvStorage.getChannels().filter((c) => c.isCustom));
+    setNewChanName('');
+    setNewChanUrl('');
+    setShowAddModal(false);
+    handleWatchFeed(added);
+  };
+
+  const handleDeleteCustomChannel = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    iptvStorage.removeCustomChannel(id);
+    setCustomChannels(iptvStorage.getChannels().filter((c) => c.isCustom));
   };
 
   const liveMatches = matches.filter((m) => m.status === 'LIVE');
@@ -175,11 +208,11 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
             </h1>
 
             <p className="text-sm md:text-base text-blue-100/90 leading-relaxed font-medium">
-              Live broadcast coverage for the <strong>Springboks</strong>, <strong>Six Nations</strong>, <strong>Rugby Championship</strong>, <strong>Premier League</strong>, <strong>UEFA Champions League</strong>, and <strong>Formula 1 Grand Prix</strong> with multi-satellite low-latency failover.
+              Official HD streams, live match scoreboards, and 24/7 broadcast feeds for the <strong>Springboks</strong>, <strong>Six Nations</strong>, <strong>Premier League</strong>, <strong>Formula 1</strong>, and <strong>UFC</strong>.
             </p>
 
-            {liveMatches.length > 0 && (
-              <div className="pt-2 flex items-center gap-3 flex-wrap">
+            <div className="pt-2 flex items-center gap-3 flex-wrap">
+              {liveMatches.length > 0 && (
                 <button
                   onClick={() => onWatchMatch(liveMatches[0])}
                   className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
@@ -187,46 +220,93 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
                   <Radio className="w-4 h-4 text-slate-950 animate-pulse" />
                   <span>Watch Featured Live: {liveMatches[0].homeTeam.name} vs {liveMatches[0].awayTeam.name}</span>
                 </button>
-              </div>
-            )}
+              )}
+
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-5 py-3.5 rounded-2xl bg-blue-950 hover:bg-blue-900 text-amber-300 border border-amber-400/40 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Custom IPTV / M3U8 Stream</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* SuperSport 24/7 Television Broadcast Grid */}
+      {/* Custom User IPTV Streams (if any) */}
+      {customChannels.length > 0 && (
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tv className="w-5 h-5 text-amber-400" />
+              <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
+                Your Custom IPTV Sports Channels
+              </h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {customChannels.map((ch) => (
+              <div
+                key={ch.id}
+                onClick={() => handleWatchFeed(ch)}
+                className="p-4 rounded-2xl bg-[#00173d] border border-amber-400/40 hover:border-amber-400 hover:scale-[1.02] cursor-pointer transition-all shadow-xl flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-2xl">📡</span>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-black text-white truncate">{ch.name}</h4>
+                    <p className="text-[10px] text-blue-200/70 truncate">{ch.url}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => handleDeleteCustomChannel(ch.id, e)}
+                  className="p-2 text-slate-400 hover:text-red-400 rounded-lg hover:bg-blue-900 transition-colors cursor-pointer"
+                  title="Remove channel"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SuperSport 24/7 Verified Broadcast & Highlights Feeds */}
       <div className="space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tv className="w-5 h-5 text-amber-400" />
             <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
-              SuperSport 24/7 Live Television Channels
+              SuperSport 24/7 Feeds & Official Match Highlights
             </h2>
           </div>
           <span className="text-xs font-bold text-amber-400/80 bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20">
-            Direct Satellite Feeds
+            Native HLS & HD Feeds
           </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-          {SUPERSPORT_247_CHANNELS.map((ch) => (
+          {SUPERSPORT_247_FEEDS.map((feed) => (
             <div
-              key={ch.id}
-              onClick={() => handleWatchChannel(ch)}
-              className={`group relative p-4 rounded-2xl bg-gradient-to-b ${ch.gradient} border hover:border-amber-400/60 hover:scale-105 cursor-pointer transition-all shadow-xl flex flex-col justify-between`}
+              key={feed.id}
+              onClick={() => handleWatchFeed(feed)}
+              className={`group relative p-4 rounded-2xl bg-gradient-to-b ${feed.gradient} border hover:border-amber-400/60 hover:scale-105 cursor-pointer transition-all shadow-xl flex flex-col justify-between`}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-2xl">{ch.icon}</span>
+                <span className="text-2xl">{feed.icon}</span>
                 <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-black/70 border border-white/10 backdrop-blur-md text-amber-300">
-                  {ch.badge}
+                  {feed.badge}
                 </span>
               </div>
               <div className="my-1">
-                <h4 className="text-xs font-black text-white line-clamp-1">{ch.name}</h4>
-                <p className="text-[10px] text-blue-200/70 mt-1 line-clamp-2 leading-tight">{ch.desc}</p>
+                <h4 className="text-xs font-black text-white line-clamp-1">{feed.name}</h4>
+                <p className="text-[10px] text-blue-200/70 mt-1 line-clamp-2 leading-tight">{feed.desc}</p>
               </div>
               <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-[11px] font-black text-amber-400 group-hover:text-amber-300">
-                <span>Watch Channel</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Play Stream</span>
+                <Play className="w-3 h-3 fill-current" />
               </div>
             </div>
           ))}
@@ -334,6 +414,76 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
           <p className="text-xs text-blue-200/70 max-w-sm mx-auto">
             Try switching sport categories above or tune into our 24/7 SuperSport Television channels.
           </p>
+        </div>
+      )}
+
+      {/* Modal: Add Custom IPTV / M3U8 Stream */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-lg bg-[#00173d] border-2 border-amber-400/60 rounded-3xl p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-blue-900/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Tv className="w-5 h-5 text-amber-400" />
+                <h3 className="text-base font-black text-white">Add Custom Live Sports Stream</h3>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-blue-900 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCustomChannel} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-blue-200">Channel / Match Name</label>
+                <input
+                  type="text"
+                  value={newChanName}
+                  onChange={(e) => setNewChanName(e.target.value)}
+                  placeholder="e.g. SuperSport Rugby HD (My Feed), Sky Sports F1 Live..."
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#000c1e] border border-blue-800 text-xs text-white placeholder-blue-300/40 focus:outline-none focus:border-amber-400"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-blue-200">Stream URL (.m3u8, YouTube, or Stream Link)</label>
+                <input
+                  type="url"
+                  value={newChanUrl}
+                  onChange={(e) => setNewChanUrl(e.target.value)}
+                  placeholder="https://.../master.m3u8 or https://..."
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#000c1e] border border-blue-800 text-xs text-white placeholder-blue-300/40 focus:outline-none focus:border-amber-400"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-blue-200">Sport Category</label>
+                <select
+                  value={newChanSport}
+                  onChange={(e) => setNewChanSport(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#000c1e] border border-blue-800 text-xs text-white focus:outline-none focus:border-amber-400"
+                >
+                  <option value="all">All Sports / Multi-Channel</option>
+                  <option value="rugby">Rugby (Springboks / Six Nations)</option>
+                  <option value="soccer">Football / Soccer</option>
+                  <option value="f1">Formula 1 & Motorsport</option>
+                  <option value="mma">UFC & Boxing</option>
+                  <option value="cricket">Cricket</option>
+                  <option value="basketball">Basketball</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 transition-all cursor-pointer"
+              >
+                Save & Watch Stream Now
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>
