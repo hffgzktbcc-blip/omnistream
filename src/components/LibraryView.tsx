@@ -5,6 +5,7 @@ import { Audiobook } from '../types/audiobook';
 import { storage } from '../services/storage';
 import { ebookStorage } from '../services/ebookStorage';
 import { offlineStorage, OfflineComicSummary } from '../services/offlineStorage';
+import { backupService } from '../services/backupService';
 import {
   BookOpen,
   Bookmark as BookmarkIcon,
@@ -91,43 +92,80 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-slate-800">
-          <button
-            onClick={() => setActiveTab('comics')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'comics'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Manga & Comics ({history.length + offlineComics.length})</span>
-          </button>
+        {/* Right Action Controls */}
+        <div className="flex items-center gap-3">
+          {/* Backup / Restore Controls */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => backupService.exportBackup()}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer"
+              title="Export Tachimanga / Tachiyomi backup"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-400" />
+              <span>Export Backup</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('ebooks')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'ebooks'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <BookText className="w-3.5 h-3.5" />
-            <span>EPUB & Books ({ebooks.length})</span>
-          </button>
+            <label className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer">
+              <Upload className="w-3.5 h-3.5 text-purple-400" />
+              <span>Restore</span>
+              <input
+                type="file"
+                accept=".json,.tachibk"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const res = await backupService.importBackup(file);
+                    alert(res.message);
+                    if (res.success) {
+                      setHistory(storage.getProgress());
+                      setBookmarks(storage.getBookmarks());
+                      setFavorites(storage.getFavorites());
+                    }
+                  }
+                }}
+              />
+            </label>
+          </div>
 
-          <button
-            onClick={() => setActiveTab('bookmarks')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'bookmarks'
-                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <BookmarkIcon className="w-3.5 h-3.5" />
-            <span>Bookmarks ({bookmarks.length})</span>
-          </button>
+          {/* Tab Switcher */}
+          <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-slate-800">
+            <button
+              onClick={() => setActiveTab('comics')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'comics'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Manga & Comics ({history.length + offlineComics.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ebooks')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'ebooks'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BookText className="w-3.5 h-3.5" />
+              <span>EPUB & Books ({ebooks.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('bookmarks')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'bookmarks'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BookmarkIcon className="w-3.5 h-3.5" />
+              <span>Bookmarks ({bookmarks.length})</span>
+            </button>
+          </div>
         </div>
       </div>
 

@@ -241,37 +241,65 @@ export const ExtensionManagerModal: React.FC<ExtensionManagerModalProps> = ({
           )}
 
           {activeTab === 'add' && (
-            <form onSubmit={handleAddCustomRepo} className="space-y-4 py-2">
-              <div className="p-4 rounded-2xl bg-blue-950/30 border border-blue-800/40 text-blue-300 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-xs">
-                  <Info className="w-4 h-4 text-blue-400" />
-                  <span>Custom Tachiyomi / Mihon Repositories</span>
+            <div className="space-y-4 py-2">
+              {/* 1-Click Keiyoushi Preset */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/40 to-slate-900 border border-purple-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🌐</span>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Keiyoushi Community Repository</h4>
+                      <p className="text-[11px] text-slate-400">The premier community extension repository (500+ sources for Manga, Manhwa, Comics & Webtoons)</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      extensionManager.addCustomRepository('https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json');
+                      refreshList();
+                      setActiveTab('installed');
+                      setStatusMessage('Added Keiyoushi Community Repository!');
+                      setTimeout(() => setStatusMessage(null), 3000);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-purple-600/30 transition-all cursor-pointer flex-shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>1-Click Add Keiyoushi</span>
+                  </button>
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Enter an `index.min.json` repository URL or Suwayomi Server endpoint to dynamically link third-party extension sources into OmniStream.
-                </p>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-300">Repository Index URL</label>
-                <input
-                  type="url"
-                  value={customRepoUrl}
-                  onChange={(e) => setCustomRepoUrl(e.target.value)}
-                  placeholder="https://raw.githubusercontent.com/.../index.min.json"
-                  className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 focus:border-blue-500 text-xs text-white placeholder-slate-500 focus:outline-none"
-                  required
-                />
-              </div>
+              <form onSubmit={handleAddCustomRepo} className="space-y-4">
+                <div className="p-4 rounded-2xl bg-blue-950/30 border border-blue-800/40 text-blue-300 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-xs">
+                    <Info className="w-4 h-4 text-blue-400" />
+                    <span>Custom Tachiyomi / Mihon / Tachimanga Repositories</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Enter any `index.min.json` repository URL or Suwayomi Server endpoint to dynamically link third-party extension sources into OmniStream.
+                  </p>
+                </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xl shadow-blue-600/30 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Extension Repository</span>
-              </button>
-            </form>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-300">Repository Index URL</label>
+                  <input
+                    type="url"
+                    value={customRepoUrl}
+                    onChange={(e) => setCustomRepoUrl(e.target.value)}
+                    placeholder="https://raw.githubusercontent.com/.../index.min.json"
+                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 focus:border-blue-500 text-xs text-white placeholder-slate-500 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xl shadow-blue-600/30 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Custom Repository</span>
+                </button>
+              </form>
+            </div>
           )}
         </div>
 
