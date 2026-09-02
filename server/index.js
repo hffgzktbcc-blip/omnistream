@@ -6071,7 +6071,7 @@ if (fs.existsSync(DIST_PATH)) {
   });
 }
 
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.env.HOST || '0.0.0.0';
 app.listen(PORT, HOST, () => {
   console.log(`🚀 OmniStream All-in-One Server running on http://${HOST}:${PORT}`);
 });

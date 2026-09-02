@@ -31,6 +31,7 @@ interface HeaderProps {
   onOpenSample: () => void;
   onOpenStats: () => void;
   onOpenCommandPalette: () => void;
+  onOpenAndroidTV: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -42,7 +43,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenUrlModal,
   onOpenSample,
   onOpenStats,
-  onOpenCommandPalette
+  onOpenCommandPalette,
+  onOpenAndroidTV
 }) => {
   const [localSearch, setLocalSearch] = useState(searchQuery);
   const [canInstall, setCanInstall] = useState(false);
@@ -251,6 +253,15 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Action Tools */}
         <div className="flex items-center gap-1.5 text-slate-300">
+          <button
+            onClick={onOpenAndroidTV}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/50 text-amber-300 font-bold text-xs transition-colors cursor-pointer shadow-sm shadow-amber-400/10"
+            title="Connect / Stream on Android TV Box"
+          >
+            <Tv className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden md:inline">Android TV</span>
+          </button>
+
           <button
             onClick={onOpenCommandPalette}
             className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer hidden sm:flex items-center gap-1 text-xs"

@@ -34,6 +34,8 @@ import { GlobalDropzone } from './components/Common/GlobalDropzone';
 import { HomeDashboard } from './components/Home/HomeDashboard';
 import { offlineStorage } from './services/offlineStorage';
 import { ExtensionManagerModal } from './components/Extensions/ExtensionManagerModal';
+import { AndroidTVModal } from './components/Common/AndroidTVModal';
+import { tvNavigation } from './services/tvNavigation';
 import { Loader2, X } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -82,6 +84,7 @@ const AppContent: React.FC = () => {
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
   const [showExtensionsModal, setShowExtensionsModal] = useState<boolean>(false);
+  const [showAndroidTVModal, setShowAndroidTVModal] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState<boolean>(false);
   const [loadingTitle, setLoadingTitle] = useState<string>('Loading...');
 
@@ -99,6 +102,12 @@ const AppContent: React.FC = () => {
     initialPage?: number;
     initialPanel?: number;
   } | null>(null);
+
+  // Initialize Android TV & Remote D-Pad Navigation Engine
+  useEffect(() => {
+    tvNavigation.init();
+    return () => tvNavigation.cleanup();
+  }, []);
 
   // Listener for custom shortcut
   useEffect(() => {
@@ -526,6 +535,7 @@ const AppContent: React.FC = () => {
         onOpenSample={handleLaunchSample}
         onOpenStats={() => setShowStatsModal(true)}
         onOpenCommandPalette={() => setShowCommandPalette(true)}
+        onOpenAndroidTV={() => setShowAndroidTVModal(true)}
       />
 
       {/* Main Content Area */}
@@ -761,6 +771,12 @@ const AppContent: React.FC = () => {
         isOpen={showExtensionsModal}
         onClose={() => setShowExtensionsModal(false)}
         onSourcesChanged={() => loadComics(activeCategory)}
+      />
+
+      {/* Android TV & 10-Foot Remote Hub Modal */}
+      <AndroidTVModal
+        isOpen={showAndroidTVModal}
+        onClose={() => setShowAndroidTVModal(false)}
       />
 
       {/* App-Wide Universal Drag and Drop Ingestion */}
