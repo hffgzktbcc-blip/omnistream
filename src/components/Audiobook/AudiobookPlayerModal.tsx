@@ -432,9 +432,17 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
                   )}
 
                   {/* Audio Source / Quality Badge */}
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-[9px] font-mono text-amber-300 border border-white/10 flex items-center gap-1">
+                  <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[9px] font-mono text-amber-300 border border-white/10 flex items-center gap-1.5 shadow-md">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>{hasDirectAudio ? 'Hi-Fi Audio' : 'Audio Stream'}</span>
+                    <span>
+                      {book.chapters && book.chapters.length > 1
+                        ? `Full Unabridged (${book.chapters.length} Tracks)`
+                        : hasDirectAudio
+                        ? 'Full Unabridged Audio'
+                        : book.youtubeId
+                        ? 'Full Length Audio Play'
+                        : 'Audible Official Audio'}
+                    </span>
                   </div>
 
                   {/* Animated Waveform Equalizer */}

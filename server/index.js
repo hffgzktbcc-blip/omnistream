@@ -3905,6 +3905,98 @@ async function searchAudible(query, limit = 20) {
   }
 }
 
+// Helper for dynamically locating full unabridged audio streams on the internet
+async function resolveFullAudiobook(title, author = '') {
+  const cleanTitle = (title || '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/Part\s*\d+(\s*of\s*\d+)?/gi, '')
+    .replace(/Vol(?:ume)?\s*\d+/gi, '')
+    .replace(/Dramatized\s*Adaptation/gi, '')
+    .replace(/GraphicAudio/gi, '')
+    .replace(/A Movie in Your Mind/gi, '')
+    .trim();
+  const cleanAuthor = (author || '').replace(/Narrator.*/i, '').trim();
+  const searchQ = cleanTitle + (cleanAuthor ? ' ' + cleanAuthor.split(',')[0].trim() : '');
+
+  // 1. Search Archive.org for full MP3 files
+  const archPromise = (async () => {
+    try {
+      const q = `(mediatype:audio) AND (${cleanTitle.replace(/[^a-zA-Z0-9 ]/g, ' ')}${cleanAuthor ? ' ' + cleanAuthor.split(',')[0].replace(/[^a-zA-Z0-9 ]/g, ' ') : ''})`;
+      const url = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(q)}&fl[]=identifier,title,creator,downloads,item_size&sort[]=-downloads&rows=5&output=json`;
+      const res = await safeFetch(url);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const docs = data.response?.docs || [];
+      for (const doc of docs) {
+        if (!doc.identifier) continue;
+        const metaRes = await safeFetch(`https://archive.org/metadata/${encodeURIComponent(doc.identifier)}`);
+        if (!metaRes.ok) continue;
+        const metaData = await metaRes.json();
+        if (!metaData?.files) continue;
+        const mp3s = metaData.files.filter(f => f.name && f.name.toLowerCase().endsWith('.mp3') && (parseFloat(f.length) > 120 || !f.length));
+        if (mp3s.length > 0) {
+          const totalSec = mp3s.reduce((acc, f) => acc + (parseFloat(f.length) || 0), 0);
+          if (totalSec > 1200 || mp3s.length > 2) {
+            const firstMp3 = mp3s[0];
+            const chapters = mp3s.map((f, idx) => ({
+              id: `ch_${idx + 1}`,
+              title: f.title || f.name.replace(/\.mp3$/i, '').replace(/^[0-9]+[_\s-]+/i, ''),
+              startTime: 0,
+              duration: f.length ? `${Math.floor(parseFloat(f.length) / 60)}m` : undefined,
+              audioUrl: `https://archive.org/download/${doc.identifier}/${encodeURIComponent(f.name)}`
+            }));
+            return {
+              source: 'archive',
+              audioUrl: `https://archive.org/download/${doc.identifier}/${encodeURIComponent(firstMp3.name)}`,
+              chapters: chapters.length > 1 ? chapters : undefined,
+              durationSeconds: Math.round(totalSec) || 3600
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Archive full audio resolve error:', e);
+    }
+    return null;
+  })();
+
+  // 2. Search YouTube for full-length unabridged streams (> 30 mins)
+  const ytPromise = (async () => {
+    try {
+      const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQ + ' full audiobook unabridged')}`;
+      const res = await safeFetch(ytUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (!res.ok) return null;
+      const html = await res.text();
+      const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+      if (match) {
+        const data = JSON.parse(match[1]);
+        const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+        for (const item of contents) {
+          const v = item.videoRenderer;
+          if (v && v.videoId && v.lengthText?.simpleText) {
+            const dur = v.lengthText.simpleText;
+            const parts = dur.split(':');
+            if (parts.length >= 3 || parseInt(parts[0], 10) >= 30) {
+              return {
+                source: 'youtube',
+                youtubeId: v.videoId,
+                duration: dur
+              };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('YouTube full audio resolve error:', e);
+    }
+    return null;
+  })();
+
+  const [archResult, ytResult] = await Promise.all([archPromise, ytPromise]);
+  return archResult || ytResult || null;
+}
+
 const CURATED_AUDIOBOOKS = [
   // 1. J.R.R. TOLKIEN PHIL DRAGASH SOUNDSCAPE TRILOGY & ARCHIVE.ORG
   {
@@ -4043,6 +4135,25 @@ app.get('/api/audiobooks/popular', async (req, res) => {
   } catch (err) {
     console.error('Audiobooks popular error:', err);
     res.json(CURATED_AUDIOBOOKS);
+  }
+});
+
+app.get('/api/audiobooks/resolve', async (req, res) => {
+  const title = (req.query.title || '').trim();
+  const author = (req.query.author || '').trim();
+  if (!title) return res.status(400).json({ error: 'Title is required' });
+
+  const cacheKey = `ab_resolved_v2_${title.toLowerCase()}_${author.toLowerCase()}`;
+  const cached = getCache(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const stream = await resolveFullAudiobook(title, author);
+    setCache(cacheKey, stream, 1000 * 60 * 60 * 24);
+    res.json(stream || { source: 'sample' });
+  } catch (err) {
+    console.error('Audiobook resolve error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -163,6 +163,32 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isMuted: false
     });
     setIsMinimized(false);
+
+    // Auto-resolve full-length audio stream & chapters from the internet
+    if (!book.chapters || book.chapters.length === 0 || !book.audioUrl || book.platform === 'audible') {
+      fetch(`/api/audiobooks/resolve?title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author || '')}`)
+        .then((r) => r.json())
+        .then((resolved) => {
+          if (resolved && (resolved.audioUrl || resolved.youtubeId || resolved.chapters)) {
+            setActiveMedia((prev) => {
+              if (!prev || prev.type !== 'audiobook' || prev.item.id !== book.id) return prev;
+              const updatedBook: Audiobook = {
+                ...prev.item,
+                audioUrl: resolved.audioUrl || prev.item.audioUrl,
+                youtubeId: resolved.youtubeId || prev.item.youtubeId,
+                chapters: resolved.chapters || prev.item.chapters,
+                durationSeconds: resolved.durationSeconds || prev.item.durationSeconds
+              };
+              return {
+                ...prev,
+                item: updatedBook,
+                duration: resolved.durationSeconds || prev.duration
+              };
+            });
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const playChapter = useCallback((chapterIndex: number) => {
