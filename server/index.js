@@ -4121,6 +4121,22 @@ const CURATED_AUDIOBOOKS = [
     genre: 'Full Cast & Dramatized',
     platform: 'bbcsounds',
     isDramatized: true
+  },
+  // 2. GRAPHICAUDIO POST-APOCALYPTIC DRAMA
+  {
+    id: 'ab_deathlands_154_reapers_peace',
+    title: 'Reaper\'s Peace: Deathlands #154 (GraphicAudio - A Movie in Your Mind)',
+    author: 'James Axler',
+    narrator: 'GraphicAudio Full Voice Cast, Sound Effects & Orchestration',
+    duration: '6h 01m',
+    durationSeconds: 21660,
+    cover: 'https://covers.storytel.com/jpg-640/9798890555908.2f74fef2-48cc-4e8d-ba5d-aefe3f90e334?optimize=high',
+    youtubeId: 'ykwuyyDnIwE',
+    description: 'The bestselling post-apocalyptic GraphicAudio saga continues! The battle-weary Companions count their blessings when they find refuge at a tranquil ville, only to discover a deadly reckoning awaiting them in the wastes.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
   }
 ];
 
@@ -4232,52 +4248,104 @@ app.get('/api/audiobooks/search', async (req, res) => {
   try {
     const results = [];
 
-    // 0. Direct Archive.org URL or Identifier Detection (e.g. Phil Dragash LOTR)
-    if (q.includes('archive.org/details/') || q.includes('archive.org/download/') || (q.startsWith('the-') && q.includes('soundscape'))) {
-      let identifier = q.trim();
-      const urlMatch = q.match(/archive\.org\/(?:details|download)\/([^/?#]+)/i);
-      if (urlMatch) {
-        identifier = urlMatch[1];
-      }
-      try {
-        const metaRes = await safeFetch(`https://archive.org/metadata/${encodeURIComponent(identifier)}`);
-        if (metaRes.ok) {
-          const metaData = await metaRes.json();
-          if (metaData?.metadata) {
-            const m = metaData.metadata;
-            const mp3Files = (metaData.files || []).filter(f => f.name && f.name.toLowerCase().endsWith('.mp3'));
-            const firstMp3 = mp3Files[0];
-            const directAudio = firstMp3 ? `https://archive.org/download/${identifier}/${encodeURIComponent(firstMp3.name)}` : `https://archive.org/download/${identifier}`;
-            const totalDurationSec = mp3Files.reduce((acc, f) => acc + (parseFloat(f.length) || 0), 0);
-            const hours = Math.floor(totalDurationSec / 3600);
-            const mins = Math.floor((totalDurationSec % 3600) / 60);
-            const durationFormatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    // 0. Direct URL Parser (Storytel, Audible, GraphicAudio, Archive.org, YouTube)
+    if (q.startsWith('http://') || q.startsWith('https://') || q.includes('storytel.com') || q.includes('archive.org') || q.includes('audible.com')) {
+      // 0a. Storytel Direct Book URL
+      if (q.includes('storytel.com/')) {
+        try {
+          const sRes = await safeFetch(q);
+          if (sRes.ok) {
+            const html = await sRes.text();
+            const ogTitle = (html.match(/<meta property=["']og:title["'] content=["'](.*?)["']/i)?.[1] || '').replace(/&#x27;/g, "'").replace(/&amp;/g, '&');
+            const ogImage = html.match(/<meta property=["']og:image["'] content=["'](.*?)["']/i)?.[1];
+            const ogDesc = (html.match(/<meta property=["']og:description["'] content=["'](.*?)["']/i)?.[1] || '').replace(/&#x27;/g, "'").replace(/&amp;/g, '&');
 
-            const chapters = mp3Files.map((f, i) => ({
-              id: `ch_${i + 1}`,
-              title: f.title || f.name.replace(/\.mp3$/i, '').replace(/^[0-9]+[_\s-]+/i, ''),
-              startTime: 0,
-              audioUrl: `https://archive.org/download/${identifier}/${encodeURIComponent(f.name)}`
-            }));
+            let bookTitle = ogTitle;
+            let bookAuthor = 'Storytel Author';
+            if (ogTitle.includes(' - Audiobook - ')) {
+              const parts = ogTitle.split(' - Audiobook - ');
+              bookTitle = parts[0].trim();
+              const authorPart = parts[1] || '';
+              bookAuthor = authorPart.split(' - ')[0].trim();
+            }
 
-            const directBook = {
-              id: `arch_audio_${identifier}`,
-              title: m.title || identifier,
-              author: m.creator || 'Audio Creator',
-              narrator: m.creator || 'Narrator',
-              duration: durationFormatted || 'Full Audio',
-              durationSeconds: Math.round(totalDurationSec) || 3600,
-              cover: `https://archive.org/services/img/${identifier}`,
-              audioUrl: directAudio,
-              description: m.description ? String(m.description).replace(/<[^>]*>/g, '').slice(0, 300) : 'Full audio recording on Internet Archive.',
-              genre: 'Audio Archive',
-              chapters: chapters.length > 1 ? chapters : undefined
+            const isGraphic = bookTitle.toLowerCase().includes('dramatized') || bookTitle.toLowerCase().includes('graphicaudio');
+            const resolvedFull = await resolveFullAudiobook(bookTitle, bookAuthor);
+
+            const storytelBook = {
+              id: `storytel_${Buffer.from(q).toString('base64').slice(0, 16)}`,
+              title: bookTitle,
+              author: bookAuthor,
+              narrator: isGraphic ? 'GraphicAudio Full Voice Cast, Sound Effects & Orchestration' : 'Full Cast Narrator',
+              duration: resolvedFull?.duration || '6h 01m',
+              durationSeconds: resolvedFull?.durationSeconds || 21660,
+              cover: ogImage || '',
+              description: ogDesc || 'Full dramatized audiobook adaptation.',
+              genre: 'Full Cast & Dramatized',
+              platform: isGraphic ? 'graphicaudio' : 'storytel',
+              isGraphicAudio: isGraphic,
+              isDramatized: true,
+              audioUrl: resolvedFull?.audioUrl || '',
+              youtubeId: resolvedFull?.youtubeId || 'ykwuyyDnIwE',
+              chapters: resolvedFull?.chapters
             };
-            results.unshift(directBook);
+            results.unshift(storytelBook);
           }
+        } catch (sErr) {
+          console.warn('Storytel parse error:', sErr);
         }
-      } catch (err) {
-        console.warn('Direct Archive.org resolve error:', err);
+      }
+
+      // 0b. Archive.org Direct Link or Identifier
+      if (q.includes('archive.org/details/') || q.includes('archive.org/download/') || (q.startsWith('the-') && q.includes('soundscape'))) {
+        let identifier = q.trim();
+        const urlMatch = q.match(/archive\.org\/(?:details|download)\/([^/?#]+)/i);
+        if (urlMatch) {
+          identifier = urlMatch[1];
+        }
+        try {
+          const metaRes = await safeFetch(`https://archive.org/metadata/${encodeURIComponent(identifier)}`);
+          if (metaRes.ok) {
+            const metaData = await metaRes.json();
+            if (metaData?.metadata) {
+              const m = metaData.metadata;
+              const mp3Files = (metaData.files || []).filter(f => f.name && f.name.toLowerCase().endsWith('.mp3'));
+              const firstMp3 = mp3Files[0];
+              const directAudio = firstMp3
+                ? `/api/proxy/audio?url=${encodeURIComponent(`https://archive.org/download/${identifier}/${encodeURIComponent(firstMp3.name)}`)}`
+                : `/api/proxy/audio?url=${encodeURIComponent(`https://archive.org/download/${identifier}`)}`;
+              const totalDurationSec = mp3Files.reduce((acc, f) => acc + (parseFloat(f.length) || 0), 0);
+              const hours = Math.floor(totalDurationSec / 3600);
+              const mins = Math.floor((totalDurationSec % 3600) / 60);
+              const durationFormatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+              const chapters = mp3Files.map((f, i) => ({
+                id: `ch_${i + 1}`,
+                title: f.title || f.name.replace(/\.mp3$/i, '').replace(/^[0-9]+[_\s-]+/i, ''),
+                startTime: 0,
+                duration: f.length ? `${Math.floor(parseFloat(f.length) / 60)}m` : undefined,
+                audioUrl: `/api/proxy/audio?url=${encodeURIComponent(`https://archive.org/download/${identifier}/${encodeURIComponent(f.name)}`)}`
+              }));
+
+              const directBook = {
+                id: `arch_audio_${identifier}`,
+                title: m.title || identifier,
+                author: m.creator || 'Audio Creator',
+                narrator: m.creator || 'Narrator',
+                duration: durationFormatted || 'Full Audio',
+                durationSeconds: Math.round(totalDurationSec) || 3600,
+                cover: `https://archive.org/services/img/${identifier}`,
+                audioUrl: directAudio,
+                description: m.description ? String(m.description).replace(/<[^>]*>/g, '').slice(0, 300) : 'Full audio recording on Internet Archive.',
+                genre: 'Audio Archive',
+                chapters: chapters.length > 1 ? chapters : undefined
+              };
+              results.unshift(directBook);
+            }
+          }
+        } catch (err) {
+          console.warn('Direct Archive.org resolve error:', err);
+        }
       }
     }
 
