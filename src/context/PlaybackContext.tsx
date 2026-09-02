@@ -172,16 +172,28 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (resolved && (resolved.audioUrl || resolved.youtubeId || resolved.chapters)) {
             setActiveMedia((prev) => {
               if (!prev || prev.type !== 'audiobook' || prev.item.id !== book.id) return prev;
+              const targetAudioUrl = resolved.audioUrl || '';
+              const targetYtId = resolved.youtubeId || (targetAudioUrl ? undefined : prev.item.youtubeId);
+
               const updatedBook: Audiobook = {
                 ...prev.item,
-                audioUrl: resolved.audioUrl || prev.item.audioUrl,
-                youtubeId: resolved.youtubeId || prev.item.youtubeId,
+                audioUrl: targetAudioUrl,
+                youtubeId: targetYtId,
                 chapters: resolved.chapters || prev.item.chapters,
                 durationSeconds: resolved.durationSeconds || prev.item.durationSeconds
               };
+
+              // If new direct audio resolved, immediately switch native audio element
+              if (audioRef.current && targetAudioUrl && audioRef.current.src !== targetAudioUrl) {
+                audioRef.current.src = targetAudioUrl;
+                audioRef.current.currentTime = 0;
+                audioRef.current.play().catch(() => {});
+              }
+
               return {
                 ...prev,
                 item: updatedBook,
+                currentTime: 0,
                 duration: resolved.durationSeconds || prev.duration
               };
             });
@@ -389,27 +401,32 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         className="hidden"
         onTimeUpdate={() => {
           if (audioRef.current && activeMedia?.type === 'audiobook') {
+            const rawDur = audioRef.current.duration;
+            const hasValidAudioDur = rawDur && !isNaN(rawDur) && rawDur > 60;
             setActiveMedia((prev) =>
               prev && prev.type === 'audiobook'
                 ? {
                     ...prev,
                     currentTime: audioRef.current?.currentTime || prev.currentTime,
-                    duration: audioRef.current?.duration || prev.duration
+                    duration: hasValidAudioDur ? rawDur : (prev.duration || prev.item.durationSeconds || 3600)
                   }
                 : prev
             );
           }
         }}
         onLoadedMetadata={() => {
-          if (audioRef.current && activeMedia?.type === 'audiobook' && audioRef.current.duration) {
-            setActiveMedia((prev) =>
-              prev && prev.type === 'audiobook'
-                ? {
-                    ...prev,
-                    duration: audioRef.current?.duration || prev.duration
-                  }
-                : prev
-            );
+          if (audioRef.current && activeMedia?.type === 'audiobook') {
+            const rawDur = audioRef.current.duration;
+            if (rawDur && !isNaN(rawDur) && rawDur > 60) {
+              setActiveMedia((prev) =>
+                prev && prev.type === 'audiobook'
+                  ? {
+                      ...prev,
+                      duration: rawDur
+                    }
+                  : prev
+              );
+            }
           }
         }}
         onEnded={() => {

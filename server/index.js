@@ -199,6 +199,66 @@ function setCache(key, data, ttlMs = 1000 * 60 * 10) {
 }
 
 // -------------------------------------------------------------
+// 0. HIGH-PERFORMANCE AUDIO STREAM PROXY (Range-Supported)
+// -------------------------------------------------------------
+app.get('/api/proxy/audio', (req, res) => {
+  const targetUrl = req.query.url;
+  if (!targetUrl || typeof targetUrl !== 'string') {
+    return res.status(400).send('Missing url parameter');
+  }
+
+  try {
+    const parsed = new URL(targetUrl);
+    const isHttps = parsed.protocol === 'https:';
+    const client = isHttps ? https : http;
+    const agent = isHttps ? httpsAgent : httpAgent;
+
+    const reqHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+      'Accept': '*/*'
+    };
+    if (req.headers.range) {
+      reqHeaders['Range'] = req.headers.range;
+    }
+
+    const proxyReq = client.request(
+      {
+        protocol: parsed.protocol,
+        hostname: parsed.hostname,
+        port: parsed.port || (isHttps ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method: 'GET',
+        agent,
+        headers: reqHeaders
+      },
+      (proxyRes) => {
+        if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+          const redirectUrl = new URL(proxyRes.headers.location, targetUrl).toString();
+          return res.redirect(`/api/proxy/audio?url=${encodeURIComponent(redirectUrl)}`);
+        }
+
+        res.status(proxyRes.statusCode);
+        const copyHeaders = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control'];
+        for (const h of copyHeaders) {
+          if (proxyRes.headers[h]) res.setHeader(h, proxyRes.headers[h]);
+        }
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        proxyRes.pipe(res);
+      }
+    );
+
+    proxyReq.on('error', (err) => {
+      console.warn('Audio proxy error:', err.message);
+      if (!res.headersSent) res.status(502).send('Audio stream error');
+    });
+
+    proxyReq.end();
+  } catch (err) {
+    res.status(400).send('Invalid audio URL');
+  }
+});
+
+// -------------------------------------------------------------
 // 1. UNIVERSAL IMAGE PROXY (SSRF-Protected & Validated)
 // -------------------------------------------------------------
 app.get('/api/proxy-image', async (req, res) => {
@@ -3889,7 +3949,7 @@ async function searchAudible(query, limit = 20) {
         duration: durFormatted,
         durationSeconds: runtimeMin * 60 || 3600 * 5,
         cover,
-        audioUrl: p.sample_url || '',
+        audioUrl: '', // Full audio dynamically resolved on play
         sampleAudioUrl: p.sample_url || '',
         description: p.publisher_summary ? String(p.publisher_summary).replace(/<[^>]*>/g, '').trim().slice(0, 400) : '',
         genre: isGraphic ? 'Full Cast & Dramatized' : 'Audible Original',
@@ -3939,16 +3999,20 @@ async function resolveFullAudiobook(title, author = '') {
           const totalSec = mp3s.reduce((acc, f) => acc + (parseFloat(f.length) || 0), 0);
           if (totalSec > 1200 || mp3s.length > 2) {
             const firstMp3 = mp3s[0];
-            const chapters = mp3s.map((f, idx) => ({
-              id: `ch_${idx + 1}`,
-              title: f.title || f.name.replace(/\.mp3$/i, '').replace(/^[0-9]+[_\s-]+/i, ''),
-              startTime: 0,
-              duration: f.length ? `${Math.floor(parseFloat(f.length) / 60)}m` : undefined,
-              audioUrl: `https://archive.org/download/${doc.identifier}/${encodeURIComponent(f.name)}`
-            }));
+            const chapters = mp3s.map((f, idx) => {
+              const rawUrl = `https://archive.org/download/${doc.identifier}/${encodeURIComponent(f.name)}`;
+              return {
+                id: `ch_${idx + 1}`,
+                title: f.title || f.name.replace(/\.mp3$/i, '').replace(/^[0-9]+[_\s-]+/i, ''),
+                startTime: 0,
+                duration: f.length ? `${Math.floor(parseFloat(f.length) / 60)}m` : undefined,
+                audioUrl: `/api/proxy/audio?url=${encodeURIComponent(rawUrl)}`
+              };
+            });
+            const firstRawUrl = `https://archive.org/download/${doc.identifier}/${encodeURIComponent(firstMp3.name)}`;
             return {
               source: 'archive',
-              audioUrl: `https://archive.org/download/${doc.identifier}/${encodeURIComponent(firstMp3.name)}`,
+              audioUrl: `/api/proxy/audio?url=${encodeURIComponent(firstRawUrl)}`,
               chapters: chapters.length > 1 ? chapters : undefined,
               durationSeconds: Math.round(totalSec) || 3600
             };
@@ -4007,7 +4071,7 @@ const CURATED_AUDIOBOOKS = [
     duration: '19h 40m',
     durationSeconds: 70800,
     cover: 'https://archive.org/services/img/the-fellowship-of-the-ring_soundscape-by-phil-dragash',
-    audioUrl: 'https://archive.org/download/the-fellowship-of-the-ring_soundscape-by-phil-dragash/01%20-%20A%20Long-Expected%20Party.mp3',
+    audioUrl: '/api/proxy/audio?url=' + encodeURIComponent('https://archive.org/download/the-fellowship-of-the-ring_soundscape-by-phil-dragash/01%20-%20A%20Long-Expected%20Party.mp3'),
     description: 'The legendary unofficial unabridged cinematic audio drama of The Fellowship of the Ring produced by Phil Dragash, featuring full sound effects, atmospheric ambient audio, and Howard Shore\'s iconic score.',
     genre: 'Full Cast & Dramatized',
     platform: 'archive',
@@ -4022,7 +4086,7 @@ const CURATED_AUDIOBOOKS = [
     duration: '17h 25m',
     durationSeconds: 62700,
     cover: 'https://archive.org/services/img/the-two-towers_soundscape-by-phil-dragash',
-    audioUrl: 'https://archive.org/download/the-two-towers_soundscape-by-phil-dragash/01%20-%20The%20Departure%20of%20Boromir.mp3',
+    audioUrl: '/api/proxy/audio?url=' + encodeURIComponent('https://archive.org/download/the-two-towers_soundscape-by-phil-dragash/01%20-%20The%20Departure%20of%20Boromir.mp3'),
     description: 'The complete cinematic soundscape audiobook of The Two Towers by Phil Dragash, incorporating full voice acting, immersive sound design, and full orchestra score.',
     genre: 'Full Cast & Dramatized',
     platform: 'archive',
@@ -4037,7 +4101,7 @@ const CURATED_AUDIOBOOKS = [
     duration: '18h 15m',
     durationSeconds: 65700,
     cover: 'https://archive.org/services/img/the-return-of-the-king_soundscape-by-phil-dragash',
-    audioUrl: 'https://archive.org/download/the-return-of-the-king_soundscape-by-phil-dragash/01%20-%20Minas%20Tirith.mp3',
+    audioUrl: '/api/proxy/audio?url=' + encodeURIComponent('https://archive.org/download/the-return-of-the-king_soundscape-by-phil-dragash/01%20-%20Minas%20Tirith.mp3'),
     description: 'The climax of J.R.R. Tolkien\'s masterwork in Phil Dragash\'s acclaimed soundscape dramatization.',
     genre: 'Full Cast & Dramatized',
     platform: 'archive',
@@ -4052,7 +4116,7 @@ const CURATED_AUDIOBOOKS = [
     duration: '4h 10m',
     durationSeconds: 15000,
     cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
-    audioUrl: 'https://archive.org/download/the-fellowship-of-the-ring_soundscape-by-phil-dragash/01%20-%20A%20Long-Expected%20Party.mp3',
+    audioUrl: '/api/proxy/audio?url=' + encodeURIComponent('https://archive.org/download/the-fellowship-of-the-ring_soundscape-by-phil-dragash/01%20-%20A%20Long-Expected%20Party.mp3'),
     description: 'The acclaimed BBC Radio full cast dramatization of J.R.R. Tolkien\'s timeless classic with full sound effects and acoustic music.',
     genre: 'Full Cast & Dramatized',
     platform: 'bbcsounds',
