@@ -75,7 +75,7 @@ const AppContent: React.FC = () => {
   const [sportsMatches, setSportsMatches] = useState<SportsMatch[]>([]);
   const [loadingSports, setLoadingSports] = useState<boolean>(false);
   const [activeSport, setActiveSport] = useState<string>('all');
-  const [activeSportsFilter, setActiveSportsFilter] = useState<'all' | 'live' | 'upcoming'>('all');
+  const [activeSportsFilter, setActiveSportsFilter] = useState<'all' | 'live' | 'upcoming' | 'finished'>('all');
   const [selectedSportsMatch, setSelectedSportsMatch] = useState<SportsMatch | null>(null);
 
   // Search & Modals

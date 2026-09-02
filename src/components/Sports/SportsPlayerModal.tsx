@@ -23,50 +23,255 @@ interface SportsPlayerModalProps {
   onClose: () => void;
 }
 
-const SUPERSPORT_CHANNELS = [
-  {
-    name: '🏎️ Red Bull TV (Live 24/7 F1 & Action)',
-    url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
-    type: 'hls' as const,
-    badge: '1080p Native'
-  },
-  {
-    name: '🏉 Springboks & Rugby Highlights HD',
-    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PL0D5C35BB8FAEF3E8&autoplay=1',
-    type: 'youtube' as const,
-    badge: 'Official HD'
-  },
-  {
-    name: '⚽ Premier League Goals & Highlights',
-    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PLQ_vl3g3HkWn3R8ZJ0T1kG5kP8V9rV3B_&autoplay=1',
-    type: 'youtube' as const,
-    badge: 'Official EPL'
-  },
-  {
-    name: '🏎️ Formula 1 Race Highlights & Paddock',
-    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PLfoNZDHitwjWq3qGz5hS5b6XJ3Q1X1Z1Z&autoplay=1',
-    type: 'youtube' as const,
-    badge: 'Official F1'
-  },
-  {
-    name: '🏆 SportsGrid Live HD (24/7 Match Center)',
-    url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
-    type: 'hls' as const,
-    badge: 'Live Satellite'
-  },
-  {
-    name: '🌍 VIPRow Live Sports Stream',
-    url: 'https://www.viprow.nu/sports-online',
-    type: 'web' as const,
-    badge: 'External Popout'
-  },
-  {
-    name: '⚡ Streamed.su Multi-Sport HD',
-    url: 'https://streamed.su',
-    type: 'web' as const,
-    badge: 'External Popout'
+export interface StreamServer {
+  name: string;
+  url: string;
+  type: 'hls' | 'youtube' | 'web';
+  badge: string;
+}
+
+function getSportSpecificServers(match: SportsMatch, homeName: string, awayName: string): StreamServer[] {
+  const sport = (match.sport || '').toLowerCase();
+  const league = (match.league || '').toLowerCase();
+  const query = `${homeName} vs ${awayName} ${match.league || ''}`;
+  const encodedQuery = encodeURIComponent(query);
+
+  const servers: StreamServer[] = [];
+
+  // 1. Exact Match Official Highlights, Goals & Video (Guaranteed high-quality playback for this exact fixture)
+  servers.push({
+    name: `🎬 Official Match Video & Highlights (${homeName} vs ${awayName})`,
+    url: `https://www.youtube-nocookie.com/embed?listType=search&list=${encodedQuery}+match+highlights&autoplay=1`,
+    type: 'youtube',
+    badge: '1080p Official'
+  });
+
+  // 2. Press Conference / Post-Match Tactical Interview
+  servers.push({
+    name: `🎙️ Team Press Conference & Analysis (${homeName})`,
+    url: `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(homeName + ' press conference highlights')}&autoplay=1`,
+    type: 'youtube',
+    badge: 'Official Press'
+  });
+
+  // 3. Sport-Specific SuperSport & International Channels
+  if (
+    sport === 'rugby' ||
+    league.includes('rugby') ||
+    league.includes('six nations') ||
+    league.includes('urc') ||
+    league.includes('championship')
+  ) {
+    servers.push(
+      {
+        name: '🏉 SuperSport Rugby HD (Live Match Channel)',
+        url: 'https://topembed.pw/channel/SuperSportRugby',
+        type: 'web',
+        badge: 'SuperSport HD'
+      },
+      {
+        name: '🏉 SuperSport Grandstand HD (Main Event)',
+        url: 'https://topembed.pw/channel/SuperSportGrandstand',
+        type: 'web',
+        badge: 'SuperSport HD'
+      },
+      {
+        name: '🏉 Sky Sports Arena HD (Rugby Live)',
+        url: 'https://topembed.pw/channel/SkySportsArena',
+        type: 'web',
+        badge: 'Sky Sports'
+      },
+      {
+        name: `⚡ Streamed.su Rugby Match Feed (${homeName} vs ${awayName})`,
+        url: 'https://streamed.su/category/rugby',
+        type: 'web',
+        badge: 'Live Match'
+      },
+      {
+        name: `🌍 VIPRow Rugby HD Feed`,
+        url: 'https://www.viprow.nu/rugby-online',
+        type: 'web',
+        badge: 'External Popout'
+      }
+    );
+  } else if (
+    sport === 'soccer' ||
+    league.includes('premier') ||
+    league.includes('champions') ||
+    league.includes('la liga') ||
+    league.includes('serie') ||
+    league.includes('football')
+  ) {
+    servers.push(
+      {
+        name: '⚽ SuperSport Premier League HD',
+        url: 'https://topembed.pw/channel/SkySportsPremierLeague',
+        type: 'web',
+        badge: 'SuperSport HD'
+      },
+      {
+        name: '⚽ TNT Sports 1 HD (Champions League & EPL)',
+        url: 'https://topembed.pw/channel/TNTSports1',
+        type: 'web',
+        badge: 'TNT Sports'
+      },
+      {
+        name: '⚽ Sky Sports Main Event HD',
+        url: 'https://topembed.pw/channel/SkySportsMainEvent',
+        type: 'web',
+        badge: 'Sky Sports'
+      },
+      {
+        name: `⚡ Streamed.su Live Football Feed (${homeName} vs ${awayName})`,
+        url: 'https://streamed.su/category/football',
+        type: 'web',
+        badge: 'Live Match'
+      },
+      {
+        name: `🌍 VIPRow Football HD Feed`,
+        url: 'https://www.viprow.nu/football-online',
+        type: 'web',
+        badge: 'External Popout'
+      }
+    );
+  } else if (sport === 'f1' || league.includes('formula') || league.includes('racing')) {
+    servers.push(
+      {
+        name: '🏎️ Sky Sports F1 HD (Live Grand Prix & Quali)',
+        url: 'https://topembed.pw/channel/SkySportsF1',
+        type: 'web',
+        badge: 'Sky Sports F1'
+      },
+      {
+        name: '🏎️ Red Bull TV Live HD (Official 24/7 Action Broadcast)',
+        url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+        type: 'hls',
+        badge: '1080p Native HLS'
+      },
+      {
+        name: '🏎️ F1 Paddock & Onboard Camera Feeds',
+        url: `https://www.youtube-nocookie.com/embed?listType=search&list=F1+Formula+1+Live+Paddock+Onboard&autoplay=1`,
+        type: 'youtube',
+        badge: 'Official F1'
+      },
+      {
+        name: '⚡ Streamed.su Motorsport HD Feed',
+        url: 'https://streamed.su/category/motor-sports',
+        type: 'web',
+        badge: 'Live Race'
+      }
+    );
+  } else if (
+    sport === 'mma' ||
+    league.includes('ufc') ||
+    league.includes('combat') ||
+    league.includes('fight')
+  ) {
+    servers.push(
+      {
+        name: '🥊 TNT Sports 2 / UFC PPV HD',
+        url: 'https://topembed.pw/channel/TNTSports2',
+        type: 'web',
+        badge: 'UFC Live'
+      },
+      {
+        name: '🥊 SuperSport Action & Combat HD',
+        url: 'https://topembed.pw/channel/DAZN1',
+        type: 'web',
+        badge: 'SuperSport Action'
+      },
+      {
+        name: '🥊 DAZN 1 Combat & Boxing HD',
+        url: 'https://topembed.pw/channel/DAZN1',
+        type: 'web',
+        badge: 'DAZN HD'
+      },
+      {
+        name: '⚡ Streamed.su UFC & Fight Feed',
+        url: 'https://streamed.su/category/fight',
+        type: 'web',
+        badge: 'Live Fight'
+      }
+    );
+  } else if (sport === 'basketball' || league.includes('nba')) {
+    servers.push(
+      {
+        name: '🏀 ESPN HD (Live NBA Broadcast)',
+        url: 'https://topembed.pw/channel/ESPN',
+        type: 'web',
+        badge: 'ESPN HD'
+      },
+      {
+        name: '🏀 TNT Sports 3 HD (NBA Live)',
+        url: 'https://topembed.pw/channel/TNTSports3',
+        type: 'web',
+        badge: 'TNT Sports'
+      },
+      {
+        name: '⚡ Streamed.su NBA Live Feed',
+        url: 'https://streamed.su/category/basketball',
+        type: 'web',
+        badge: 'Live NBA'
+      }
+    );
+  } else if (sport === 'cricket') {
+    servers.push(
+      {
+        name: '🏏 SuperSport Cricket HD',
+        url: 'https://topembed.pw/channel/SuperSportCricket',
+        type: 'web',
+        badge: 'SuperSport HD'
+      },
+      {
+        name: '🏏 Sky Sports Cricket HD',
+        url: 'https://topembed.pw/channel/SkySportsCricket',
+        type: 'web',
+        badge: 'Sky Sports'
+      },
+      {
+        name: '⚡ Streamed.su Cricket Feed',
+        url: 'https://streamed.su/category/cricket',
+        type: 'web',
+        badge: 'Live Stream'
+      }
+    );
+  } else {
+    servers.push(
+      {
+        name: '🏆 SportsGrid Live HD (24/7 Match Center)',
+        url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
+        type: 'hls',
+        badge: 'Native HLS'
+      },
+      {
+        name: '🌍 VIPRow Live Sports Stream',
+        url: 'https://www.viprow.nu/sports-online',
+        type: 'web',
+        badge: 'External Popout'
+      }
+    );
   }
-];
+
+  // Include any extra servers attached directly to the match object
+  if (match.servers && Array.isArray(match.servers)) {
+    match.servers.forEach((s) => {
+      if (s.url && !servers.some((srv) => srv.url === s.url)) {
+        servers.push({
+          name: s.name,
+          url: s.url,
+          type: s.url.includes('.m3u8')
+            ? 'hls'
+            : s.url.includes('youtube')
+            ? 'youtube'
+            : 'web',
+          badge: 'Match Feed'
+        });
+      }
+    });
+  }
+
+  return servers;
+}
 
 export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
   match,
@@ -92,27 +297,25 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
 
   if (!match) return null;
 
-  const homeName = typeof match.homeTeam === 'object' ? match.homeTeam?.name || 'Home Team' : String(match.homeTeam || 'Home Team');
-  const awayName = typeof match.awayTeam === 'object' ? match.awayTeam?.name || 'Away Team' : String(match.awayTeam || 'Away Team');
-  const homeScore = typeof match.homeTeam === 'object' ? match.homeTeam?.score : undefined;
-  const awayScore = typeof match.awayTeam === 'object' ? match.awayTeam?.score : undefined;
+  const homeName =
+    typeof match.homeTeam === 'object'
+      ? match.homeTeam?.name || 'Home Team'
+      : String(match.homeTeam || 'Home Team');
+  const awayName =
+    typeof match.awayTeam === 'object'
+      ? match.awayTeam?.name || 'Away Team'
+      : String(match.awayTeam || 'Away Team');
+  const homeScore =
+    typeof match.homeTeam === 'object' ? match.homeTeam?.score : undefined;
+  const awayScore =
+    typeof match.awayTeam === 'object' ? match.awayTeam?.score : undefined;
 
-  const matchServers = (match.servers || []).map((s) => ({
-    name: s.name,
-    url: s.url,
-    type: s.url.includes('.m3u8')
-      ? ('hls' as const)
-      : s.url.includes('youtube')
-      ? ('youtube' as const)
-      : ('web' as const),
-    badge: 'Match Feed'
-  }));
-
-  const allServers = [...matchServers, ...SUPERSPORT_CHANNELS];
+  const allServers = getSportSpecificServers(match, homeName, awayName);
   const currentServer = allServers[serverIndex] || allServers[0];
-  const streamUrl = customStreamUrl || currentServer?.url || 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8';
+  const streamUrl = customStreamUrl || currentServer?.url || '';
   const isHls = streamUrl.includes('.m3u8') || currentServer?.type === 'hls';
-  const isYouTube = streamUrl.includes('youtube') || currentServer?.type === 'youtube';
+  const isYouTube =
+    streamUrl.includes('youtube') || currentServer?.type === 'youtube';
 
   const handlePopoutCinemaWindow = () => {
     window.open(streamUrl, '_blank', 'noopener,noreferrer');
@@ -149,13 +352,28 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
                 <span className="text-xs sm:text-sm font-black text-white truncate">
                   {homeName} vs {awayName}
                 </span>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-rose-600 text-white flex items-center gap-1 flex-shrink-0">
-                  <Radio className="w-2.5 h-2.5 animate-pulse" />
-                  {match.status === 'LIVE' ? 'LIVE' : match.statusText || 'SCHEDULED'}
+                <span
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded flex items-center gap-1 flex-shrink-0 ${
+                    match.status === 'LIVE'
+                      ? 'bg-rose-600 text-white animate-pulse'
+                      : match.status === 'FINISHED'
+                      ? 'bg-blue-800 text-blue-100'
+                      : 'bg-amber-400 text-slate-950'
+                  }`}
+                >
+                  {match.status === 'LIVE' && <Radio className="w-2.5 h-2.5" />}
+                  {match.status === 'LIVE'
+                    ? 'LIVE'
+                    : match.status === 'FINISHED'
+                    ? 'REPLAY / FINAL'
+                    : 'SCHEDULED'}
                 </span>
               </div>
               <p className="text-[11px] text-blue-200/70 font-mono mt-0.5 truncate">
-                {match.league || 'SuperSport Championship'} • {homeScore !== undefined ? `Score: ${homeScore} - ${awayScore}` : 'Match Center'}
+                {match.league || 'SuperSport Match Center'} •{' '}
+                {homeScore !== undefined && awayScore !== undefined
+                  ? `Score: ${homeScore} - ${awayScore}`
+                  : match.statusText || 'Broadcast Stream'}
               </p>
             </div>
           </div>
@@ -198,89 +416,99 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
           </div>
         </div>
 
-        {/* Custom M3U8 Stream Input Drawer */}
+        {/* Custom M3U8 Drawer */}
         {showCustomInput && (
-          <div className="p-3 bg-[#00102b] border-b border-blue-900/60 flex items-center gap-3 animate-fade-in">
+          <div className="p-3 bg-[#00122e] border-b border-blue-900 flex items-center gap-3">
             <input
-              type="url"
+              type="text"
+              placeholder="Paste custom .m3u8 live stream URL..."
               value={customStreamUrl}
               onChange={(e) => setCustomStreamUrl(e.target.value)}
-              placeholder="Paste any custom IPTV or live HLS (.m3u8) stream URL here..."
-              className="flex-1 px-3.5 py-2 rounded-xl bg-[#000c1e] border border-blue-800 text-xs text-white placeholder-blue-300/40 focus:outline-none focus:border-amber-400"
+              className="flex-1 px-3 py-1.5 rounded-xl bg-blue-950 text-white text-xs border border-blue-800 focus:outline-none focus:border-amber-400 font-mono"
             />
             <button
               onClick={() => {
-                setShowCustomInput(false);
-                setReloadKey(Date.now());
+                if (customStreamUrl) {
+                  setReloadKey(Date.now());
+                  setShowCustomInput(false);
+                }
               }}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer"
+              className="px-4 py-1.5 rounded-xl bg-amber-400 text-slate-950 text-xs font-bold hover:bg-amber-300 cursor-pointer flex-shrink-0"
             >
-              Play M3U8 Stream
+              Stream URL
             </button>
           </div>
         )}
 
-        {/* Video Player Canvas */}
+        {/* Video Player Display Screen */}
         <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
           {isHls ? (
             <HlsVideoPlayer
-              key={`hls-${streamUrl}-${reloadKey}`}
-              streamUrl={streamUrl}
-              title={match.homeTeam.name}
+              key={`${streamUrl}_${reloadKey}`}
+              src={streamUrl}
+              title={`${homeName} vs ${awayName}`}
+              autoPlay={true}
             />
           ) : isYouTube ? (
             <iframe
-              key={`yt-${streamUrl}-${reloadKey}`}
+              key={`${streamUrl}_${reloadKey}`}
               src={streamUrl}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
-              className="w-full h-full border-none"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-[#000c1e] text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 mx-auto">
-                <ExternalLink className="w-7 h-7" />
+            <div className="w-full h-full flex flex-col items-center justify-center bg-[#000c1e] p-6 text-center space-y-4">
+              <div className="p-4 rounded-3xl bg-blue-950/80 border border-blue-800 text-amber-400 shadow-xl">
+                <Tv className="w-10 h-10" />
               </div>
-              <div className="space-y-1.5 max-w-md">
-                <h3 className="text-base font-black text-white">External Live Sports Stream</h3>
+              <div className="max-w-md space-y-2">
+                <h3 className="text-base font-black text-white">
+                  {currentServer?.name || 'Live Sports Broadcast Feed'}
+                </h3>
                 <p className="text-xs text-blue-200/80 leading-relaxed">
-                  Third-party live satellite sports feeds block iframe embeds for security. Click below to launch in a clean, popup-protected cinema window.
+                  Web-based sports mirrors block embedding inside iframe windows. Click below to launch this live feed in a clean, popup-blocked cinema tab.
                 </p>
               </div>
               <button
                 onClick={handlePopoutCinemaWindow}
-                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-2 cursor-pointer shadow-xl shadow-amber-500/30 transition-all hover:scale-105"
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/20 flex items-center gap-2 transition-transform hover:scale-105 cursor-pointer"
               >
                 <ExternalLink className="w-4 h-4 text-slate-950" />
-                <span>Launch Direct Stream</span>
+                <span>Open {homeName} vs {awayName} Feed</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* SuperSport Broadcast Channels Switcher Shelf */}
-        <div className="p-3 bg-[#001433] border-t border-blue-900/60 flex items-center gap-2 overflow-x-auto scrollbar-none">
-          <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider pl-2 flex-shrink-0 flex items-center gap-1">
-            <Trophy className="w-3 h-3" />
-            <span>SuperSport Feeds:</span>
-          </span>
-          {allServers.map((srv, idx) => (
+        {/* Match Details & Server Ribbon Footer */}
+        <div className="p-3 sm:p-4 bg-[#001433] border-t border-blue-900/60 flex items-center justify-between text-xs text-blue-200 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-amber-400">Current Feed:</span>
+            <span className="font-mono text-white bg-blue-950 px-2 py-0.5 rounded border border-blue-800">
+              {currentServer?.name}
+            </span>
+            <span className="text-blue-400">({currentServer?.badge})</span>
+          </div>
+
+          <div className="flex items-center gap-3">
             <button
-              key={idx}
-              onClick={() => {
-                setServerIndex(idx);
-                setCustomStreamUrl('');
-                setReloadKey(Date.now());
-              }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex-shrink-0 border ${
-                idx === serverIndex && !customStreamUrl
-                  ? 'bg-blue-600 text-white border-amber-400 shadow-lg shadow-blue-600/40 scale-105'
-                  : 'bg-blue-950/60 text-blue-200/80 hover:text-white hover:bg-blue-900 border-blue-800/40'
-              }`}
+              onClick={() => setReloadKey(Date.now())}
+              className="flex items-center gap-1 text-slate-300 hover:text-white cursor-pointer"
+              title="Reload current stream"
             >
-              {srv.name}
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reload</span>
             </button>
-          ))}
+            <button
+              onClick={() => setTheaterMode(!theaterMode)}
+              className="flex items-center gap-1 text-slate-300 hover:text-white cursor-pointer"
+              title="Toggle Theater Mode"
+            >
+              <Maximize className="w-3.5 h-3.5" />
+              <span>{theaterMode ? 'Standard' : 'Theater'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

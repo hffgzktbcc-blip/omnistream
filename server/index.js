@@ -4120,72 +4120,139 @@ app.get('/api/audiobooks/search', async (req, res) => {
 // -------------------------------------------------------------
 // 10. LIVE SPORTS FIXTURES & STREAMING ENGINE
 // -------------------------------------------------------------
+function parseEspnEvent(ev, sportName, defaultLeague) {
+  const comp = ev.competitions?.[0];
+  const home = comp?.competitors?.find((c) => c.homeAway === 'home') || comp?.competitors?.[0];
+  const away = comp?.competitors?.find((c) => c.homeAway === 'away') || comp?.competitors?.[1];
+  const statusState = ev.status?.type?.state; // 'in', 'post', 'pre'
+  const isLive = statusState === 'in';
+  const isFinished = statusState === 'post';
+  const eventDate = ev.date ? new Date(ev.date) : null;
+  const isPast = eventDate && Date.now() - eventDate.getTime() > 4 * 3600 * 1000;
+
+  let status = 'UPCOMING';
+  if (isLive) {
+    status = 'LIVE';
+  } else if (isFinished || isPast) {
+    status = 'FINISHED';
+  } else {
+    status = 'UPCOMING';
+  }
+
+  let formattedTime = ev.status?.type?.detail || '';
+  if (!isLive && eventDate && !isNaN(eventDate.getTime())) {
+    const isToday = eventDate.toDateString() === new Date().toDateString();
+    const isTomorrow = new Date(Date.now() + 86400000).toDateString() === eventDate.toDateString();
+    const timeStr = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (isFinished || isPast) {
+      formattedTime = `Final Result • ${eventDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+    } else if (isToday) {
+      formattedTime = `Today • ${timeStr} Kickoff`;
+    } else if (isTomorrow) {
+      formattedTime = `Tomorrow • ${timeStr} Kickoff`;
+    } else {
+      formattedTime = `${eventDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} • ${timeStr}`;
+    }
+  }
+
+  const homeName =
+    home?.team?.displayName ||
+    home?.athlete?.displayName ||
+    ev.name?.split(' vs ')?.[0] ||
+    'Home Team';
+  const awayName =
+    away?.team?.displayName ||
+    away?.athlete?.displayName ||
+    ev.name?.split(' vs ')?.[1] ||
+    'Away Team';
+  const leagueName = ev.season?.slug || ev.league?.name || defaultLeague;
+
+  return {
+    id: `sport_${sportName}_${ev.id}`,
+    sport: sportName,
+    league: leagueName,
+    date: ev.date,
+    homeTeam: {
+      name: homeName,
+      logo:
+        home?.team?.logo ||
+        home?.athlete?.flag?.href ||
+        home?.athlete?.headshot?.href ||
+        'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png',
+      score: home?.score !== undefined ? home.score : isFinished || isLive ? '0' : undefined
+    },
+    awayTeam: {
+      name: awayName,
+      logo:
+        away?.team?.logo ||
+        away?.athlete?.flag?.href ||
+        away?.athlete?.headshot?.href ||
+        'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png',
+      score: away?.score !== undefined ? away.score : isFinished || isLive ? '0' : undefined
+    },
+    status,
+    statusText: isLive ? ev.status?.type?.detail || '🔴 LIVE NOW' : formattedTime,
+    servers: []
+  };
+}
+
 app.get('/api/sports/live', async (req, res) => {
   const sport = req.query.sport || 'all';
-  const cacheKey = `sports_v3_${sport}`;
+  const cacheKey = `sports_v4_${sport}`;
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
   try {
     const matches = [];
 
-    // 1. Rugby (Six Nations, Super Rugby, Internationals, NRL)
+    // 1. Premier League & European Football
+    if (sport === 'all' || sport === 'soccer') {
+      const soccerUrls = [
+        { url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard', league: 'Premier League' },
+        { url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard', league: 'UEFA Champions League' },
+        { url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard', league: 'La Liga' }
+      ];
+
+      for (const item of soccerUrls) {
+        try {
+          const sRes = await safeFetch(item.url, {
+            headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+            timeout: 3000
+          });
+          const sData = await sRes.json();
+          (sData.events || []).slice(0, 6).forEach((ev) => {
+            matches.push(parseEspnEvent(ev, 'soccer', item.league));
+          });
+        } catch {}
+      }
+    }
+
+    // 2. Rugby (URC, Six Nations, Internationals, Top 14)
     if (sport === 'all' || sport === 'rugby') {
-      try {
-        const rugbyUrls = [
-          'https://site.api.espn.com/apis/site/v2/sports/rugby/score/scoreboard',
-          'https://site.api.espn.com/apis/site/v2/sports/rugby/league/nrl/scoreboard'
-        ];
+      const rugbyUrls = [
+        { url: 'https://site.api.espn.com/apis/site/v2/sports/rugby/270559/scoreboard', league: 'United Rugby Championship / Top 14' },
+        { url: 'https://site.api.espn.com/apis/site/v2/sports/rugby/180659/scoreboard', league: 'Six Nations Championship' },
+        { url: 'https://site.api.espn.com/apis/site/v2/sports/rugby/268565/scoreboard', league: 'Rugby Championship' }
+      ];
 
-        for (const rUrl of rugbyUrls) {
-          try {
-            const rRes = await safeFetch(rUrl, {
-              headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
-              timeout: 3000
-            });
-            const rData = await rRes.json();
-            (rData.events || []).slice(0, 8).forEach((ev) => {
-              const comp = ev.competitions?.[0];
-              const home = comp?.competitors?.find((c) => c.homeAway === 'home');
-              const away = comp?.competitors?.find((c) => c.homeAway === 'away');
-              const statusState = ev.status?.type?.state;
-              const isLive = statusState === 'in';
-
-              matches.push({
-                id: `sport_rugby_${ev.id}`,
-                sport: 'rugby',
-                league: ev.season?.slug || ev.league?.name || 'Rugby Championship / Six Nations',
-                homeTeam: {
-                  name: home?.team?.displayName || 'Springboks / Home',
-                  logo: home?.team?.logo || 'https://a.espncdn.com/i/teamlogos/rugby/500/south-africa.png',
-                  score: home?.score || '0'
-                },
-                awayTeam: {
-                  name: away?.team?.displayName || 'All Blacks / Away',
-                  logo: away?.team?.logo || 'https://a.espncdn.com/i/teamlogos/rugby/500/new-zealand.png',
-                  score: away?.score || '0'
-                },
-                status: isLive ? 'LIVE' : statusState === 'post' ? 'FINISHED' : 'UPCOMING',
-                statusText: ev.status?.type?.detail || (isLive ? 'LIVE' : 'Kickoff Scheduled'),
-                servers: [
-                  { name: 'Server 1: VIPRow Rugby HD', url: `https://www.viprow.nu/rugby-online` },
-                  { name: 'Server 2: 2Embed Live Sports', url: `https://www.2embed.cc/embedtv/sports` },
-                  { name: 'Server 3: CricHD Rugby Live', url: `https://crichd.vip/rugby-live-stream` },
-                  { name: 'Server 4: MultiEmbed Sports Feed', url: `https://multiembed.mov/?sports=1` }
-                ]
-              });
-            });
-          } catch {}
-        }
-      } catch (e) {
-        console.warn('Rugby fetch warning:', e.message);
+      for (const item of rugbyUrls) {
+        try {
+          const rRes = await safeFetch(item.url, {
+            headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+            timeout: 3000
+          });
+          const rData = await rRes.json();
+          (rData.events || []).slice(0, 6).forEach((ev) => {
+            matches.push(parseEspnEvent(ev, 'rugby', item.league));
+          });
+        } catch {}
       }
 
-      // Add marquee featured rugby fixtures if API was quiet
+      // Add marquee Springboks upcoming / recent test if empty
       if (!matches.some((m) => m.sport === 'rugby')) {
         matches.push(
           {
-            id: 'sport_rugby_springboks_allblacks',
+            id: 'sport_rugby_springboks_nz',
             sport: 'rugby',
             league: 'Rugby Championship / Freedom Cup',
             homeTeam: {
@@ -4198,123 +4265,29 @@ app.get('/api/sports/live', async (req, res) => {
               logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/rugby/500/17.png',
               score: '18'
             },
-            status: 'LIVE',
-            statusText: '2nd Half 68’ • Ellis Park',
-            servers: [
-              { name: 'Server 1: VIPRow Rugby HD', url: `https://www.viprow.nu/rugby-online` },
-              { name: 'Server 2: 2Embed Live Sports', url: `https://www.2embed.cc/embedtv/sports` },
-              { name: 'Server 3: CricHD Rugby Live', url: `https://crichd.vip/rugby-live-stream` }
-            ]
+            status: 'FINISHED',
+            statusText: 'Final Result • Ellis Park Replay',
+            servers: []
           },
           {
-            id: 'sport_rugby_sixnations',
+            id: 'sport_rugby_urc_bulls_stormers',
             sport: 'rugby',
-            league: 'Six Nations Championship',
+            league: 'United Rugby Championship',
             homeTeam: {
-              name: 'Ireland Rugby',
-              logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/rugby/500/13.png',
-              score: '17'
+              name: 'Vodacom Bulls',
+              logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/rugby/500/21.png',
+              score: undefined
             },
             awayTeam: {
-              name: 'France Rugby',
-              logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/rugby/500/9.png',
-              score: '14'
+              name: 'DHL Stormers',
+              logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/rugby/500/21.png',
+              score: undefined
             },
-            status: 'LIVE',
-            statusText: '1st Half 38’ • Aviva Stadium',
-            servers: [
-              { name: 'Server 1: VIPRow Rugby HD', url: `https://www.viprow.nu/rugby-online` },
-              { name: 'Server 2: 2Embed Live Sports', url: `https://www.2embed.cc/embedtv/sports` }
-            ]
+            status: 'UPCOMING',
+            statusText: 'Saturday • 17:05 Kickoff',
+            servers: []
           }
         );
-      }
-    }
-
-    // 2. Premier League & Soccer
-    if (sport === 'all' || sport === 'soccer') {
-      try {
-        const soccerRes = await safeFetch('https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard', {
-          headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }
-        });
-        const soccerData = await soccerRes.json();
-
-        (soccerData.events || []).slice(0, 10).forEach(ev => {
-          const comp = ev.competitions?.[0];
-          const home = comp?.competitors?.find(c => c.homeAway === 'home');
-          const away = comp?.competitors?.find(c => c.homeAway === 'away');
-          const statusState = ev.status?.type?.state;
-          const isLive = statusState === 'in';
-
-          matches.push({
-            id: `sport_epl_${ev.id}`,
-            sport: 'soccer',
-            league: 'Premier League',
-            homeTeam: {
-              name: home?.team?.displayName || 'Home Team',
-              logo: home?.team?.logo,
-              score: home?.score
-            },
-            awayTeam: {
-              name: away?.team?.displayName || 'Away Team',
-              logo: away?.team?.logo,
-              score: away?.score
-            },
-            status: isLive ? 'LIVE' : statusState === 'post' ? 'FINISHED' : 'UPCOMING',
-            statusText: ev.status?.type?.detail || (isLive ? 'LIVE' : 'Scheduled'),
-            servers: [
-              { name: 'Server 1: 2Embed Live (No Ads)', url: `https://www.2embed.cc/embedtv/sports` },
-              { name: 'Server 2: MultiEmbed Sports Feed', url: `https://multiembed.mov/?sports=1` },
-              { name: 'Server 3: Vidsrc Live Sports', url: `https://vidsrc.me/embed/sports` },
-              { name: 'Server 4: RedBull Sports 24/7', url: `https://www.redbull.com/embed/live` }
-            ]
-          });
-        });
-      } catch (e) {
-        console.warn('Soccer ESPN fetch warning:', e.message);
-      }
-    }
-
-    // 2. NBA & Basketball
-    if (sport === 'all' || sport === 'basketball') {
-      try {
-        const nbaRes = await safeFetch('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard', {
-          headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }
-        });
-        const nbaData = await nbaRes.json();
-
-        (nbaData.events || []).slice(0, 10).forEach(ev => {
-          const comp = ev.competitions?.[0];
-          const home = comp?.competitors?.find(c => c.homeAway === 'home');
-          const away = comp?.competitors?.find(c => c.homeAway === 'away');
-          const statusState = ev.status?.type?.state;
-          const isLive = statusState === 'in';
-
-          matches.push({
-            id: `sport_nba_${ev.id}`,
-            sport: 'basketball',
-            league: 'NBA Basketball',
-            homeTeam: {
-              name: home?.team?.displayName || 'Home Team',
-              logo: home?.team?.logo,
-              score: home?.score
-            },
-            awayTeam: {
-              name: away?.team?.displayName || 'Away Team',
-              logo: away?.team?.logo,
-              score: away?.score
-            },
-            status: isLive ? 'LIVE' : statusState === 'post' ? 'FINISHED' : 'UPCOMING',
-            statusText: ev.status?.type?.detail || (isLive ? 'LIVE' : 'Scheduled'),
-            servers: [
-              { name: 'Server 1: 2Embed Live (No Ads)', url: `https://www.2embed.cc/embedtv/sports` },
-              { name: 'Server 2: MultiEmbed Sports Feed', url: `https://multiembed.mov/?sports=1` },
-              { name: 'Server 3: Vidsrc Live Sports', url: `https://vidsrc.me/embed/sports` }
-            ]
-          });
-        });
-      } catch (e) {
-        console.warn('NBA ESPN fetch warning:', e.message);
       }
     }
 
@@ -4322,61 +4295,33 @@ app.get('/api/sports/live', async (req, res) => {
     if (sport === 'all' || sport === 'f1') {
       try {
         const f1Res = await safeFetch('https://site.api.espn.com/apis/site/v2/sports/racing/f1/scoreboard', {
-          headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }
+          headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+          timeout: 3000
         });
         const f1Data = await f1Res.json();
-        (f1Data.events || []).slice(0, 5).forEach((ev) => {
-          const statusState = ev.status?.type?.state;
-          const isLive = statusState === 'in';
-          matches.push({
-            id: `sport_f1_${ev.id}`,
-            sport: 'f1',
-            league: 'Formula 1 Grand Prix 2026',
-            homeTeam: {
-              name: ev.name || 'F1 Grand Prix Weekend',
-              logo: 'https://a.espncdn.com/combiner/i?img=/i/leaguelogos/racing/500/f1.png',
-              score: 'LIVE'
-            },
-            awayTeam: {
-              name: ev.circuit?.name || 'Circuit de Monaco / Silverstone',
-              logo: 'https://a.espncdn.com/i/teamlogos/racing/500/f1.png',
-              score: 'RACE'
-            },
-            status: isLive ? 'LIVE' : statusState === 'post' ? 'FINISHED' : 'UPCOMING',
-            statusText: ev.status?.type?.detail || 'Grand Prix Session Live',
-            servers: [
-              { name: '🏎️ Server 1: Sky Sports F1 HD', url: 'https://topembed.pw/channel/SkySportsF1' },
-              { name: '🌍 Server 2: VIPRow F1 Live', url: 'https://www.viprow.nu/f1-online' },
-              { name: '⚡ Server 3: Streamed.su Racing Feed', url: 'https://streamed.su' }
-            ]
-          });
+        (f1Data.events || []).slice(0, 4).forEach((ev) => {
+          matches.push(parseEspnEvent(ev, 'f1', 'Formula 1 World Championship'));
         });
-      } catch (e) {
-        console.warn('F1 ESPN fetch warning:', e.message);
-      }
+      } catch {}
 
-      if (!matches.some(m => m.sport === 'f1')) {
+      if (!matches.some((m) => m.sport === 'f1')) {
         matches.push({
-          id: 'sport_f1_monaco',
+          id: 'sport_f1_monza_gp',
           sport: 'f1',
           league: 'Formula 1 World Championship',
           homeTeam: {
-            name: 'Scuderia Ferrari / Hamilton & Leclerc',
+            name: 'Pirelli Italian Grand Prix • Monza',
             logo: 'https://a.espncdn.com/combiner/i?img=/i/leaguelogos/racing/500/f1.png',
-            score: 'P1'
+            score: 'F1'
           },
           awayTeam: {
-            name: 'Red Bull Racing / Verstappen',
+            name: 'Autodromo Nazionale Monza',
             logo: 'https://a.espncdn.com/i/teamlogos/racing/500/f1.png',
-            score: 'P2'
+            score: 'RACE'
           },
-          status: 'LIVE',
-          statusText: 'Lap 42/78 • Monaco Grand Prix',
-          servers: [
-            { name: '🏎️ Server 1: Sky Sports F1 HD', url: 'https://topembed.pw/channel/SkySportsF1' },
-            { name: '🌍 Server 2: VIPRow F1 Live', url: 'https://www.viprow.nu/f1-online' },
-            { name: '⚡ Server 3: Streamed.su Racing Feed', url: 'https://streamed.su' }
-          ]
+          status: 'UPCOMING',
+          statusText: 'Friday • 15:00 Practice / Quali',
+          servers: []
         });
       }
     }
@@ -4385,110 +4330,52 @@ app.get('/api/sports/live', async (req, res) => {
     if (sport === 'all' || sport === 'mma') {
       try {
         const ufcRes = await safeFetch('https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard', {
-          headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }
+          headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+          timeout: 3000
         });
         const ufcData = await ufcRes.json();
-        (ufcData.events || []).slice(0, 5).forEach((ev) => {
-          const comp = ev.competitions?.[0];
-          const fighters = comp?.competitors || [];
-          const statusState = ev.status?.type?.state;
-          const isLive = statusState === 'in';
-          matches.push({
-            id: `sport_ufc_${ev.id}`,
-            sport: 'mma',
-            league: ev.name || 'UFC Championship Main Card',
-            homeTeam: {
-              name: fighters[0]?.athlete?.displayName || 'Red Corner Fighter',
-              logo: fighters[0]?.athlete?.flag?.href || 'https://a.espncdn.com/combiner/i?img=/i/leaguelogos/mma/500/ufc.png',
-              score: 'Fighter 1'
-            },
-            awayTeam: {
-              name: fighters[1]?.athlete?.displayName || 'Blue Corner Fighter',
-              logo: fighters[1]?.athlete?.flag?.href || 'https://a.espncdn.com/i/teamlogos/mma/500/ufc.png',
-              score: 'Fighter 2'
-            },
-            status: isLive ? 'LIVE' : statusState === 'post' ? 'FINISHED' : 'UPCOMING',
-            statusText: ev.status?.type?.detail || 'Main Card Live',
-            servers: [
-              { name: '🏆 Server 1: TNT Sports 1 UFC HD', url: 'https://topembed.pw/channel/TNTSports1' },
-              { name: '🥊 Server 2: DAZN Combat HD', url: 'https://topembed.pw/channel/DAZN1' },
-              { name: '🌍 Server 3: VIPRow UFC / MMA', url: 'https://www.viprow.nu/ufc-online' }
-            ]
-          });
+        (ufcData.events || []).slice(0, 4).forEach((ev) => {
+          matches.push(parseEspnEvent(ev, 'mma', 'UFC World Championship'));
         });
-      } catch (e) {
-        console.warn('UFC fetch warning:', e.message);
-      }
+      } catch {}
 
-      if (!matches.some(m => m.sport === 'mma')) {
+      if (!matches.some((m) => m.sport === 'mma')) {
         matches.push({
-          id: 'sport_ufc_main_card',
+          id: 'sport_ufc_dricus_adesanya',
           sport: 'mma',
-          league: 'UFC World Championship',
+          league: 'UFC 312 Championship',
           homeTeam: {
-            name: 'Islam Makhachev (Champion)',
+            name: 'Dricus Du Plessis (Champion)',
             logo: 'https://a.espncdn.com/combiner/i?img=/i/leaguelogos/mma/500/ufc.png',
-            score: 'CHAMP'
+            score: 'SA'
           },
           awayTeam: {
-            name: 'Arman Tsarukyan (Challenger)',
+            name: 'Israel Adesanya (Challenger)',
             logo: 'https://a.espncdn.com/i/teamlogos/mma/500/ufc.png',
-            score: '#1'
+            score: 'NZ'
           },
-          status: 'LIVE',
-          statusText: 'Main Event • Round 3',
-          servers: [
-            { name: '🏆 Server 1: TNT Sports 1 UFC HD', url: 'https://topembed.pw/channel/TNTSports1' },
-            { name: '🥊 Server 2: DAZN Combat HD', url: 'https://topembed.pw/channel/DAZN1' },
-            { name: '🌍 Server 3: VIPRow UFC / MMA', url: 'https://www.viprow.nu/ufc-online' }
-          ]
+          status: 'UPCOMING',
+          statusText: 'Saturday • 04:00 CAT Main Card',
+          servers: []
         });
       }
     }
 
-    // 5. UEFA Champions League & European Cups
-    if (sport === 'all' || sport === 'soccer') {
+    // 5. Basketball (NBA)
+    if (sport === 'all' || sport === 'basketball') {
       try {
-        const uclRes = await safeFetch('https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard', {
-          headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }
+        const nbaRes = await safeFetch('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard', {
+          headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+          timeout: 3000
         });
-        const uclData = await uclRes.json();
-        (uclData.events || []).slice(0, 8).forEach(ev => {
-          const comp = ev.competitions?.[0];
-          const home = comp?.competitors?.find(c => c.homeAway === 'home');
-          const away = comp?.competitors?.find(c => c.homeAway === 'away');
-          const statusState = ev.status?.type?.state;
-          const isLive = statusState === 'in';
-
-          matches.push({
-            id: `sport_ucl_${ev.id}`,
-            sport: 'soccer',
-            league: 'UEFA Champions League',
-            homeTeam: {
-              name: home?.team?.displayName || 'Real Madrid',
-              logo: home?.team?.logo || 'https://a.espncdn.com/i/teamlogos/soccer/500/86.png',
-              score: home?.score || '0'
-            },
-            awayTeam: {
-              name: away?.team?.displayName || 'Manchester City',
-              logo: away?.team?.logo || 'https://a.espncdn.com/i/teamlogos/soccer/500/382.png',
-              score: away?.score || '0'
-            },
-            status: isLive ? 'LIVE' : statusState === 'post' ? 'FINISHED' : 'UPCOMING',
-            statusText: ev.status?.type?.detail || (isLive ? 'LIVE' : 'Matchday Live'),
-            servers: [
-              { name: '⚽ Server 1: Sky Sports Premier League', url: 'https://topembed.pw/channel/SkySportsPremierLeague' },
-              { name: '🏆 Server 2: TNT Sports 1 (UCL)', url: 'https://topembed.pw/channel/TNTSports1' },
-              { name: '🌍 Server 3: VIPRow Football Live', url: 'https://www.viprow.nu/football-online' }
-            ]
-          });
+        const nbaData = await nbaRes.json();
+        (nbaData.events || []).slice(0, 4).forEach((ev) => {
+          matches.push(parseEspnEvent(ev, 'basketball', 'NBA Basketball'));
         });
-      } catch (e) {
-        console.warn('UCL fetch warning:', e.message);
-      }
+      } catch {}
     }
 
-    setCache(cacheKey, matches, 1000 * 60 * 5);
+    setCache(cacheKey, matches, 1000 * 60 * 3);
     res.json(matches);
   } catch (err) {
     console.error('Sports live error:', err);

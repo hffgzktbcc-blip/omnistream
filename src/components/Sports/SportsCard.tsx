@@ -37,6 +37,11 @@ export const SportsCard: React.FC<SportsCardProps> = ({ match, onWatch }) => {
               <Radio className="w-2.5 h-2.5" />
               LIVE NOW
             </span>
+          ) : match.status === 'FINISHED' ? (
+            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-900/80 text-indigo-200 text-[10px] font-black border border-indigo-500/40 flex-shrink-0">
+              <Trophy className="w-2.5 h-2.5 text-amber-300" />
+              {match.statusText || 'Final Result'}
+            </span>
           ) : (
             <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-950 text-blue-300 text-[10px] font-bold border border-blue-800/40 flex-shrink-0">
               <Clock className="w-2.5 h-2.5" />
@@ -103,7 +108,13 @@ export const SportsCard: React.FC<SportsCardProps> = ({ match, onWatch }) => {
       <div className="pt-2 border-t border-blue-900/50">
         <button className="w-full py-2 px-3 rounded-xl bg-blue-900/60 hover:bg-blue-600 group-hover:bg-blue-600 text-blue-200 group-hover:text-white text-xs font-black tracking-wide flex items-center justify-center gap-1.5 transition-all shadow-md border border-blue-700/40">
           <Play className="w-3.5 h-3.5 fill-current text-amber-300" />
-          <span>{isLive ? 'Watch SuperSport Live' : 'View Match Broadcasts'}</span>
+          <span>
+            {isLive
+              ? 'Watch SuperSport Live'
+              : match.status === 'FINISHED'
+              ? 'Watch Match Highlights & Replay'
+              : 'View Broadcast Channels & Streams'}
+          </span>
         </button>
       </div>
     </div>
