@@ -3,6 +3,8 @@ export interface AudiobookChapter {
   title: string;
   startTime: number; // in seconds
   endTime?: number;
+  duration?: string;
+  audioUrl?: string;
 }
 
 export interface AudiobookBookmark {
@@ -24,6 +26,9 @@ export interface Audiobook {
   audioUrl?: string;
   description?: string;
   genre?: string;
+  platform?: string; // 'graphicaudio' | 'audible' | 'bbcsounds' | 'archive' | 'spotify'
+  isGraphicAudio?: boolean;
+  isDramatized?: boolean;
   chapters?: AudiobookChapter[];
   bookmarks?: AudiobookBookmark[];
   currentProgress?: number; // 0 to 100

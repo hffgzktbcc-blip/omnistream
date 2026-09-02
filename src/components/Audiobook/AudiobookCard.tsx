@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Audiobook } from '../../types/audiobook';
-import { Headphones, Play, Clock, User } from 'lucide-react';
+import { Headphones, Play, Clock, User, Sparkles, ListMusic } from 'lucide-react';
 
 interface AudiobookCardProps {
   book: Audiobook;
@@ -10,13 +10,21 @@ interface AudiobookCardProps {
 export const AudiobookCard: React.FC<AudiobookCardProps> = ({ book, onClick }) => {
   const [imgError, setImgError] = useState(false);
 
+  const isGraphicAudio =
+    book.isGraphicAudio ||
+    book.genre === 'Full Cast & Dramatized' ||
+    book.platform === 'graphicaudio' ||
+    book.title.toLowerCase().includes('graphicaudio') ||
+    book.title.toLowerCase().includes('soundscape') ||
+    book.title.toLowerCase().includes('full cast');
+
   return (
     <div
       onClick={() => onClick(book)}
-      className="group relative flex flex-col rounded-2xl bg-slate-900/70 border border-slate-800/80 hover:border-amber-500/50 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/10 hover:-translate-y-1"
+      className="group relative flex flex-col rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-amber-500/60 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/15 hover:-translate-y-1"
     >
       {/* Cover Art */}
-      <div className="relative aspect-square w-full overflow-hidden bg-slate-800">
+      <div className="relative aspect-square w-full overflow-hidden bg-slate-950">
         {!imgError && book.cover ? (
           <img
             src={book.cover}
@@ -26,7 +34,7 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({ book, onClick }) =
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-slate-800 to-slate-900 text-slate-300">
+          <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-slate-900 to-slate-950 text-slate-300">
             <Headphones className="w-10 h-10 mb-2 text-amber-400" />
             <h4 className="text-xs font-bold line-clamp-3 text-white px-2">{book.title}</h4>
             <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">{book.author}</p>
@@ -36,25 +44,42 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({ book, onClick }) =
         {/* Duration Badge */}
         {book.duration && (
           <div className="absolute top-2.5 right-2.5">
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-black/75 text-amber-300 border border-amber-500/30 backdrop-blur-md flex items-center gap-1 shadow-md">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-black/80 text-amber-300 border border-amber-500/30 backdrop-blur-md flex items-center gap-1 shadow-md font-mono">
               <Clock className="w-2.5 h-2.5" />
               {book.duration}
             </span>
           </div>
         )}
 
-        {/* Audio-only badge */}
+        {/* Format Badge */}
         <div className="absolute top-2.5 left-2.5">
-          <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 uppercase shadow-md">
-            AUDIOBOOK
-          </span>
+          {isGraphicAudio ? (
+            <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white uppercase shadow-md flex items-center gap-1">
+              <Sparkles className="w-2.5 h-2.5" />
+              <span>GRAPHICAUDIO</span>
+            </span>
+          ) : (
+            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 uppercase shadow-md">
+              AUDIOBOOK
+            </span>
+          )}
         </div>
 
+        {/* Chapters count if available */}
+        {book.chapters && book.chapters.length > 1 && (
+          <div className="absolute bottom-2.5 right-2.5">
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/75 text-slate-300 border border-white/10 flex items-center gap-1 font-mono">
+              <ListMusic className="w-2.5 h-2.5 text-amber-400" />
+              <span>{book.chapters.length} Tracks</span>
+            </span>
+          </div>
+        )}
+
         {/* Hover Play Button */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-          <button className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/30 transition-all">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+          <button className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 text-xs font-black flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/30 transition-all cursor-pointer">
             <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Listen Now</span>
+            <span>Play Drama</span>
           </button>
         </div>
       </div>
@@ -66,8 +91,8 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({ book, onClick }) =
             {book.title}
           </h3>
           <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1 flex items-center gap-1">
-            <User className="w-3 h-3 text-slate-500" />
-            <span>{book.author}</span>
+            <User className="w-3 h-3 text-slate-500 flex-shrink-0" />
+            <span className="truncate">{book.author}</span>
           </p>
         </div>
 

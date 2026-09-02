@@ -3862,6 +3862,115 @@ app.post('/api/ebooks/lookup/ai-explain', async (req, res) => {
 // 9. AUDIOBOOKS STREAMING & FULL CAST DRAMATIZATIONS
 // -------------------------------------------------------------
 const CURATED_AUDIOBOOKS = [
+  // 1. BRANDON SANDERSON GRAPHICAUDIO & FULL CAST
+  {
+    id: 'ab_mistborn_final_empire_ga',
+    title: 'Mistborn: The Final Empire (GraphicAudio - A Movie in Your Mind)',
+    author: 'Brandon Sanderson',
+    narrator: 'GraphicAudio Full Voice Cast, Sound Effects & Cinematic Score',
+    duration: '22h 30m',
+    durationSeconds: 81000,
+    cover: 'https://covers.openlibrary.org/b/id/8305096-L.jpg',
+    youtubeId: '4OMPcYwfscQ',
+    audioUrl: 'https://archive.org/download/the-fellowship-of-the-ring_soundscape-by-phil-dragash/01%20-%20A%20Long-Expected%20Party.mp3',
+    description: 'Experience Mistborn as a full-scale cinematic audio movie. Featuring a full cast of over 20 voice actors, immersive environmental sound effects, and an original orchestral score.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_mistborn_well_ascension_ga',
+    title: 'Mistborn: The Well of Ascension (GraphicAudio)',
+    author: 'Brandon Sanderson',
+    narrator: 'GraphicAudio Full Voice Cast',
+    duration: '24h 15m',
+    durationSeconds: 87300,
+    cover: 'https://covers.openlibrary.org/b/id/8231991-L.jpg',
+    youtubeId: '4OMPcYwfscQ',
+    description: 'The second installment of the Mistborn saga in GraphicAudio\'s acclaimed Movie in Your Mind format.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_mistborn_hero_ages_ga',
+    title: 'Mistborn: The Hero of Ages (GraphicAudio)',
+    author: 'Brandon Sanderson',
+    narrator: 'GraphicAudio Full Voice Cast',
+    duration: '25h 40m',
+    durationSeconds: 92400,
+    cover: 'https://covers.openlibrary.org/b/id/8231993-L.jpg',
+    youtubeId: '4OMPcYwfscQ',
+    description: 'The monumental conclusion to the original Mistborn trilogy produced with full voice acting, layered action sound effects, and epic orchestrations.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_way_of_kings_ga',
+    title: 'The Way of Kings (GraphicAudio - The Stormlight Archive #1)',
+    author: 'Brandon Sanderson',
+    narrator: 'GraphicAudio Full Cast (Over 30 Voice Actors)',
+    duration: '48h 20m',
+    durationSeconds: 174000,
+    cover: 'https://covers.openlibrary.org/b/id/8231996-L.jpg',
+    youtubeId: '4OMPcYwfscQ',
+    description: 'Roshar is a world of stone and storms. GraphicAudio brings Brandon Sanderson\'s magnum opus to life with a colossal voice cast, thunderous highstorms, and custom orchestral battle music.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_words_of_radiance_ga',
+    title: 'Words of Radiance (GraphicAudio - The Stormlight Archive #2)',
+    author: 'Brandon Sanderson',
+    narrator: 'GraphicAudio Full Voice Cast',
+    duration: '49h 10m',
+    durationSeconds: 177000,
+    cover: 'https://covers.openlibrary.org/b/id/7984916-L.jpg',
+    youtubeId: '4OMPcYwfscQ',
+    description: 'The Knights Radiant must stand again. Full dramatized audio production of Words of Radiance.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_elantris_ga',
+    title: 'Elantris (GraphicAudio 10th Anniversary Edition)',
+    author: 'Brandon Sanderson',
+    narrator: 'GraphicAudio Full Cast',
+    duration: '18h 45m',
+    durationSeconds: 67500,
+    cover: 'https://covers.openlibrary.org/b/id/8232001-L.jpg',
+    youtubeId: '4OMPcYwfscQ',
+    description: 'The city of the gods has fallen. A full cast audio dramatization of Brandon Sanderson\'s debut fantasy novel.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_warbreaker_ga',
+    title: 'Warbreaker (GraphicAudio Full Cast)',
+    author: 'Brandon Sanderson',
+    narrator: 'GraphicAudio Full Cast',
+    duration: '19h 20m',
+    durationSeconds: 69600,
+    cover: 'https://covers.openlibrary.org/b/id/8232005-L.jpg',
+    youtubeId: '4OMPcYwfscQ',
+    description: 'A vibrant tale of two sisters, living breath magic, and a mute god in GraphicAudio full production.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+
+  // 2. J.R.R. TOLKIEN PHIL DRAGASH SOUNDSCAPE TRILOGY & BBC
   {
     id: 'ab_lotr_fellowship_phil_dragash',
     title: 'The Fellowship of the Ring: Soundscape by Phil Dragash',
@@ -3872,7 +3981,10 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://archive.org/services/img/the-fellowship-of-the-ring_soundscape-by-phil-dragash',
     audioUrl: 'https://archive.org/download/the-fellowship-of-the-ring_soundscape-by-phil-dragash/01%20-%20A%20Long-Expected%20Party.mp3',
     description: 'The legendary unofficial unabridged cinematic audio drama of The Fellowship of the Ring produced by Phil Dragash, featuring full sound effects, atmospheric ambient audio, and Howard Shore\'s iconic score.',
-    genre: 'Full Cast & Dramatized'
+    genre: 'Full Cast & Dramatized',
+    platform: 'archive',
+    isGraphicAudio: true,
+    isDramatized: true
   },
   {
     id: 'ab_lotr_two_towers_phil_dragash',
@@ -3884,7 +3996,10 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://archive.org/services/img/the-two-towers_soundscape-by-phil-dragash',
     audioUrl: 'https://archive.org/download/the-two-towers_soundscape-by-phil-dragash/01%20-%20The%20Departure%20of%20Boromir.mp3',
     description: 'The complete cinematic soundscape audiobook of The Two Towers by Phil Dragash, incorporating full voice acting, immersive sound design, and full orchestra score.',
-    genre: 'Full Cast & Dramatized'
+    genre: 'Full Cast & Dramatized',
+    platform: 'archive',
+    isGraphicAudio: true,
+    isDramatized: true
   },
   {
     id: 'ab_lotr_return_king_phil_dragash',
@@ -3896,19 +4011,86 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://archive.org/services/img/the-return-of-the-king_soundscape-by-phil-dragash',
     audioUrl: 'https://archive.org/download/the-return-of-the-king_soundscape-by-phil-dragash/01%20-%20Minas%20Tirith.mp3',
     description: 'The climax of J.R.R. Tolkien\'s masterwork in Phil Dragash\'s acclaimed soundscape dramatization.',
-    genre: 'Full Cast & Dramatized'
+    genre: 'Full Cast & Dramatized',
+    platform: 'archive',
+    isGraphicAudio: true,
+    isDramatized: true
   },
   {
-    id: 'ab_dune_full_cast',
-    title: 'Dune: Full Cast Audio Drama',
-    author: 'Frank Herbert',
-    narrator: 'Scott Brick, Orlagh Cassidy, Euan Morton',
-    duration: '21h 02m',
-    durationSeconds: 75720,
-    cover: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
+    id: 'ab_hobbit_bbc_dramatization',
+    title: 'The Hobbit (BBC Radio 4 Full Cast Dramatization)',
+    author: 'J.R.R. Tolkien',
+    narrator: 'Paul Daneman, Anthony Jackson, BBC Radio Cast',
+    duration: '4h 10m',
+    durationSeconds: 15000,
+    cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
+    youtubeId: '3ztkc8Gcdgw',
+    description: 'The acclaimed BBC Radio full cast dramatization of J.R.R. Tolkien\'s timeless classic with full sound effects and acoustic music.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'bbcsounds',
+    isDramatized: true
+  },
+
+  // 3. SCI-FI, FANTASY & BESTSELLER GRAPHICAUDIO & AUDIBLE ORIGINALS
+  {
+    id: 'ab_red_rising_ga',
+    title: 'Red Rising (GraphicAudio - A Movie in Your Mind)',
+    author: 'Pierce Brown',
+    narrator: 'GraphicAudio Full Voice Cast & Soundtrack',
+    duration: '16h 50m',
+    durationSeconds: 60600,
+    cover: 'https://covers.openlibrary.org/b/id/8315190-L.jpg',
     youtubeId: 'H_2g1bXmZ_M',
-    description: 'A multi-voice full cast performance of the legendary sci-fi epic Dune, featuring sound effects and orchestral music.',
-    genre: 'Full Cast & Dramatized'
+    description: 'Darrow is a Red, a pioneer miner in the belly of Mars. When tragedy strikes, he infiltrates the ruling Gold caste. Featuring an electrifying full voice cast and pulse-pounding sci-fi audio effects.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_acotar_ga',
+    title: 'A Court of Thorns and Roses (GraphicAudio Part 1 & 2)',
+    author: 'Sarah J. Maas',
+    narrator: 'GraphicAudio Full Cast & Orchestration',
+    duration: '14h 40m',
+    durationSeconds: 52800,
+    cover: 'https://covers.openlibrary.org/b/id/8739191-L.jpg',
+    youtubeId: 'H_2g1bXmZ_M',
+    description: 'Feyre\'s survival in the faerie realm of Prythian dramatized with full voice acting, ambient nature sound design, and romantic fantasy score.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_fourth_wing_ga',
+    title: 'Fourth Wing (GraphicAudio Full Cast Drama)',
+    author: 'Rebecca Yarros',
+    narrator: 'GraphicAudio Full Voice Cast & Dragon Audio FX',
+    duration: '20h 30m',
+    durationSeconds: 73800,
+    cover: 'https://covers.openlibrary.org/b/id/13819001-L.jpg',
+    youtubeId: 'H_2g1bXmZ_M',
+    description: 'Enter the brutal world of Basgiath War College. GraphicAudio brings dragons, deadly flight trials, and high-stakes battle to life with full audio design.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_sandman_full_cast',
+    title: 'The Sandman: Act I (Audible Full Cast Audio Play)',
+    author: 'Neil Gaiman',
+    narrator: 'James McAvoy, Michael Sheen, Kat Dennings, Andy Serkis',
+    duration: '10h 54m',
+    durationSeconds: 39240,
+    cover: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+    youtubeId: 'U0mUMohtCk0',
+    description: 'A landmark audio drama following Dream of the Endless, featuring an all-star full voice cast and cinematic score by BAFTA-winning composer James Hannigan.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'audible',
+    isGraphicAudio: true,
+    isDramatized: true
   },
   {
     id: 'ab_good_omens',
@@ -3920,20 +4102,84 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
     youtubeId: '3ztkc8Gcdgw',
     description: 'BBC Radio full cast dramatization of the apocalypse comedy by Neil Gaiman and Terry Pratchett.',
-    genre: 'Full Cast & Dramatized'
+    genre: 'Full Cast & Dramatized',
+    platform: 'bbcsounds',
+    isDramatized: true
   },
   {
-    id: 'ab_sandman_full_cast',
-    title: 'The Sandman: Act I (Audible Full Cast Audio Play)',
-    author: 'Neil Gaiman',
-    narrator: 'James McAvoy, Michael Sheen, Kat Dennings',
-    duration: '10h 54m',
-    durationSeconds: 39240,
-    cover: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
-    youtubeId: 'U0mUMohtCk0',
-    description: 'A landmark audio drama following Dream of the Endless, featuring an all-star full voice cast and cinematic score.',
-    genre: 'Full Cast & Dramatized'
+    id: 'ab_dune_full_cast',
+    title: 'Dune: Full Cast Audio Drama',
+    author: 'Frank Herbert',
+    narrator: 'Scott Brick, Orlagh Cassidy, Euan Morton',
+    duration: '21h 02m',
+    durationSeconds: 75720,
+    cover: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
+    youtubeId: 'H_2g1bXmZ_M',
+    description: 'A multi-voice full cast performance of the legendary sci-fi epic Dune, featuring sound effects and orchestral music.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'audible',
+    isDramatized: true
   },
+  {
+    id: 'ab_batman_no_mans_land_ga',
+    title: 'Batman: No Man\'s Land (GraphicAudio Full Cast)',
+    author: 'Greg Rucka & DC Comics',
+    narrator: 'GraphicAudio Full DC Voice Cast',
+    duration: '12h 10m',
+    durationSeconds: 43800,
+    cover: 'https://covers.openlibrary.org/b/id/8321001-L.jpg',
+    youtubeId: '4OMPcYwfscQ',
+    description: 'A cataclysmic earthquake isolates Gotham City from the rest of the United States. GraphicAudio delivers the ultimate superhero radio movie.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_marvel_civil_war_ga',
+    title: 'Marvel: Civil War (GraphicAudio Full Cast Drama)',
+    author: 'Stuart Moore & Marvel Comics',
+    narrator: 'GraphicAudio Full Marvel Voice Cast',
+    duration: '8h 45m',
+    durationSeconds: 31500,
+    cover: 'https://covers.openlibrary.org/b/id/8321005-L.jpg',
+    youtubeId: '4OMPcYwfscQ',
+    description: 'Captain America and Iron Man clash over the Superhuman Registration Act in full GraphicAudio cinema for your ears.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_enders_game_alive',
+    title: 'Ender\'s Game Alive: The Full Cast Audioplay',
+    author: 'Orson Scott Card',
+    narrator: 'Full Cast of Over 30 Voice Actors & Sound Design',
+    duration: '7h 24m',
+    durationSeconds: 26640,
+    cover: 'https://covers.openlibrary.org/b/id/8321010-L.jpg',
+    youtubeId: 'H_2g1bXmZ_M',
+    description: 'The definitive audio theatre version of Ender\'s Game written specifically for audio by Orson Scott Card.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'audible',
+    isDramatized: true
+  },
+  {
+    id: 'ab_neverwhere_bbc',
+    title: 'Neverwhere (BBC Radio 4 Full Cast)',
+    author: 'Neil Gaiman',
+    narrator: 'James McAvoy, Benedict Cumberbatch, Christopher Lee, Natalie Dormer',
+    duration: '3h 50m',
+    durationSeconds: 13800,
+    cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
+    youtubeId: '3ztkc8Gcdgw',
+    description: 'An all-star BBC Radio full cast dramatization into the dark, magical underbelly of London Below.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'bbcsounds',
+    isDramatized: true
+  },
+
+  // 4. UNABRIDGED CLASSICS & BESTSELLERS
   {
     id: 'ab_hp_philosophers_stone',
     title: 'Harry Potter and the Philosopher\'s Stone',
@@ -3944,19 +4190,8 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
     youtubeId: '6XIPkMFZf-0',
     description: 'Harry Potter discovers his magical heritage on his eleventh birthday and journeys to Hogwarts School of Witchcraft and Wizardry.',
-    genre: 'Fantasy'
-  },
-  {
-    id: 'ab_way_of_kings_audio',
-    title: 'The Way of Kings (The Stormlight Archive #1)',
-    author: 'Brandon Sanderson',
-    narrator: 'Michael Kramer, Kate Reading',
-    duration: '45h 37m',
-    durationSeconds: 164220,
-    cover: 'https://covers.openlibrary.org/b/id/8231996-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    description: 'Brandon Sanderson\'s epic fantasy masterpiece set on the shattered plains of Roshar.',
-    genre: 'Fantasy'
+    genre: 'Fantasy',
+    platform: 'audible'
   },
   {
     id: 'ab_atomic_habits',
@@ -3968,7 +4203,8 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
     youtubeId: '4r6Vdjx9RqA',
     description: 'No matter your goals, Atomic Habits offers a proven framework for improving every day.',
-    genre: 'Self-Improvement'
+    genre: 'Self-Improvement',
+    platform: 'spotify'
   },
   {
     id: 'ab_48_laws',
@@ -3980,7 +4216,8 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://images.unsplash.com/photo-1505664194779-8beaceb93744?q=80&w=600&auto=format&fit=crop',
     youtubeId: '1kI_yFvjZg4',
     description: 'The definitive manual for anyone interested in gaining, observing, or defending against ultimate control.',
-    genre: 'Strategy'
+    genre: 'Strategy',
+    platform: 'audible'
   },
   {
     id: 'ab_cant_hurt_me',
@@ -3992,7 +4229,8 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=600&auto=format&fit=crop',
     youtubeId: 'WnlZf0fQZ14',
     description: 'David Goggins transformed himself from a depressed, overweight young man into a U.S. Armed Forces icon.',
-    genre: 'Mindset'
+    genre: 'Mindset',
+    platform: 'spotify'
   },
   {
     id: 'ab_rich_dad',
@@ -4004,24 +4242,26 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=600&auto=format&fit=crop',
     youtubeId: 'k7GfVz-s46U',
     description: 'What the rich teach their kids about money that the poor and middle class do not.',
-    genre: 'Business'
+    genre: 'Business',
+    platform: 'spotify'
   }
 ];
-
 app.get('/api/audiobooks/popular', async (req, res) => {
   const category = req.query.category || 'popular';
-  const cacheKey = `audiobooks_v3_${category}`;
+  const cacheKey = `audiobooks_v4_${category}`;
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
   try {
     let filtered = CURATED_AUDIOBOOKS;
-    if (category === 'dramatized' || category === 'graphicaudio') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Full Cast & Dramatized');
+    if (category === 'graphicaudio') {
+      filtered = CURATED_AUDIOBOOKS.filter(b => b.isGraphicAudio || b.platform === 'graphicaudio' || b.title.toLowerCase().includes('graphicaudio'));
+    } else if (category === 'dramatized') {
+      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Full Cast & Dramatized' || b.isDramatized || b.isGraphicAudio);
     } else if (category === 'audible') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Full Cast & Dramatized' || b.author.includes('Neil Gaiman') || b.author.includes('Frank Herbert') || b.author.includes('Brandon Sanderson'));
+      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Full Cast & Dramatized' || b.platform === 'audible' || b.author.includes('Neil Gaiman') || b.author.includes('Frank Herbert') || b.author.includes('Brandon Sanderson'));
     } else if (category === 'bbcsounds') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.title.includes('BBC') || b.genre === 'Full Cast & Dramatized');
+      filtered = CURATED_AUDIOBOOKS.filter(b => b.title.includes('BBC') || b.platform === 'bbcsounds' || b.genre === 'Full Cast & Dramatized');
     } else if (category === 'spotify') {
       filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Fantasy' || b.genre === 'Self-Improvement');
     } else if (category === 'selfhelp') {

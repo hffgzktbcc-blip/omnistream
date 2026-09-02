@@ -19,7 +19,9 @@ import {
   Play,
   Star,
   CheckCircle2,
-  Award
+  Award,
+  Disc,
+  ListMusic
 } from 'lucide-react';
 
 interface AudiobookCatalogProps {
@@ -36,25 +38,25 @@ interface AudiobookCatalogProps {
 
 const AUDIOBOOK_PLATFORMS = [
   {
-    id: 'audible',
-    name: 'Audible',
-    tag: 'AUDIBLE',
+    id: 'graphicaudio',
+    name: '🎬 GraphicAudio (Movie in Your Mind)',
+    tag: 'GRAPHICAUDIO',
+    bg: 'bg-red-600/20 text-red-300 border-red-500/40 hover:bg-red-600 hover:text-white',
+    activeBg: 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-red-600/40 border-amber-400 ring-2 ring-amber-400/50'
+  },
+  {
+    id: 'dramatized',
+    name: '🎭 Full Cast & Dramatized',
+    tag: 'FULL CAST',
     bg: 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500 hover:text-slate-950',
     activeBg: 'bg-amber-500 text-slate-950 shadow-amber-500/40 border-amber-400 ring-2 ring-amber-400/50'
   },
   {
-    id: 'spotify',
-    name: 'Spotify Audiobooks',
-    tag: 'SPOTIFY',
-    bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-950',
-    activeBg: 'bg-emerald-500 text-slate-950 shadow-emerald-500/40 border-emerald-400 ring-2 ring-emerald-400/50'
-  },
-  {
-    id: 'graphicaudio',
-    name: 'GraphicAudio (Full Cast)',
-    tag: 'GRAPHICAUDIO',
-    bg: 'bg-red-600/20 text-red-300 border-red-500/40 hover:bg-red-600 hover:text-white',
-    activeBg: 'bg-red-600 text-white shadow-red-600/40 border-red-400 ring-2 ring-red-400/50'
+    id: 'audible',
+    name: 'Audible Originals',
+    tag: 'AUDIBLE',
+    bg: 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-600 hover:text-white',
+    activeBg: 'bg-indigo-600 text-white shadow-indigo-600/40 border-indigo-400 ring-2 ring-indigo-400/50'
   },
   {
     id: 'bbcsounds',
@@ -64,22 +66,15 @@ const AUDIOBOOK_PLATFORMS = [
     activeBg: 'bg-rose-600 text-white shadow-rose-600/40 border-rose-400 ring-2 ring-rose-400/50'
   },
   {
-    id: 'storytel',
-    name: 'Storytel',
-    tag: 'STORYTEL',
-    bg: 'bg-orange-600/20 text-orange-300 border-orange-500/40 hover:bg-orange-600 hover:text-white',
-    activeBg: 'bg-orange-600 text-white shadow-orange-600/40 border-orange-400 ring-2 ring-orange-400/50'
-  },
-  {
-    id: 'librofm',
-    name: 'Libro.fm',
-    tag: 'LIBRO.FM',
-    bg: 'bg-purple-600/20 text-purple-300 border-purple-500/40 hover:bg-purple-600 hover:text-white',
-    activeBg: 'bg-purple-600 text-white shadow-purple-600/40 border-purple-400 ring-2 ring-purple-400/50'
+    id: 'spotify',
+    name: 'Spotify Audiobooks',
+    tag: 'SPOTIFY',
+    bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-950',
+    activeBg: 'bg-emerald-500 text-slate-950 shadow-emerald-500/40 border-emerald-400 ring-2 ring-emerald-400/50'
   },
   {
     id: 'librivox',
-    name: 'LibriVox Free Domain',
+    name: 'LibriVox Public Domain',
     tag: 'LIBRIVOX',
     bg: 'bg-sky-600/20 text-sky-300 border-sky-500/40 hover:bg-sky-600 hover:text-white',
     activeBg: 'bg-sky-500 text-white shadow-sky-500/40 border-sky-400 ring-2 ring-sky-400/50'
@@ -87,26 +82,27 @@ const AUDIOBOOK_PLATFORMS = [
 ];
 
 const AUDIOBOOK_CATEGORIES = [
+  { id: 'graphicaudio', label: '🎬 GraphicAudio', icon: Sparkles },
+  { id: 'dramatized', label: '🎭 Full Cast Dramas', icon: Award },
   { id: 'popular', label: '🔥 Top Trending', icon: TrendingUp },
-  { id: 'dramatized', label: '🎭 Full Cast & Dramatized', icon: Sparkles },
-  { id: 'fantasy', label: '🐉 Epic Fantasy & Fiction', icon: Compass },
-  { id: 'selfhelp', label: '🧠 Mindset & Self-Improvement', icon: Flame },
+  { id: 'fantasy', label: '🐉 Epic Fantasy & Sci-Fi', icon: Compass },
+  { id: 'selfhelp', label: '🧠 Mindset & Habits', icon: Flame },
   { id: 'business', label: '💼 Strategy & Wealth', icon: Briefcase }
 ];
 
 const POPULAR_AUDIOBOOK_SEARCHES = [
-  'Dune Full Cast',
-  'Good Omens BBC Radio',
+  'Mistborn GraphicAudio',
+  'The Way of Kings GraphicAudio',
+  'Lord of the Rings Phil Dragash',
+  'Red Rising GraphicAudio',
+  'A Court of Thorns and Roses GraphicAudio',
+  'Fourth Wing GraphicAudio',
   'The Sandman Full Cast',
-  'Harry Potter Stephen Fry',
-  'The Way of Kings Michael Kramer',
-  'Atomic Habits James Clear',
-  'The 48 Laws of Power',
-  'Can\'t Hurt Me David Goggins',
-  'Rich Dad Poor Dad',
-  'GraphicAudio',
-  'Brandon Sanderson',
-  'Stephen King'
+  'Dune Full Cast Drama',
+  'Good Omens BBC Radio',
+  'Batman No Mans Land GraphicAudio',
+  'Ender\'s Game Alive',
+  'Atomic Habits James Clear'
 ];
 
 export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
@@ -164,13 +160,13 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
             <Radio className="w-3.5 h-3.5 text-amber-400" />
-            <span>Audiobook Platforms & Streaming Services</span>
+            <span>Audiobook Networks & Full Cast Dramatizations</span>
           </div>
 
           {isPlatformActive && (
             <button
               onClick={() => onSelectCategory('popular')}
-              className="text-xs text-slate-400 hover:text-white transition-colors underline font-medium"
+              className="text-xs text-slate-400 hover:text-white transition-colors underline font-medium cursor-pointer"
             >
               ← Back to All Audiobooks
             </button>
@@ -190,7 +186,9 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                 }`}
               >
                 <span>{net.name}</span>
-                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />}
+                {isSelected && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                )}
               </button>
             );
           })}
@@ -198,27 +196,65 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
       </div>
 
       {/* -------------------------------------------------------------
-          1. AUDIBLE THEMED SHOWCASE
+          1. GRAPHICAUDIO SHOWCASE (A MOVIE IN YOUR MIND)
+         ------------------------------------------------------------- */}
+      {(activeCategory === 'graphicaudio' || activeCategory === 'dramatized') && !searchQuery && featured && (
+        <div
+          onClick={() => onSelectBook(featured)}
+          className="group relative rounded-3xl overflow-hidden bg-gradient-to-r from-red-950/90 via-slate-950 to-black border-2 border-red-600/50 p-6 md:p-10 shadow-2xl cursor-pointer transition-all hover:border-amber-400 hover:shadow-red-600/20"
+        >
+          <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 max-w-2xl space-y-3">
+            <span className="px-3 py-1 rounded-lg bg-gradient-to-r from-red-600 to-amber-600 text-white font-black text-[10px] tracking-wider uppercase inline-flex items-center gap-1.5 shadow-lg">
+              <Sparkles className="w-3.5 h-3.5 fill-current" />
+              GraphicAudio • A Movie In Your Mind®
+            </span>
+
+            <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight">
+              {featured.title}
+            </h2>
+            <p className="text-xs sm:text-sm font-bold text-amber-400">
+              Cast of 30+ Voice Actors • Layered SFX • Original Orchestral Score
+            </p>
+            <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
+              {featured.description}
+            </p>
+
+            <div className="pt-2 flex items-center gap-3">
+              <button className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer">
+                <Play className="w-4 h-4 fill-current" />
+                <span>Play Full Cast Audio Drama</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+          2. AUDIBLE THEMED SHOWCASE
          ------------------------------------------------------------- */}
       {activeCategory === 'audible' && !searchQuery && featured && (
         <div
           onClick={() => onSelectBook(featured)}
-          className="group relative rounded-3xl overflow-hidden bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/40 border-2 border-amber-500/40 p-6 md:p-10 shadow-2xl cursor-pointer transition-all hover:border-amber-400"
+          className="group relative rounded-3xl overflow-hidden bg-gradient-to-r from-indigo-950/80 via-slate-900 to-indigo-950/40 border-2 border-indigo-500/40 p-6 md:p-10 shadow-2xl cursor-pointer transition-all hover:border-indigo-400"
         >
           <div className="relative z-10 max-w-2xl space-y-3">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded bg-amber-500 text-slate-950 font-black text-[10px] tracking-wider uppercase">
+              <span className="px-2.5 py-0.5 rounded bg-indigo-500 text-white font-black text-[10px] tracking-wider uppercase">
                 Audible Original
               </span>
-              <span className="text-xs font-bold text-amber-300">#1 Bestselling Narration</span>
+              <span className="text-xs font-bold text-indigo-300">#1 Bestselling Narration</span>
             </div>
 
             <h2 className="text-2xl sm:text-4xl font-black text-white">{featured.title}</h2>
-            <p className="text-xs sm:text-sm font-semibold text-amber-400">By {featured.author} • Unabridged Edition</p>
+            <p className="text-xs sm:text-sm font-semibold text-indigo-300">
+              By {featured.author} • Unabridged Edition
+            </p>
             <p className="text-xs text-slate-300 line-clamp-2">{featured.description}</p>
 
             <div className="pt-2 flex items-center gap-3">
-              <button className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:scale-105">
+              <button className="px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xs sm:text-sm shadow-lg shadow-indigo-500/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer">
                 <Play className="w-4 h-4 fill-current" />
                 <span>Listen with Audible</span>
               </button>
@@ -228,7 +264,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
       )}
 
       {/* -------------------------------------------------------------
-          2. SPOTIFY AUDIOBOOKS SHOWCASE
+          3. SPOTIFY AUDIOBOOKS SHOWCASE
          ------------------------------------------------------------- */}
       {activeCategory === 'spotify' && !searchQuery && featured && (
         <div
@@ -246,37 +282,9 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             <p className="text-xs text-slate-300 line-clamp-2">{featured.description}</p>
 
             <div className="pt-2 flex items-center gap-3">
-              <button className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/30 flex items-center gap-2 transition-all hover:scale-105">
+              <button className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer">
                 <Play className="w-4 h-4 fill-current" />
                 <span>Stream on Spotify</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* -------------------------------------------------------------
-          3. GRAPHICAUDIO SHOWCASE (A MOVIE IN YOUR MIND)
-         ------------------------------------------------------------- */}
-      {activeCategory === 'graphicaudio' && !searchQuery && featured && (
-        <div
-          onClick={() => onSelectBook(featured)}
-          className="group relative rounded-3xl overflow-hidden bg-gradient-to-r from-red-950/80 via-slate-900 to-black border-2 border-red-600/40 p-6 md:p-10 shadow-2xl cursor-pointer transition-all hover:border-red-500"
-        >
-          <div className="relative z-10 max-w-2xl space-y-3">
-            <span className="px-3 py-1 rounded bg-red-600 text-white font-black text-[10px] tracking-wider uppercase inline-flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
-              A Movie In Your Mind® • Full Cast Dramatization
-            </span>
-
-            <h2 className="text-2xl sm:text-4xl font-black text-white">{featured.title}</h2>
-            <p className="text-xs sm:text-sm font-semibold text-red-400">Cast of 30+ Actors • Full Orchestral Score & SFX</p>
-            <p className="text-xs text-slate-300 line-clamp-2">{featured.description}</p>
-
-            <div className="pt-2 flex items-center gap-3">
-              <button className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-red-600/30 flex items-center gap-2 transition-all hover:scale-105">
-                <Play className="w-4 h-4 fill-current" />
-                <span>Play Full Cast Audio Drama</span>
               </button>
             </div>
           </div>
@@ -291,7 +299,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className="group relative rounded-3xl overflow-hidden bg-gradient-to-r from-amber-950/40 via-slate-900 to-indigo-950/40 border-2 border-dashed border-amber-500/40 hover:border-amber-400 p-6 md:p-10 text-center cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/10"
+          className="group relative rounded-3xl overflow-hidden bg-gradient-to-r from-red-950/30 via-slate-900 to-amber-950/30 border-2 border-dashed border-amber-500/40 hover:border-amber-400 p-6 md:p-10 text-center cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/10"
         >
           <div className="max-w-xl mx-auto space-y-3">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
@@ -299,17 +307,17 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             </div>
 
             <h2 className="text-xl sm:text-2xl font-black text-white">
-              Stream Any Audiobook & Full Cast Dramas
+              GraphicAudio, Full Cast Dramas & Audiobooks
             </h2>
 
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Background playback while you browse, with sleep timer volume fade-out, smart resume rewind, and Immersion Reading sync. Search any title (*Dune*, *The Sandman*, *Good Omens*, *Atomic Habits*).
+              Experience Brandon Sanderson's *Mistborn* & *Stormlight Archive*, Pierce Brown's *Red Rising*, Sarah J. Maas *ACOTAR*, and Tolkien's *Lord of the Rings* in full-scale audio drama with background streaming and track navigation.
             </p>
 
             <div className="pt-2 flex items-center justify-center gap-3">
               <button
                 type="button"
-                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/30 inline-flex items-center gap-2 transition-all"
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/30 inline-flex items-center gap-2 transition-all cursor-pointer"
               >
                 <Upload className="w-4 h-4" />
                 <span>Upload Local Audiobook File</span>
@@ -327,14 +335,14 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             type="text"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="Search ANY audiobook (Audible, Spotify, GraphicAudio, Harry Potter, Dune...)"
+            placeholder="Search GraphicAudio, Mistborn, Way of Kings, LOTR, Sandman, Dune..."
             className="w-full bg-slate-900/90 text-xs sm:text-sm text-slate-100 pl-10 pr-10 py-3 rounded-2xl border border-slate-800 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all shadow-inner"
           />
           {localSearch && (
             <button
               type="button"
               onClick={handleClear}
-              className="absolute right-3.5 text-slate-400 hover:text-white"
+              className="absolute right-3.5 text-slate-400 hover:text-white cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -372,14 +380,14 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
               setLocalSearch(query);
               onSearchQuery(query);
             }}
-            className="px-3 py-1 rounded-full bg-slate-900/90 hover:bg-amber-500 hover:text-slate-950 border border-slate-800 text-slate-300 transition-all flex-shrink-0 text-[11px]"
+            className="px-3 py-1 rounded-full bg-slate-900/90 hover:bg-amber-500 hover:text-slate-950 border border-slate-800 text-slate-300 transition-all flex-shrink-0 text-[11px] cursor-pointer"
           >
             {query}
           </button>
         ))}
       </div>
 
-      {/* Genre Filter Bar (for standard view) */}
+      {/* Genre Filter Bar */}
       {!isPlatformActive && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
           <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0 scrollbar-none">
@@ -390,7 +398,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                 <button
                   key={cat.id}
                   onClick={() => onSelectCategory(cat.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                     isActive
                       ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                       : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
@@ -405,9 +413,11 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
 
           <div className="text-xs text-slate-400">
             {searchQuery ? (
-              <span>Results for &quot;<strong className="text-white">{searchQuery}</strong>&quot;</span>
+              <span>
+                Results for &quot;<strong className="text-white">{searchQuery}</strong>&quot;
+              </span>
             ) : (
-              <span>Continuous Audio with Sleep Fade & Immersion Sync</span>
+              <span>Continuous Audio with Sleep Fade & Chapter Navigation</span>
             )}
           </div>
         </div>
@@ -417,8 +427,11 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
       {loading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-2xl bg-slate-900/40 border border-slate-800/60 overflow-hidden">
-              <div className="aspect-[2/3] bg-slate-800/60 w-full" />
+            <div
+              key={i}
+              className="animate-pulse rounded-2xl bg-slate-900/40 border border-slate-800/60 overflow-hidden"
+            >
+              <div className="aspect-square bg-slate-800/60 w-full" />
               <div className="p-3 space-y-2">
                 <div className="h-3.5 bg-slate-800 rounded w-3/4" />
                 <div className="h-2.5 bg-slate-800/60 rounded w-1/2" />
@@ -435,21 +448,17 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             <h3 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Headphones className="w-4 h-4 text-amber-400" />
               <span>
-                {activeCategory === 'audible'
+                {activeCategory === 'graphicaudio'
+                  ? '🎬 GraphicAudio® - A Movie In Your Mind'
+                  : activeCategory === 'dramatized'
+                  ? '🎭 Full Cast Audio Dramas'
+                  : activeCategory === 'audible'
                   ? 'Audible Bestsellers & Originals'
                   : activeCategory === 'spotify'
                   ? 'Spotify Premium Audiobooks'
-                  : activeCategory === 'graphicaudio'
-                  ? 'GraphicAudio Dramatizations'
                   : activeCategory === 'bbcsounds'
                   ? 'BBC Radio 4 Audio Dramas'
-                  : activeCategory === 'storytel'
-                  ? 'Storytel Audio Releases'
-                  : activeCategory === 'librofm'
-                  ? 'Libro.fm Indie Catalog'
-                  : activeCategory === 'librivox'
-                  ? 'LibriVox Public Domain Audio'
-                  : 'Popular Audiobooks'}
+                  : 'Popular Audiobooks & Full Cast Dramas'}
               </span>
             </h3>
             <span className="text-xs text-slate-400 font-mono">{audiobooks.length} Available</span>
