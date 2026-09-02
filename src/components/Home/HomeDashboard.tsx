@@ -45,6 +45,29 @@ interface HomeDashboardProps {
   liveSports?: SportsMatch[];
 }
 
+function formatTitle(title: any): string {
+  if (!title) return '';
+  if (typeof title === 'string') return title;
+  if (typeof title === 'object') {
+    return title.english || title.romaji || title.native || 'Anime Series';
+  }
+  return String(title);
+}
+
+function formatCover(coverImage: any): string {
+  if (!coverImage) return 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400';
+  if (typeof coverImage === 'string') return coverImage;
+  if (typeof coverImage === 'object') {
+    return (
+      coverImage.large ||
+      coverImage.extraLarge ||
+      coverImage.medium ||
+      'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400'
+    );
+  }
+  return String(coverImage);
+}
+
 const SPOTLIGHT_ITEMS = [
   {
     id: 'deadpool_wolverine',
@@ -310,11 +333,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
             {continueWatchingAnime.map((item, idx) => {
-              const title = item.anime?.title || item.title || 'Anime Series';
-              const cover =
-                item.anime?.coverImage ||
-                item.cover ||
-                'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400';
+              const title = formatTitle(item.anime?.title || item.title || 'Anime Series');
+              const cover = formatCover(item.anime?.coverImage || item.cover);
               const ep = item.episodeNumber || item.currentEpisode || 1;
 
               return (
@@ -349,11 +369,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             })}
 
             {recentComics.map((item, idx) => {
-              const title = item.comicTitle || item.title || 'Manga Title';
-              const cover =
-                item.cover ||
-                item.coverImage ||
-                'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400';
+              const title = formatTitle(item.comicTitle || item.title || 'Manga Title');
+              const cover = formatCover(item.cover || item.coverImage);
               const ch = item.chapterTitle || `CH ${item.pageNumber || 1}`;
 
               return (
@@ -412,33 +429,38 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-            {safeMedia.slice(0, 6).map((item) => (
-              <div
-                key={item.id}
-                onClick={() => onSelectMedia(item)}
-                className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-rose-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
-              >
-                <div className="aspect-[2/3] relative">
-                  <img
-                    src={item.poster}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
-                  <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-md text-[10px] font-black text-amber-400 flex items-center gap-0.5 border border-white/10">
-                    <Star className="w-2.5 h-2.5 fill-current" /> {item.rating || '8.5'}
-                  </div>
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <h4 className="text-xs font-bold text-white truncate group-hover:text-rose-300 transition-colors">
-                      {item.title}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                      {item.type?.toUpperCase()} • {item.year || '2026'}
-                    </p>
+            {safeMedia.slice(0, 6).map((item) => {
+              const title = formatTitle(item.title);
+              const poster = formatCover(item.poster);
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => onSelectMedia(item)}
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-rose-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+                >
+                  <div className="aspect-[2/3] relative">
+                    <img
+                      src={poster}
+                      alt={title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-md text-[10px] font-black text-amber-400 flex items-center gap-0.5 border border-white/10">
+                      <Star className="w-2.5 h-2.5 fill-current" /> {item.rating || '8.5'}
+                    </div>
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <h4 className="text-xs font-bold text-white truncate group-hover:text-rose-300 transition-colors">
+                        {title}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                        {item.type?.toUpperCase()} • {item.year || '2026'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -465,33 +487,38 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-            {safeAnime.slice(0, 6).map((anime) => (
-              <div
-                key={anime.id}
-                onClick={() => onSelectAnime(anime)}
-                className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
-              >
-                <div className="aspect-[2/3] relative">
-                  <img
-                    src={anime.coverImage}
-                    alt={anime.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
-                  <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-purple-950/80 backdrop-blur-md text-[10px] font-black text-purple-300 border border-purple-500/30">
-                    {anime.episodes ? `${anime.episodes} EPS` : 'SIMULCAST'}
-                  </div>
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <h4 className="text-xs font-bold text-white truncate group-hover:text-purple-300 transition-colors">
-                      {anime.title}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                      {anime.genres?.[0] || 'Action'} • {anime.format || 'TV'}
-                    </p>
+            {safeAnime.slice(0, 6).map((anime) => {
+              const title = formatTitle(anime.title);
+              const cover = formatCover(anime.coverImage);
+
+              return (
+                <div
+                  key={anime.id}
+                  onClick={() => onSelectAnime(anime)}
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+                >
+                  <div className="aspect-[2/3] relative">
+                    <img
+                      src={cover}
+                      alt={title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-purple-950/80 backdrop-blur-md text-[10px] font-black text-purple-300 border border-purple-500/30">
+                      {anime.episodes ? `${anime.episodes} EPS` : 'SIMULCAST'}
+                    </div>
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <h4 className="text-xs font-bold text-white truncate group-hover:text-purple-300 transition-colors">
+                        {title}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                        {anime.genres?.[0] || 'Action'} • {anime.format || 'TV'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

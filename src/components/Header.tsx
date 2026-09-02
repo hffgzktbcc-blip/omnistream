@@ -50,6 +50,29 @@ interface HeaderProps {
   onSelectAudiobook?: (book: Audiobook) => void;
 }
 
+function formatTitle(title: any): string {
+  if (!title) return '';
+  if (typeof title === 'string') return title;
+  if (typeof title === 'object') {
+    return title.english || title.romaji || title.native || 'Anime Series';
+  }
+  return String(title);
+}
+
+function formatCover(coverImage: any): string {
+  if (!coverImage) return 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200';
+  if (typeof coverImage === 'string') return coverImage;
+  if (typeof coverImage === 'object') {
+    return (
+      coverImage.large ||
+      coverImage.extraLarge ||
+      coverImage.medium ||
+      'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200'
+    );
+  }
+  return String(coverImage);
+}
+
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
@@ -317,37 +340,42 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="flex items-center justify-between px-2 text-[10px] font-black text-purple-400 uppercase tracking-wider">
                         <span>⛩️ Anime Simulcasts</span>
                       </div>
-                      {liveResults.anime.map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => {
-                            setShowLiveDropdown(false);
-                            if (onSelectAnime) onSelectAnime(item);
-                            else {
-                              setActiveTab('anime');
-                              onSearch(item.title);
-                            }
-                          }}
-                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
-                        >
-                          <img
-                            src={item.coverImage || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200'}
-                            alt={item.title}
-                            className="w-8 h-11 object-cover rounded-lg flex-shrink-0 bg-slate-900"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
-                              {item.title}
-                            </h4>
-                            <div className="flex items-center gap-2 text-[10px] text-blue-200/70 font-mono mt-0.5">
-                              <span>{item.episodes ? `${item.episodes} EPS` : 'ONGOING'}</span>
-                              <span>•</span>
-                              <span>{item.status || 'Simulcast'}</span>
+                      {liveResults.anime.map((item) => {
+                        const animeTitle = formatTitle(item.title);
+                        const cover = formatCover(item.coverImage);
+
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              setShowLiveDropdown(false);
+                              if (onSelectAnime) onSelectAnime(item);
+                              else {
+                                setActiveTab('anime');
+                                onSearch(animeTitle);
+                              }
+                            }}
+                            className="flex items-center gap-3 p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
+                          >
+                            <img
+                              src={cover}
+                              alt={animeTitle}
+                              className="w-8 h-11 object-cover rounded-lg flex-shrink-0 bg-slate-900"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
+                                {animeTitle}
+                              </h4>
+                              <div className="flex items-center gap-2 text-[10px] text-blue-200/70 font-mono mt-0.5">
+                                <span>{item.episodes ? `${item.episodes} EPS` : 'ONGOING'}</span>
+                                <span>•</span>
+                                <span>{item.status || 'Simulcast'}</span>
+                              </div>
                             </div>
+                            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white flex-shrink-0" />
                           </div>
-                          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white flex-shrink-0" />
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
@@ -357,35 +385,40 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="flex items-center justify-between px-2 text-[10px] font-black text-sky-400 uppercase tracking-wider">
                         <span>📖 Manga & Comics</span>
                       </div>
-                      {liveResults.comics.map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => {
-                            setShowLiveDropdown(false);
-                            if (onSelectComic) onSelectComic(item);
-                            else {
-                              setActiveTab('browse');
-                              onSearch(item.title);
-                            }
-                          }}
-                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
-                        >
-                          <img
-                            src={item.coverImage || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200'}
-                            alt={item.title}
-                            className="w-8 h-11 object-cover rounded-lg flex-shrink-0 bg-slate-900"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
-                              {item.title}
-                            </h4>
-                            <div className="flex items-center gap-2 text-[10px] text-blue-200/70 font-mono mt-0.5">
-                              <span>{item.author || 'MangaDex / Mihon'}</span>
+                      {liveResults.comics.map((item) => {
+                        const comicTitle = formatTitle(item.title);
+                        const cover = formatCover(item.cover || item.coverImage);
+
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              setShowLiveDropdown(false);
+                              if (onSelectComic) onSelectComic(item);
+                              else {
+                                setActiveTab('browse');
+                                onSearch(comicTitle);
+                              }
+                            }}
+                            className="flex items-center gap-3 p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
+                          >
+                            <img
+                              src={cover}
+                              alt={comicTitle}
+                              className="w-8 h-11 object-cover rounded-lg flex-shrink-0 bg-slate-900"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
+                                {comicTitle}
+                              </h4>
+                              <div className="flex items-center gap-2 text-[10px] text-blue-200/70 font-mono mt-0.5">
+                                <span>{item.author || 'MangaDex / Mihon'}</span>
+                              </div>
                             </div>
+                            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white flex-shrink-0" />
                           </div>
-                          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white flex-shrink-0" />
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
