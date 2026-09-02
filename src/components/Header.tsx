@@ -395,32 +395,43 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="flex items-center justify-between px-2 text-[10px] font-black text-amber-400 uppercase tracking-wider">
                         <span>🏆 SuperSport Live Matches</span>
                       </div>
-                      {liveResults.sports.map((match) => (
-                        <div
-                          key={match.id}
-                          onClick={() => {
-                            setShowLiveDropdown(false);
-                            if (onSelectSportsMatch) onSelectSportsMatch(match);
-                            else {
-                              setActiveTab('sports');
-                              onSearch(match.homeTeam?.name || '');
-                            }
-                          }}
-                          className="flex items-center justify-between p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
-                        >
-                          <div className="min-w-0">
-                            <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
-                              {match.homeTeam?.name} vs {match.awayTeam?.name}
-                            </h4>
-                            <span className="text-[10px] text-blue-200/70 font-mono">
-                              {match.league} • {match.statusText || match.status}
+                      {liveResults.sports.map((match) => {
+                        const homeName =
+                          typeof match.homeTeam === 'object'
+                            ? match.homeTeam?.name || 'Home'
+                            : String(match.homeTeam || 'Home');
+                        const awayName =
+                          typeof match.awayTeam === 'object'
+                            ? match.awayTeam?.name || 'Away'
+                            : String(match.awayTeam || 'Away');
+
+                        return (
+                          <div
+                            key={match.id}
+                            onClick={() => {
+                              setShowLiveDropdown(false);
+                              if (onSelectSportsMatch) onSelectSportsMatch(match);
+                              else {
+                                setActiveTab('sports');
+                                onSearch(homeName);
+                              }
+                            }}
+                            className="flex items-center justify-between p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
+                          >
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
+                                {homeName} vs {awayName}
+                              </h4>
+                              <span className="text-[10px] text-blue-200/70 font-mono">
+                                {match.league} • {match.statusText || match.status}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-900 text-amber-300 flex-shrink-0">
+                              Watch
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-900 text-amber-300 flex-shrink-0">
-                            Watch
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 

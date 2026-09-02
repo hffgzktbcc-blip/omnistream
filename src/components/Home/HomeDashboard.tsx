@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Comic } from '../../types/comic';
 import { Anime } from '../../types/anime';
 import { MediaItem } from '../../types/media';
@@ -38,11 +38,11 @@ interface HomeDashboardProps {
   onSelectMedia: (media: MediaItem) => void;
   onSelectAudiobook: (book: Audiobook) => void;
   onSelectSportsMatch: (match: SportsMatch) => void;
-  trendingComics: Comic[];
-  trendingAnime: Anime[];
-  trendingMedia: MediaItem[];
-  popularAudiobooks: Audiobook[];
-  liveSports: SportsMatch[];
+  trendingComics?: Comic[];
+  trendingAnime?: Anime[];
+  trendingMedia?: MediaItem[];
+  popularAudiobooks?: Audiobook[];
+  liveSports?: SportsMatch[];
 }
 
 const SPOTLIGHT_ITEMS = [
@@ -52,7 +52,7 @@ const SPOTLIGHT_ITEMS = [
     title: 'Deadpool & Wolverine',
     subtitle: 'Movie • 4K Ultra HD • Action / Comedy',
     tag: '#1 MOVIE WORLDWIDE',
-    tagColor: 'bg-rose-600',
+    tagColor: 'bg-rose-600 text-white',
     ambientGlow: 'rgba(225, 29, 72, 0.25)',
     description:
       'A listless Wade Wilson toils away in civilian life when the TVA pulls him into a multiversal mission requiring him to team up with a reluctant Wolverine.',
@@ -67,7 +67,7 @@ const SPOTLIGHT_ITEMS = [
     title: 'Solo Leveling: Arise',
     subtitle: 'Anime Simulcast • Sub & Dub • Season 2',
     tag: 'GLOBAL HIT',
-    tagColor: 'bg-purple-600',
+    tagColor: 'bg-purple-600 text-white',
     ambientGlow: 'rgba(147, 51, 234, 0.25)',
     description:
       'In a world where hunters must battle deadly monsters, Sung Jinwoo, the weakest E-rank hunter, awakens with a secret quest log only he can see.',
@@ -82,7 +82,7 @@ const SPOTLIGHT_ITEMS = [
     title: 'SuperSport World of Champions',
     subtitle: 'Live Sports • Rugby, Premier League & F1 HD',
     tag: 'LIVE SATELLITE',
-    tagColor: 'bg-amber-500 text-slate-950',
+    tagColor: 'bg-amber-400 text-slate-950 font-black',
     ambientGlow: 'rgba(245, 158, 11, 0.25)',
     description:
       'The home of champions. Stream live Springboks test rugby, Premier League, UEFA Champions League, Formula 1, and UFC with zero delay.',
@@ -97,7 +97,7 @@ const SPOTLIGHT_ITEMS = [
     title: 'Dune: Part Two',
     subtitle: 'Movie • 4K HDR • Sci-Fi Epic',
     tag: 'BLOCKBUSTER',
-    tagColor: 'bg-amber-600',
+    tagColor: 'bg-amber-600 text-white',
     ambientGlow: 'rgba(217, 119, 6, 0.25)',
     description:
       'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.',
@@ -115,11 +115,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onSelectMedia,
   onSelectAudiobook,
   onSelectSportsMatch,
-  trendingComics,
-  trendingAnime,
-  trendingMedia,
-  popularAudiobooks,
-  liveSports
+  trendingComics = [],
+  trendingAnime = [],
+  trendingMedia = [],
+  popularAudiobooks = [],
+  liveSports = []
 }) => {
   const [activeSpotlight, setActiveSpotlight] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
@@ -127,14 +127,25 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [recentComics, setRecentComics] = useState<any[]>([]);
 
   useEffect(() => {
-    setContinueWatchingAnime(animeStorage.getWatchlist().slice(0, 5));
-    setRecentComics(storage.getProgress().slice(0, 5));
+    try {
+      const watchlist = animeStorage.getWatchlist();
+      setContinueWatchingAnime(Array.isArray(watchlist) ? watchlist.slice(0, 5) : []);
+    } catch {
+      setContinueWatchingAnime([]);
+    }
+
+    try {
+      const progress = storage.getProgress();
+      setRecentComics(Array.isArray(progress) ? progress.slice(0, 5) : []);
+    } catch {
+      setRecentComics([]);
+    }
   }, []);
 
   // Spotlight Auto-Rotation with Animated Progress Indicator
   useEffect(() => {
     setProgressPercent(0);
-    const interval = 50; // update progress every 50ms
+    const interval = 50;
     const totalDuration = 6000;
     const step = (interval / totalDuration) * 100;
 
@@ -151,7 +162,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     return () => clearInterval(timer);
   }, [activeSpotlight]);
 
-  const currentHero = SPOTLIGHT_ITEMS[activeSpotlight];
+  const currentHero = SPOTLIGHT_ITEMS[activeSpotlight] || SPOTLIGHT_ITEMS[0];
+
+  const safeMedia = Array.isArray(trendingMedia) ? trendingMedia : [];
+  const safeAnime = Array.isArray(trendingAnime) ? trendingAnime : [];
+  const safeComics = Array.isArray(trendingComics) ? trendingComics : [];
+  const safeSports = Array.isArray(liveSports) ? liveSports : [];
+  const safeAudiobooks = Array.isArray(popularAudiobooks) ? popularAudiobooks : [];
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-10 animate-fade-in">
@@ -175,7 +192,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             key={currentHero.id}
             src={currentHero.cover}
             alt={currentHero.title}
-            className="w-full h-full object-cover object-center transform scale-105 animate-pulse-slow transition-all duration-1000"
+            className="w-full h-full object-cover object-center transform scale-105 transition-all duration-1000"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#070b14] via-[#070b14]/70 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#070b14] via-[#070b14]/80 to-transparent" />
@@ -292,62 +309,133 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
-            {continueWatchingAnime.map((item, idx) => (
-              <div
-                key={`anime_${idx}`}
-                onClick={() => {
-                  onNavigateTab('anime');
-                  if (item.anime) onSelectAnime(item.anime);
-                }}
-                className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 shadow-lg cursor-pointer transition-all hover:scale-105"
-              >
-                <div className="aspect-[16/9] relative">
-                  <img
-                    src={item.cover}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] font-bold text-white">
-                    <span className="px-1.5 py-0.5 rounded bg-purple-600/90 font-mono">
-                      EP {item.currentEpisode || 1}
-                    </span>
-                    <span className="uppercase text-slate-300">{item.audioType || 'SUB'}</span>
-                  </div>
-                </div>
-                <div className="p-2.5 flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
-                  <Play className="w-3 h-3 text-purple-400 fill-current flex-shrink-0" />
-                </div>
-              </div>
-            ))}
+            {continueWatchingAnime.map((item, idx) => {
+              const title = item.anime?.title || item.title || 'Anime Series';
+              const cover =
+                item.anime?.coverImage ||
+                item.cover ||
+                'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400';
+              const ep = item.episodeNumber || item.currentEpisode || 1;
 
-            {recentComics.map((item, idx) => (
+              return (
+                <div
+                  key={`anime_${idx}`}
+                  onClick={() => {
+                    onNavigateTab('anime');
+                    if (item.anime) onSelectAnime(item.anime);
+                  }}
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 shadow-lg cursor-pointer transition-all hover:scale-105"
+                >
+                  <div className="aspect-[16/9] relative">
+                    <img
+                      src={cover}
+                      alt={title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] font-bold text-white">
+                      <span className="px-1.5 py-0.5 rounded bg-purple-600/90 font-mono">
+                        EP {ep}
+                      </span>
+                      <span className="uppercase text-slate-300">{item.audioType || 'SUB'}</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-white truncate">{title}</h4>
+                    <Play className="w-3 h-3 text-purple-400 fill-current flex-shrink-0" />
+                  </div>
+                </div>
+              );
+            })}
+
+            {recentComics.map((item, idx) => {
+              const title = item.comicTitle || item.title || 'Manga Title';
+              const cover =
+                item.cover ||
+                item.coverImage ||
+                'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400';
+              const ch = item.chapterTitle || `CH ${item.pageNumber || 1}`;
+
+              return (
+                <div
+                  key={`comic_${idx}`}
+                  onClick={() => {
+                    onNavigateTab('browse');
+                    if (item.comic) onSelectComic(item.comic);
+                  }}
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-sky-500/60 shadow-lg cursor-pointer transition-all hover:scale-105"
+                >
+                  <div className="aspect-[16/9] relative">
+                    <img
+                      src={cover}
+                      alt={title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] font-bold text-white">
+                      <span className="px-1.5 py-0.5 rounded bg-sky-600/90 font-mono">
+                        {ch}
+                      </span>
+                      <span className="text-slate-300">MANGA</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-white truncate">{title}</h4>
+                    <BookOpen className="w-3 h-3 text-sky-400 flex-shrink-0" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+          4. MOVIES & TV POPULAR SHELF
+         ------------------------------------------------------------- */}
+      {safeMedia.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Film className="w-5 h-5 text-rose-400" />
+              <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
+                Trending Movies & Series
+              </h2>
+            </div>
+            <button
+              onClick={() => onNavigateTab('media')}
+              className="text-xs font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
+            >
+              <span>Explore All</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+            {safeMedia.slice(0, 6).map((item) => (
               <div
-                key={`comic_${idx}`}
-                onClick={() => {
-                  onNavigateTab('browse');
-                  if (item.comic) onSelectComic(item.comic);
-                }}
-                className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-sky-500/60 shadow-lg cursor-pointer transition-all hover:scale-105"
+                key={item.id}
+                onClick={() => onSelectMedia(item)}
+                className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-rose-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
               >
-                <div className="aspect-[16/9] relative">
+                <div className="aspect-[2/3] relative">
                   <img
-                    src={item.coverImage || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200'}
+                    src={item.poster}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] font-bold text-white">
-                    <span className="px-1.5 py-0.5 rounded bg-sky-600/90 font-mono">
-                      CH {item.currentChapter || 1}
-                    </span>
-                    <span className="text-slate-300">MANGA</span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-md text-[10px] font-black text-amber-400 flex items-center gap-0.5 border border-white/10">
+                    <Star className="w-2.5 h-2.5 fill-current" /> {item.rating || '8.5'}
                   </div>
-                </div>
-                <div className="p-2.5 flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
-                  <BookOpen className="w-3 h-3 text-sky-400 flex-shrink-0" />
+                  <div className="absolute bottom-2 left-2 right-2">
+                    <h4 className="text-xs font-bold text-white truncate group-hover:text-rose-300 transition-colors">
+                      {item.title}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      {item.type?.toUpperCase()} • {item.year || '2026'}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -356,189 +444,142 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       )}
 
       {/* -------------------------------------------------------------
-          4. MOVIES & TV POPULAR SHELF
-         ------------------------------------------------------------- */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Film className="w-5 h-5 text-rose-400" />
-            <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
-              Trending Movies & Series
-            </h2>
-          </div>
-          <button
-            onClick={() => onNavigateTab('media')}
-            className="text-xs font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
-          >
-            <span>Explore All</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-          {trendingMedia.slice(0, 6).map((item) => (
-            <div
-              key={item.id}
-              onClick={() => onSelectMedia(item)}
-              className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-rose-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
-            >
-              <div className="aspect-[2/3] relative">
-                <img
-                  src={item.poster}
-                  alt={item.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
-                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-md text-[10px] font-black text-amber-400 flex items-center gap-0.5 border border-white/10">
-                  <Star className="w-2.5 h-2.5 fill-current" /> {item.rating || '8.5'}
-                </div>
-                <div className="absolute bottom-2 left-2 right-2">
-                  <h4 className="text-xs font-bold text-white truncate group-hover:text-rose-300 transition-colors">
-                    {item.title}
-                  </h4>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                    {item.type?.toUpperCase()} • {item.year || '2026'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* -------------------------------------------------------------
           5. ANIME SIMULCASTS SHELF
          ------------------------------------------------------------- */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Tv className="w-5 h-5 text-purple-400" />
-            <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
-              Top Anime Simulcasts
-            </h2>
-          </div>
-          <button
-            onClick={() => onNavigateTab('anime')}
-            className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer"
-          >
-            <span>Explore All</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-          {trendingAnime.slice(0, 6).map((anime) => (
-            <div
-              key={anime.id}
-              onClick={() => onSelectAnime(anime)}
-              className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+      {safeAnime.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tv className="w-5 h-5 text-purple-400" />
+              <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
+                Top Anime Simulcasts
+              </h2>
+            </div>
+            <button
+              onClick={() => onNavigateTab('anime')}
+              className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer"
             >
-              <div className="aspect-[2/3] relative">
-                <img
-                  src={anime.coverImage}
-                  alt={anime.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
-                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-purple-950/80 backdrop-blur-md text-[10px] font-black text-purple-300 border border-purple-500/30">
-                  {anime.episodes ? `${anime.episodes} EPS` : 'SIMULCAST'}
-                </div>
-                <div className="absolute bottom-2 left-2 right-2">
-                  <h4 className="text-xs font-bold text-white truncate group-hover:text-purple-300 transition-colors">
-                    {anime.title}
-                  </h4>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                    {anime.genres?.[0] || 'Action'} • {anime.format || 'TV'}
-                  </p>
+              <span>Explore All</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+            {safeAnime.slice(0, 6).map((anime) => (
+              <div
+                key={anime.id}
+                onClick={() => onSelectAnime(anime)}
+                className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+              >
+                <div className="aspect-[2/3] relative">
+                  <img
+                    src={anime.coverImage}
+                    alt={anime.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-purple-950/80 backdrop-blur-md text-[10px] font-black text-purple-300 border border-purple-500/30">
+                    {anime.episodes ? `${anime.episodes} EPS` : 'SIMULCAST'}
+                  </div>
+                  <div className="absolute bottom-2 left-2 right-2">
+                    <h4 className="text-xs font-bold text-white truncate group-hover:text-purple-300 transition-colors">
+                      {anime.title}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      {anime.genres?.[0] || 'Action'} • {anime.format || 'TV'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* -------------------------------------------------------------
           6. SUPERSPORT MATCH FIXTURES SPOTLIGHT
          ------------------------------------------------------------- */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-amber-400" />
-            <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
-              SuperSport Live & Upcoming Center
-            </h2>
+      {safeSports.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-400" />
+              <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
+                SuperSport Live & Upcoming Center
+              </h2>
+            </div>
+            <button
+              onClick={() => onNavigateTab('sports')}
+              className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+            >
+              <span>Full Fixtures Grid</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <button
-            onClick={() => onNavigateTab('sports')}
-            className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-          >
-            <span>Full Fixtures Grid</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {liveSports.slice(0, 3).map((match) => {
-            const homeName =
-              typeof match.homeTeam === 'object'
-                ? match.homeTeam?.name || 'Home'
-                : String(match.homeTeam || 'Home');
-            const awayName =
-              typeof match.awayTeam === 'object'
-                ? match.awayTeam?.name || 'Away'
-                : String(match.awayTeam || 'Away');
-            const homeScore =
-              typeof match.homeTeam === 'object' ? match.homeTeam?.score : undefined;
-            const awayScore =
-              typeof match.awayTeam === 'object' ? match.awayTeam?.score : undefined;
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {safeSports.slice(0, 3).map((match) => {
+              const homeName =
+                typeof match.homeTeam === 'object'
+                  ? match.homeTeam?.name || 'Home'
+                  : String(match.homeTeam || 'Home');
+              const awayName =
+                typeof match.awayTeam === 'object'
+                  ? match.awayTeam?.name || 'Away'
+                  : String(match.awayTeam || 'Away');
+              const homeScore =
+                typeof match.homeTeam === 'object' ? match.homeTeam?.score : undefined;
+              const awayScore =
+                typeof match.awayTeam === 'object' ? match.awayTeam?.score : undefined;
 
-            return (
-              <div
-                key={match.id}
-                onClick={() => onSelectSportsMatch(match)}
-                className="p-4 rounded-2xl bg-[#00173d] border border-blue-900/60 hover:border-amber-400 cursor-pointer transition-all hover:scale-[1.02] shadow-xl flex flex-col justify-between space-y-3"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider">
-                    {match.league}
-                  </span>
-                  <span
-                    className={`text-[10px] font-black px-2 py-0.5 rounded ${
-                      match.status === 'LIVE'
-                        ? 'bg-rose-600 text-white animate-pulse'
-                        : match.status === 'FINISHED'
-                        ? 'bg-blue-950 text-indigo-300 border border-indigo-500/40'
-                        : 'bg-blue-950 text-blue-300 border border-blue-800'
-                    }`}
-                  >
-                    {match.status === 'LIVE' ? 'LIVE NOW' : match.statusText || 'UPCOMING'}
-                  </span>
-                </div>
-
-                <div className="space-y-1 text-sm font-bold text-white">
-                  <div className="flex items-center justify-between">
-                    <span className="truncate">{homeName}</span>
-                    {homeScore !== undefined && (
-                      <span className="text-amber-400 font-mono">{homeScore}</span>
-                    )}
+              return (
+                <div
+                  key={match.id}
+                  onClick={() => onSelectSportsMatch(match)}
+                  className="p-4 rounded-2xl bg-[#00173d] border border-blue-900/60 hover:border-amber-400 cursor-pointer transition-all hover:scale-[1.02] shadow-xl flex flex-col justify-between space-y-3"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider">
+                      {match.league}
+                    </span>
+                    <span
+                      className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                        match.status === 'LIVE'
+                          ? 'bg-rose-600 text-white animate-pulse'
+                          : match.status === 'FINISHED'
+                          ? 'bg-blue-950 text-indigo-300 border border-indigo-500/40'
+                          : 'bg-blue-950 text-blue-300 border border-blue-800'
+                      }`}
+                    >
+                      {match.status === 'LIVE' ? 'LIVE NOW' : match.statusText || 'UPCOMING'}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="truncate">{awayName}</span>
-                    {awayScore !== undefined && (
-                      <span className="text-amber-400 font-mono">{awayScore}</span>
-                    )}
+
+                  <div className="space-y-1 text-sm font-bold text-white">
+                    <div className="flex items-center justify-between">
+                      <span className="truncate">{homeName}</span>
+                      {homeScore !== undefined && (
+                        <span className="text-amber-400 font-mono">{homeScore}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="truncate">{awayName}</span>
+                      {awayScore !== undefined && (
+                        <span className="text-amber-400 font-mono">{awayScore}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-blue-900 flex items-center justify-between text-xs font-bold text-amber-400">
+                    <span>Stream Channel</span>
+                    <Play className="w-3.5 h-3.5 fill-current" />
                   </div>
                 </div>
-
-                <div className="pt-2 border-t border-blue-900 flex items-center justify-between text-xs font-bold text-amber-400">
-                  <span>Stream Channel</span>
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
