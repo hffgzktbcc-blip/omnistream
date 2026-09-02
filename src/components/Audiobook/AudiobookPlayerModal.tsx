@@ -400,8 +400,21 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
         {/* Main Player View */}
         {activeTab === 'player' && (
           <div className="p-6 flex flex-col items-center justify-center space-y-6 relative z-10 overflow-y-auto">
+            {/* Persistent Web/YouTube Audio Stream Iframe (Always mounted so audio never cuts out) */}
+            {book.youtubeId && (
+              <div className={audioOnlyMode ? "opacity-0 pointer-events-none fixed -top-96 -left-96 w-1 h-1 overflow-hidden" : "w-full aspect-video rounded-2xl overflow-hidden bg-black border border-slate-800 shadow-xl"}>
+                <iframe
+                  src={embedUrl}
+                  title={book.title}
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full border-0"
+                />
+              </div>
+            )}
+
             {/* 1. Audio-Only Visualizer Mode */}
-            {audioOnlyMode ? (
+            {audioOnlyMode && (
               <div className="flex flex-col items-center text-center space-y-4 w-full">
                 {/* Cover Art with dynamic artwork frame */}
                 <div className="relative w-44 sm:w-52 aspect-square rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/30 bg-slate-900 group">
@@ -453,17 +466,6 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
                     )}
                   </p>
                 </div>
-              </div>
-            ) : (
-              /* 2. Video Mode */
-              <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black border border-slate-800 shadow-xl">
-                <iframe
-                  src={embedUrl}
-                  title={book.title}
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
-                  className="w-full h-full border-0"
-                />
               </div>
             )}
 

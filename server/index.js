@@ -3861,116 +3861,52 @@ app.post('/api/ebooks/lookup/ai-explain', async (req, res) => {
 // -------------------------------------------------------------
 // 9. AUDIOBOOKS STREAMING & FULL CAST DRAMATIZATIONS
 // -------------------------------------------------------------
-const CURATED_AUDIOBOOKS = [
-  // 1. BRANDON SANDERSON GRAPHICAUDIO & FULL CAST
-  {
-    id: 'ab_mistborn_final_empire_ga',
-    title: 'Mistborn: The Final Empire (GraphicAudio - A Movie in Your Mind)',
-    author: 'Brandon Sanderson',
-    narrator: 'GraphicAudio Full Voice Cast, Sound Effects & Cinematic Score',
-    duration: '22h 30m',
-    durationSeconds: 81000,
-    cover: 'https://covers.openlibrary.org/b/id/8305096-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    audioUrl: 'https://archive.org/download/the-fellowship-of-the-ring_soundscape-by-phil-dragash/01%20-%20A%20Long-Expected%20Party.mp3',
-    description: 'Experience Mistborn as a full-scale cinematic audio movie. Featuring a full cast of over 20 voice actors, immersive environmental sound effects, and an original orchestral score.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_mistborn_well_ascension_ga',
-    title: 'Mistborn: The Well of Ascension (GraphicAudio)',
-    author: 'Brandon Sanderson',
-    narrator: 'GraphicAudio Full Voice Cast',
-    duration: '24h 15m',
-    durationSeconds: 87300,
-    cover: 'https://covers.openlibrary.org/b/id/8231991-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    description: 'The second installment of the Mistborn saga in GraphicAudio\'s acclaimed Movie in Your Mind format.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_mistborn_hero_ages_ga',
-    title: 'Mistborn: The Hero of Ages (GraphicAudio)',
-    author: 'Brandon Sanderson',
-    narrator: 'GraphicAudio Full Voice Cast',
-    duration: '25h 40m',
-    durationSeconds: 92400,
-    cover: 'https://covers.openlibrary.org/b/id/8231993-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    description: 'The monumental conclusion to the original Mistborn trilogy produced with full voice acting, layered action sound effects, and epic orchestrations.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_way_of_kings_ga',
-    title: 'The Way of Kings (GraphicAudio - The Stormlight Archive #1)',
-    author: 'Brandon Sanderson',
-    narrator: 'GraphicAudio Full Cast (Over 30 Voice Actors)',
-    duration: '48h 20m',
-    durationSeconds: 174000,
-    cover: 'https://covers.openlibrary.org/b/id/8231996-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    description: 'Roshar is a world of stone and storms. GraphicAudio brings Brandon Sanderson\'s magnum opus to life with a colossal voice cast, thunderous highstorms, and custom orchestral battle music.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_words_of_radiance_ga',
-    title: 'Words of Radiance (GraphicAudio - The Stormlight Archive #2)',
-    author: 'Brandon Sanderson',
-    narrator: 'GraphicAudio Full Voice Cast',
-    duration: '49h 10m',
-    durationSeconds: 177000,
-    cover: 'https://covers.openlibrary.org/b/id/7984916-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    description: 'The Knights Radiant must stand again. Full dramatized audio production of Words of Radiance.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_elantris_ga',
-    title: 'Elantris (GraphicAudio 10th Anniversary Edition)',
-    author: 'Brandon Sanderson',
-    narrator: 'GraphicAudio Full Cast',
-    duration: '18h 45m',
-    durationSeconds: 67500,
-    cover: 'https://covers.openlibrary.org/b/id/8232001-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    description: 'The city of the gods has fallen. A full cast audio dramatization of Brandon Sanderson\'s debut fantasy novel.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_warbreaker_ga',
-    title: 'Warbreaker (GraphicAudio Full Cast)',
-    author: 'Brandon Sanderson',
-    narrator: 'GraphicAudio Full Cast',
-    duration: '19h 20m',
-    durationSeconds: 69600,
-    cover: 'https://covers.openlibrary.org/b/id/8232005-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    description: 'A vibrant tale of two sisters, living breath magic, and a mute god in GraphicAudio full production.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
+// Helper for querying official Audible Catalog API
+async function searchAudible(query, limit = 20) {
+  try {
+    const url = `https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(query)}&num_results=${limit}&response_groups=product_attrs,contributors,media,product_desc,sample,rating`;
+    const res = await safeFetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const products = data.products || (data.product ? [data.product] : []);
+    return products.map(p => {
+      const runtimeMin = p.runtime_length_min || 0;
+      const hours = Math.floor(runtimeMin / 60);
+      const mins = runtimeMin % 60;
+      const durFormatted = hours > 0 ? `${hours}h ${mins}m` : (mins > 0 ? `${mins}m` : 'Full Length');
+      const authors = (p.authors || []).map(a => a.name).join(', ') || 'Audible Author';
+      const narrators = (p.narrators || []).map(n => n.name).join(', ') || 'Audible Narrator';
+      const cover = p.product_images?.['500'] || p.product_images?.['1024'] || p.product_images?.['252'] || '';
+      const isGraphic = (p.title || '').toLowerCase().includes('dramatized') || (p.title || '').toLowerCase().includes('graphicaudio');
+      const isDramatized = isGraphic || (p.title || '').toLowerCase().includes('full cast') || (p.title || '').toLowerCase().includes('audio drama');
 
-  // 2. J.R.R. TOLKIEN PHIL DRAGASH SOUNDSCAPE TRILOGY & BBC
+      return {
+        id: `audible_${p.asin}`,
+        asin: p.asin,
+        title: p.title || 'Audible Audiobook',
+        author: authors,
+        narrator: narrators,
+        duration: durFormatted,
+        durationSeconds: runtimeMin * 60 || 3600 * 5,
+        cover,
+        audioUrl: p.sample_url || '',
+        sampleAudioUrl: p.sample_url || '',
+        description: p.publisher_summary ? String(p.publisher_summary).replace(/<[^>]*>/g, '').trim().slice(0, 400) : '',
+        genre: isGraphic ? 'Full Cast & Dramatized' : 'Audible Original',
+        platform: 'audible',
+        isGraphicAudio: isGraphic,
+        isDramatized: isDramatized,
+        rating: p.rating?.overall_distribution?.average_rating
+      };
+    });
+  } catch (err) {
+    console.error('Audible search error:', err);
+    return [];
+  }
+}
+
+const CURATED_AUDIOBOOKS = [
+  // 1. J.R.R. TOLKIEN PHIL DRAGASH SOUNDSCAPE TRILOGY & ARCHIVE.ORG
   {
     id: 'ab_lotr_fellowship_phil_dragash',
     title: 'The Fellowship of the Ring: Soundscape by Phil Dragash',
@@ -4024,256 +3960,86 @@ const CURATED_AUDIOBOOKS = [
     duration: '4h 10m',
     durationSeconds: 15000,
     cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
-    youtubeId: '3ztkc8Gcdgw',
+    audioUrl: 'https://archive.org/download/the-fellowship-of-the-ring_soundscape-by-phil-dragash/01%20-%20A%20Long-Expected%20Party.mp3',
     description: 'The acclaimed BBC Radio full cast dramatization of J.R.R. Tolkien\'s timeless classic with full sound effects and acoustic music.',
     genre: 'Full Cast & Dramatized',
     platform: 'bbcsounds',
     isDramatized: true
-  },
-
-  // 3. SCI-FI, FANTASY & BESTSELLER GRAPHICAUDIO & AUDIBLE ORIGINALS
-  {
-    id: 'ab_red_rising_ga',
-    title: 'Red Rising (GraphicAudio - A Movie in Your Mind)',
-    author: 'Pierce Brown',
-    narrator: 'GraphicAudio Full Voice Cast & Soundtrack',
-    duration: '16h 50m',
-    durationSeconds: 60600,
-    cover: 'https://covers.openlibrary.org/b/id/8315190-L.jpg',
-    youtubeId: 'H_2g1bXmZ_M',
-    description: 'Darrow is a Red, a pioneer miner in the belly of Mars. When tragedy strikes, he infiltrates the ruling Gold caste. Featuring an electrifying full voice cast and pulse-pounding sci-fi audio effects.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_acotar_ga',
-    title: 'A Court of Thorns and Roses (GraphicAudio Part 1 & 2)',
-    author: 'Sarah J. Maas',
-    narrator: 'GraphicAudio Full Cast & Orchestration',
-    duration: '14h 40m',
-    durationSeconds: 52800,
-    cover: 'https://covers.openlibrary.org/b/id/8739191-L.jpg',
-    youtubeId: 'H_2g1bXmZ_M',
-    description: 'Feyre\'s survival in the faerie realm of Prythian dramatized with full voice acting, ambient nature sound design, and romantic fantasy score.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_fourth_wing_ga',
-    title: 'Fourth Wing (GraphicAudio Full Cast Drama)',
-    author: 'Rebecca Yarros',
-    narrator: 'GraphicAudio Full Voice Cast & Dragon Audio FX',
-    duration: '20h 30m',
-    durationSeconds: 73800,
-    cover: 'https://covers.openlibrary.org/b/id/13819001-L.jpg',
-    youtubeId: 'H_2g1bXmZ_M',
-    description: 'Enter the brutal world of Basgiath War College. GraphicAudio brings dragons, deadly flight trials, and high-stakes battle to life with full audio design.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_sandman_full_cast',
-    title: 'The Sandman: Act I (Audible Full Cast Audio Play)',
-    author: 'Neil Gaiman',
-    narrator: 'James McAvoy, Michael Sheen, Kat Dennings, Andy Serkis',
-    duration: '10h 54m',
-    durationSeconds: 39240,
-    cover: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
-    youtubeId: 'U0mUMohtCk0',
-    description: 'A landmark audio drama following Dream of the Endless, featuring an all-star full voice cast and cinematic score by BAFTA-winning composer James Hannigan.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'audible',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_good_omens',
-    title: 'Good Omens (BBC Radio 4 Full Cast Dramatization)',
-    author: 'Neil Gaiman & Terry Pratchett',
-    narrator: 'David Tennant, Michael Sheen, BBC Full Cast',
-    duration: '10h 22m',
-    durationSeconds: 37320,
-    cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
-    youtubeId: '3ztkc8Gcdgw',
-    description: 'BBC Radio full cast dramatization of the apocalypse comedy by Neil Gaiman and Terry Pratchett.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'bbcsounds',
-    isDramatized: true
-  },
-  {
-    id: 'ab_dune_full_cast',
-    title: 'Dune: Full Cast Audio Drama',
-    author: 'Frank Herbert',
-    narrator: 'Scott Brick, Orlagh Cassidy, Euan Morton',
-    duration: '21h 02m',
-    durationSeconds: 75720,
-    cover: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop',
-    youtubeId: 'H_2g1bXmZ_M',
-    description: 'A multi-voice full cast performance of the legendary sci-fi epic Dune, featuring sound effects and orchestral music.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'audible',
-    isDramatized: true
-  },
-  {
-    id: 'ab_batman_no_mans_land_ga',
-    title: 'Batman: No Man\'s Land (GraphicAudio Full Cast)',
-    author: 'Greg Rucka & DC Comics',
-    narrator: 'GraphicAudio Full DC Voice Cast',
-    duration: '12h 10m',
-    durationSeconds: 43800,
-    cover: 'https://covers.openlibrary.org/b/id/8321001-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    description: 'A cataclysmic earthquake isolates Gotham City from the rest of the United States. GraphicAudio delivers the ultimate superhero radio movie.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_marvel_civil_war_ga',
-    title: 'Marvel: Civil War (GraphicAudio Full Cast Drama)',
-    author: 'Stuart Moore & Marvel Comics',
-    narrator: 'GraphicAudio Full Marvel Voice Cast',
-    duration: '8h 45m',
-    durationSeconds: 31500,
-    cover: 'https://covers.openlibrary.org/b/id/8321005-L.jpg',
-    youtubeId: '4OMPcYwfscQ',
-    description: 'Captain America and Iron Man clash over the Superhuman Registration Act in full GraphicAudio cinema for your ears.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'graphicaudio',
-    isGraphicAudio: true,
-    isDramatized: true
-  },
-  {
-    id: 'ab_enders_game_alive',
-    title: 'Ender\'s Game Alive: The Full Cast Audioplay',
-    author: 'Orson Scott Card',
-    narrator: 'Full Cast of Over 30 Voice Actors & Sound Design',
-    duration: '7h 24m',
-    durationSeconds: 26640,
-    cover: 'https://covers.openlibrary.org/b/id/8321010-L.jpg',
-    youtubeId: 'H_2g1bXmZ_M',
-    description: 'The definitive audio theatre version of Ender\'s Game written specifically for audio by Orson Scott Card.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'audible',
-    isDramatized: true
-  },
-  {
-    id: 'ab_neverwhere_bbc',
-    title: 'Neverwhere (BBC Radio 4 Full Cast)',
-    author: 'Neil Gaiman',
-    narrator: 'James McAvoy, Benedict Cumberbatch, Christopher Lee, Natalie Dormer',
-    duration: '3h 50m',
-    durationSeconds: 13800,
-    cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop',
-    youtubeId: '3ztkc8Gcdgw',
-    description: 'An all-star BBC Radio full cast dramatization into the dark, magical underbelly of London Below.',
-    genre: 'Full Cast & Dramatized',
-    platform: 'bbcsounds',
-    isDramatized: true
-  },
-
-  // 4. UNABRIDGED CLASSICS & BESTSELLERS
-  {
-    id: 'ab_hp_philosophers_stone',
-    title: 'Harry Potter and the Philosopher\'s Stone',
-    author: 'J.K. Rowling',
-    narrator: 'Stephen Fry',
-    duration: '9h 33m',
-    durationSeconds: 34380,
-    cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
-    youtubeId: '6XIPkMFZf-0',
-    description: 'Harry Potter discovers his magical heritage on his eleventh birthday and journeys to Hogwarts School of Witchcraft and Wizardry.',
-    genre: 'Fantasy',
-    platform: 'audible'
-  },
-  {
-    id: 'ab_atomic_habits',
-    title: 'Atomic Habits: An Easy & Proven Way to Build Good Habits',
-    author: 'James Clear',
-    narrator: 'James Clear',
-    duration: '5h 35m',
-    durationSeconds: 20100,
-    cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
-    youtubeId: '4r6Vdjx9RqA',
-    description: 'No matter your goals, Atomic Habits offers a proven framework for improving every day.',
-    genre: 'Self-Improvement',
-    platform: 'spotify'
-  },
-  {
-    id: 'ab_48_laws',
-    title: 'The 48 Laws of Power',
-    author: 'Robert Greene',
-    narrator: 'Richard Poe',
-    duration: '6h 15m',
-    durationSeconds: 22500,
-    cover: 'https://images.unsplash.com/photo-1505664194779-8beaceb93744?q=80&w=600&auto=format&fit=crop',
-    youtubeId: '1kI_yFvjZg4',
-    description: 'The definitive manual for anyone interested in gaining, observing, or defending against ultimate control.',
-    genre: 'Strategy',
-    platform: 'audible'
-  },
-  {
-    id: 'ab_cant_hurt_me',
-    title: 'Can\'t Hurt Me: Master Your Mind and Defy the Odds',
-    author: 'David Goggins',
-    narrator: 'David Goggins, Adam Skolnick',
-    duration: '13h 37m',
-    durationSeconds: 49020,
-    cover: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=600&auto=format&fit=crop',
-    youtubeId: 'WnlZf0fQZ14',
-    description: 'David Goggins transformed himself from a depressed, overweight young man into a U.S. Armed Forces icon.',
-    genre: 'Mindset',
-    platform: 'spotify'
-  },
-  {
-    id: 'ab_rich_dad',
-    title: 'Rich Dad Poor Dad',
-    author: 'Robert T. Kiyosaki',
-    narrator: 'Tim Wheeler',
-    duration: '6h 09m',
-    durationSeconds: 22140,
-    cover: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=600&auto=format&fit=crop',
-    youtubeId: 'k7GfVz-s46U',
-    description: 'What the rich teach their kids about money that the poor and middle class do not.',
-    genre: 'Business',
-    platform: 'spotify'
   }
 ];
+
 app.get('/api/audiobooks/popular', async (req, res) => {
   const category = req.query.category || 'popular';
-  const cacheKey = `audiobooks_v4_${category}`;
+  const cacheKey = `audiobooks_v5_${category}`;
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
   try {
-    let filtered = CURATED_AUDIOBOOKS;
+    let results = [];
+
     if (category === 'graphicaudio') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.isGraphicAudio || b.platform === 'graphicaudio' || b.title.toLowerCase().includes('graphicaudio'));
+      const [gaAudible, dramatizedAudible] = await Promise.all([
+        searchAudible('graphicaudio', 15),
+        searchAudible('dramatized adaptation', 15)
+      ]);
+      results = [...CURATED_AUDIOBOOKS.filter(b => b.isGraphicAudio), ...gaAudible, ...dramatizedAudible];
     } else if (category === 'dramatized') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Full Cast & Dramatized' || b.isDramatized || b.isGraphicAudio);
+      const [dramatizedAudible, fullCastAudible] = await Promise.all([
+        searchAudible('dramatized adaptation', 15),
+        searchAudible('full cast audio drama', 15)
+      ]);
+      results = [...CURATED_AUDIOBOOKS, ...dramatizedAudible, ...fullCastAudible];
     } else if (category === 'audible') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Full Cast & Dramatized' || b.platform === 'audible' || b.author.includes('Neil Gaiman') || b.author.includes('Frank Herbert') || b.author.includes('Brandon Sanderson'));
+      const [bestsellers, sciFi, fantasy] = await Promise.all([
+        searchAudible('audible original bestseller', 15),
+        searchAudible('brandon sanderson', 10),
+        searchAudible('stephen king', 10)
+      ]);
+      results = [...bestsellers, ...sciFi, ...fantasy];
     } else if (category === 'bbcsounds') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.title.includes('BBC') || b.platform === 'bbcsounds' || b.genre === 'Full Cast & Dramatized');
-    } else if (category === 'spotify') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Fantasy' || b.genre === 'Self-Improvement');
-    } else if (category === 'selfhelp') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Self-Improvement' || b.genre === 'Mindset');
+      const bbcBooks = await searchAudible('BBC Radio dramatization', 25);
+      results = [...CURATED_AUDIOBOOKS.filter(b => b.platform === 'bbcsounds' || b.platform === 'archive'), ...bbcBooks];
     } else if (category === 'fantasy') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Fantasy' || b.genre === 'Full Cast & Dramatized');
+      const [brandon, tolkien, wheel] = await Promise.all([
+        searchAudible('brandon sanderson', 15),
+        searchAudible('lord of the rings', 10),
+        searchAudible('epic fantasy', 10)
+      ]);
+      results = [...CURATED_AUDIOBOOKS, ...brandon, ...tolkien, ...wheel];
+    } else if (category === 'selfhelp') {
+      const [habits, mindset] = await Promise.all([
+        searchAudible('atomic habits self improvement', 15),
+        searchAudible('psychology mindset', 15)
+      ]);
+      results = [...habits, ...mindset];
     } else if (category === 'business') {
-      filtered = CURATED_AUDIOBOOKS.filter(b => b.genre === 'Business' || b.genre === 'Strategy');
+      const [wealth, business] = await Promise.all([
+        searchAudible('wealth investing strategy', 15),
+        searchAudible('entrepreneurship business leadership', 15)
+      ]);
+      results = [...wealth, ...business];
+    } else {
+      // Default 'popular'
+      const [trending, ga] = await Promise.all([
+        searchAudible('bestselling audiobooks', 18),
+        searchAudible('dramatized adaptation', 12)
+      ]);
+      results = [...CURATED_AUDIOBOOKS, ...trending, ...ga];
     }
 
-    setCache(cacheKey, filtered, 1000 * 60 * 60);
-    res.json(filtered);
+    // Deduplicate by ID / title
+    const unique = [];
+    const seen = new Set();
+    for (const b of results) {
+      const key = (b.title || '').toLowerCase().trim();
+      if (!seen.has(key) && b.title) {
+        seen.add(key);
+        unique.push(b);
+      }
+    }
+
+    setCache(cacheKey, unique, 1000 * 60 * 60);
+    res.json(unique);
   } catch (err) {
     console.error('Audiobooks popular error:', err);
     res.json(CURATED_AUDIOBOOKS);
@@ -4284,7 +4050,7 @@ app.get('/api/audiobooks/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json([]);
 
-  const cacheKey = `audiobooks_search_v3_${q.toLowerCase()}`;
+  const cacheKey = `audiobooks_search_v5_${q.toLowerCase()}`;
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
@@ -4346,96 +4112,96 @@ app.get('/api/audiobooks/search', async (req, res) => {
     );
     results.push(...curatedMatches);
 
-    const intent = analyzeSearchIntent(q, 'audiobooks');
-    const queriesToRun = intent.candidateQueries.slice(0, 2);
-
-    // 2. Parallel fetch across YouTube & Internet Archive
-    const fetchPromises = [];
-
-    for (const qTerm of queriesToRun) {
-      // YouTube Full Audiobooks
-      fetchPromises.push(
-        safeFetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(qTerm + ' full audiobook')}`, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' }
+    // 2. Parallel fetch across Audible API, Archive.org, and YouTube
+    const [audibleResults, archiveResults, ytResults] = await Promise.allSettled([
+      searchAudible(q, 25),
+      safeFetch(
+        `https://archive.org/advancedsearch.php?q=(${encodeURIComponent(q)})+AND+mediatype:(audio)&fl[]=identifier,title,creator,description,downloads&sort[]=downloads+desc&rows=15&output=json`
+      )
+        .then(r => r.json())
+        .then(aData => {
+          const found = [];
+          if (aData?.response?.docs) {
+            aData.response.docs.forEach(d => {
+              if (d.identifier && d.title) {
+                found.push({
+                  id: `arch_audio_${d.identifier}`,
+                  title: d.title,
+                  author: d.creator || 'Audiobook Author',
+                  narrator: d.creator || 'Narrator',
+                  duration: 'Full Audio',
+                  cover: `https://archive.org/services/img/${d.identifier}`,
+                  audioUrl: `https://archive.org/download/${d.identifier}`,
+                  genre: 'Audio Archive'
+                });
+              }
+            });
+          }
+          return found;
         })
-          .then(r => r.text())
-          .then(html => {
-            const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
-            const found = [];
-            if (match) {
-              const data = JSON.parse(match[1]);
-              const contents =
-                data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+        .catch(() => []),
+      safeFetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(q + ' audiobook full')}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' }
+      })
+        .then(r => r.text())
+        .then(html => {
+          const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+          const found = [];
+          if (match) {
+            const data = JSON.parse(match[1]);
+            const contents =
+              data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
 
-              contents.forEach(item => {
-                const v = item.videoRenderer;
-                if (v && v.videoId) {
-                  const rawTitle = v.title?.runs?.[0]?.text || 'Audiobook';
-                  const author = v.ownerText?.runs?.[0]?.text || 'Audiobook Narrator';
-                  const duration = v.lengthText?.simpleText || 'Full Length';
-                  const thumbnail = v.thumbnail?.thumbnails?.slice(-1)[0]?.url;
+            contents.forEach(item => {
+              const v = item.videoRenderer;
+              if (v && v.videoId) {
+                const rawTitle = v.title?.runs?.[0]?.text || 'Audiobook';
+                const author = v.ownerText?.runs?.[0]?.text || 'Audiobook Narrator';
+                const duration = v.lengthText?.simpleText || 'Full Length';
+                const thumbnail = v.thumbnail?.thumbnails?.slice(-1)[0]?.url;
 
-                  found.push({
-                    id: `yt_${v.videoId}`,
-                    title: rawTitle.replace(/\|.*$/g, '').replace(/\[.*\]/g, '').trim(),
-                    author,
-                    narrator: author,
-                    duration,
-                    cover: thumbnail,
-                    youtubeId: v.videoId,
-                    genre: 'Audiobook'
-                  });
-                }
-              });
-            }
-            return found;
-          })
-          .catch(() => [])
-      );
+                found.push({
+                  id: `yt_${v.videoId}`,
+                  title: rawTitle.replace(/\|.*$/g, '').replace(/\[.*\]/g, '').trim(),
+                  author,
+                  narrator: author,
+                  duration,
+                  cover: thumbnail,
+                  youtubeId: v.videoId,
+                  genre: 'Audiobook Stream'
+                });
+              }
+            });
+          }
+          return found;
+        })
+        .catch(() => [])
+    ]);
 
-      // Internet Archive Audio
-      fetchPromises.push(
-        safeFetch(
-          `https://archive.org/advancedsearch.php?q=(${encodeURIComponent(qTerm)})+AND+mediatype:(audio)&fl[]=identifier,title,creator,description,downloads&sort[]=downloads+desc&rows=10&output=json`
-        )
-          .then(r => r.json())
-          .then(aData => {
-            const found = [];
-            if (aData?.response?.docs) {
-              aData.response.docs.forEach(d => {
-                if (d.identifier && d.title) {
-                  found.push({
-                    id: `arch_audio_${d.identifier}`,
-                    title: d.title,
-                    author: d.creator || 'Audiobook Author',
-                    narrator: d.creator || 'Narrator',
-                    duration: 'Full Audio',
-                    cover: `https://archive.org/services/img/${d.identifier}`,
-                    audioUrl: `https://archive.org/download/${d.identifier}`,
-                    genre: 'Audio Archive'
-                  });
-                }
-              });
-            }
-            return found;
-          })
-          .catch(() => [])
-      );
+    if (audibleResults.status === 'fulfilled' && Array.isArray(audibleResults.value)) {
+      results.push(...audibleResults.value);
+    }
+    if (archiveResults.status === 'fulfilled' && Array.isArray(archiveResults.value)) {
+      results.push(...archiveResults.value);
+    }
+    if (ytResults.status === 'fulfilled' && Array.isArray(ytResults.value)) {
+      results.push(...ytResults.value);
     }
 
-    const settled = await Promise.allSettled(fetchPromises);
-    for (const resItem of settled) {
-      if (resItem.status === 'fulfilled' && Array.isArray(resItem.value)) {
-        for (const item of resItem.value) {
-          if (item?.title && !results.some(r => r.id === item.id || (item.youtubeId && r.youtubeId === item.youtubeId))) {
-            results.push(item);
-          }
-        }
+    // Deduplicate
+    const unique = [];
+    const seen = new Set();
+    for (const item of results) {
+      if (!item?.title) continue;
+      const key = item.id || item.title.toLowerCase().trim();
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(item);
       }
     }
 
     const isDirectUrl = q.includes('http://') || q.includes('https://') || q.includes('archive.org');
-    const ranked = isDirectUrl ? results : scoreAndRankResults(results, q);
+    const ranked = isDirectUrl ? unique : scoreAndRankResults(unique, q);
     setCache(cacheKey, ranked, 1000 * 60 * 30);
     res.json(ranked);
   } catch (err) {
@@ -4443,7 +4209,6 @@ app.get('/api/audiobooks/search', async (req, res) => {
     res.status(500).json({ error: 'Audiobook search failed', message: err.message });
   }
 });
-
 // -------------------------------------------------------------
 // 10. LIVE SPORTS FIXTURES & STREAMING ENGINE
 // -------------------------------------------------------------
