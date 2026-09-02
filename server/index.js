@@ -139,6 +139,7 @@ async function safeFetch(url, options = {}) {
       res.on('end', () => {
         const buffer = Buffer.concat(data);
         resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
           status: res.statusCode,
           headers: res.headers,
           text: () => Promise.resolve(buffer.toString('utf8')),
@@ -3862,6 +3863,42 @@ app.post('/api/ebooks/lookup/ai-explain', async (req, res) => {
 // -------------------------------------------------------------
 const CURATED_AUDIOBOOKS = [
   {
+    id: 'ab_lotr_fellowship_phil_dragash',
+    title: 'The Fellowship of the Ring: Soundscape by Phil Dragash',
+    author: 'J.R.R. Tolkien',
+    narrator: 'Phil Dragash (Full Cinematic Soundscape & Music)',
+    duration: '19h 40m',
+    durationSeconds: 70800,
+    cover: 'https://archive.org/services/img/the-fellowship-of-the-ring_soundscape-by-phil-dragash',
+    audioUrl: 'https://archive.org/download/the-fellowship-of-the-ring_soundscape-by-phil-dragash/01%20-%20A%20Long-Expected%20Party.mp3',
+    description: 'The legendary unofficial unabridged cinematic audio drama of The Fellowship of the Ring produced by Phil Dragash, featuring full sound effects, atmospheric ambient audio, and Howard Shore\'s iconic score.',
+    genre: 'Full Cast & Dramatized'
+  },
+  {
+    id: 'ab_lotr_two_towers_phil_dragash',
+    title: 'The Two Towers: Soundscape by Phil Dragash',
+    author: 'J.R.R. Tolkien',
+    narrator: 'Phil Dragash (Full Cinematic Soundscape & Music)',
+    duration: '17h 25m',
+    durationSeconds: 62700,
+    cover: 'https://archive.org/services/img/the-two-towers_soundscape-by-phil-dragash',
+    audioUrl: 'https://archive.org/download/the-two-towers_soundscape-by-phil-dragash/01%20-%20The%20Departure%20of%20Boromir.mp3',
+    description: 'The complete cinematic soundscape audiobook of The Two Towers by Phil Dragash, incorporating full voice acting, immersive sound design, and full orchestra score.',
+    genre: 'Full Cast & Dramatized'
+  },
+  {
+    id: 'ab_lotr_return_king_phil_dragash',
+    title: 'The Return of the King: Soundscape by Phil Dragash',
+    author: 'J.R.R. Tolkien',
+    narrator: 'Phil Dragash (Full Cinematic Soundscape & Music)',
+    duration: '18h 15m',
+    durationSeconds: 65700,
+    cover: 'https://archive.org/services/img/the-return-of-the-king_soundscape-by-phil-dragash',
+    audioUrl: 'https://archive.org/download/the-return-of-the-king_soundscape-by-phil-dragash/01%20-%20Minas%20Tirith.mp3',
+    description: 'The climax of J.R.R. Tolkien\'s masterwork in Phil Dragash\'s acclaimed soundscape dramatization.',
+    genre: 'Full Cast & Dramatized'
+  },
+  {
     id: 'ab_dune_full_cast',
     title: 'Dune: Full Cast Audio Drama',
     author: 'Frank Herbert',
@@ -4014,6 +4051,55 @@ app.get('/api/audiobooks/search', async (req, res) => {
   try {
     const results = [];
 
+    // 0. Direct Archive.org URL or Identifier Detection (e.g. Phil Dragash LOTR)
+    if (q.includes('archive.org/details/') || q.includes('archive.org/download/') || (q.startsWith('the-') && q.includes('soundscape'))) {
+      let identifier = q.trim();
+      const urlMatch = q.match(/archive\.org\/(?:details|download)\/([^/?#]+)/i);
+      if (urlMatch) {
+        identifier = urlMatch[1];
+      }
+      try {
+        const metaRes = await safeFetch(`https://archive.org/metadata/${encodeURIComponent(identifier)}`);
+        if (metaRes.ok) {
+          const metaData = await metaRes.json();
+          if (metaData?.metadata) {
+            const m = metaData.metadata;
+            const mp3Files = (metaData.files || []).filter(f => f.name && f.name.toLowerCase().endsWith('.mp3'));
+            const firstMp3 = mp3Files[0];
+            const directAudio = firstMp3 ? `https://archive.org/download/${identifier}/${encodeURIComponent(firstMp3.name)}` : `https://archive.org/download/${identifier}`;
+            const totalDurationSec = mp3Files.reduce((acc, f) => acc + (parseFloat(f.length) || 0), 0);
+            const hours = Math.floor(totalDurationSec / 3600);
+            const mins = Math.floor((totalDurationSec % 3600) / 60);
+            const durationFormatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+            const chapters = mp3Files.map((f, i) => ({
+              id: `ch_${i + 1}`,
+              title: f.title || f.name.replace(/\.mp3$/i, '').replace(/^[0-9]+[_\s-]+/i, ''),
+              startTime: 0,
+              audioUrl: `https://archive.org/download/${identifier}/${encodeURIComponent(f.name)}`
+            }));
+
+            const directBook = {
+              id: `arch_audio_${identifier}`,
+              title: m.title || identifier,
+              author: m.creator || 'Audio Creator',
+              narrator: m.creator || 'Narrator',
+              duration: durationFormatted || 'Full Audio',
+              durationSeconds: Math.round(totalDurationSec) || 3600,
+              cover: `https://archive.org/services/img/${identifier}`,
+              audioUrl: directAudio,
+              description: m.description ? String(m.description).replace(/<[^>]*>/g, '').slice(0, 300) : 'Full audio recording on Internet Archive.',
+              genre: 'Audio Archive',
+              chapters: chapters.length > 1 ? chapters : undefined
+            };
+            results.unshift(directBook);
+          }
+        }
+      } catch (err) {
+        console.warn('Direct Archive.org resolve error:', err);
+      }
+    }
+
     // 1. Instant match in curated
     const curatedMatches = CURATED_AUDIOBOOKS.filter(
       b => b.title.toLowerCase().includes(q.toLowerCase()) || b.author.toLowerCase().includes(q.toLowerCase())
@@ -4108,7 +4194,8 @@ app.get('/api/audiobooks/search', async (req, res) => {
       }
     }
 
-    const ranked = scoreAndRankResults(results, q);
+    const isDirectUrl = q.includes('http://') || q.includes('https://') || q.includes('archive.org');
+    const ranked = isDirectUrl ? results : scoreAndRankResults(results, q);
     setCache(cacheKey, ranked, 1000 * 60 * 30);
     res.json(ranked);
   } catch (err) {
