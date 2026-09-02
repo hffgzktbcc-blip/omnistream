@@ -536,6 +536,14 @@ const AppContent: React.FC = () => {
         onOpenStats={() => setShowStatsModal(true)}
         onOpenCommandPalette={() => setShowCommandPalette(true)}
         onOpenAndroidTV={() => setShowAndroidTVModal(true)}
+        onSelectComic={(c) => setSelectedComic(c)}
+        onSelectAnime={(a) => setSelectedAnime(a)}
+        onSelectMedia={(m) => setSelectedMedia(m)}
+        onSelectSportsMatch={(m) => setSelectedSportsMatch(m)}
+        onSelectAudiobook={(ab) => {
+          setActiveAudiobookPlayer(ab);
+          playAudiobook(ab);
+        }}
       />
 
       {/* Main Content Area */}

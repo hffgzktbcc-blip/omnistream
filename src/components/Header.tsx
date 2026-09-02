@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Home,
   BookOpen,
@@ -14,10 +14,21 @@ import {
   Rss,
   Flame,
   Command,
-  Download
+  Download,
+  Play,
+  Star,
+  Radio,
+  Loader2,
+  ChevronRight
 } from 'lucide-react';
 import { statsStorage } from '../services/statsStorage';
 import { useToast } from '../context/ToastContext';
+import { api } from '../services/api';
+import { Comic } from '../types/comic';
+import { Anime } from '../types/anime';
+import { MediaItem } from '../types/media';
+import { SportsMatch } from '../types/sports';
+import { Audiobook } from '../types/audiobook';
 
 interface HeaderProps {
   activeTab: 'home' | 'browse' | 'anime' | 'media' | 'audiobooks' | 'sports' | 'rss' | 'library';
@@ -32,6 +43,11 @@ interface HeaderProps {
   onOpenStats: () => void;
   onOpenCommandPalette: () => void;
   onOpenAndroidTV: () => void;
+  onSelectComic?: (comic: Comic) => void;
+  onSelectAnime?: (anime: Anime) => void;
+  onSelectMedia?: (media: MediaItem) => void;
+  onSelectSportsMatch?: (match: SportsMatch) => void;
+  onSelectAudiobook?: (book: Audiobook) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -44,11 +60,32 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSample,
   onOpenStats,
   onOpenCommandPalette,
-  onOpenAndroidTV
+  onOpenAndroidTV,
+  onSelectComic,
+  onSelectAnime,
+  onSelectMedia,
+  onSelectSportsMatch,
+  onSelectAudiobook
 }) => {
   const [localSearch, setLocalSearch] = useState(searchQuery);
   const [canInstall, setCanInstall] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showLiveDropdown, setShowLiveDropdown] = useState(false);
+  const [liveSearching, setLiveSearching] = useState(false);
+  const [liveResults, setLiveResults] = useState<{
+    media: MediaItem[];
+    anime: Anime[];
+    comics: Comic[];
+    sports: SportsMatch[];
+  }>({
+    media: [],
+    anime: [],
+    comics: [],
+    sports: []
+  });
+
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<any>(null);
   const stats = statsStorage.getStats();
   const { showInfo } = useToast();
 
@@ -62,6 +99,56 @@ export const Header: React.FC<HeaderProps> = ({
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
+
+  // Close live search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowLiveDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Live real-time search debouncing
+  useEffect(() => {
+    const q = localSearch.trim();
+    if (!q || q.length < 2) {
+      setLiveResults({ media: [], anime: [], comics: [], sports: [] });
+      setLiveSearching(false);
+      return;
+    }
+
+    setLiveSearching(true);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const [mediaRes, animeRes, comicsRes, sportsRes] = await Promise.allSettled([
+          api.searchMedia(q),
+          api.searchAnime(q),
+          api.searchComics(q),
+          api.searchSports(q)
+        ]);
+
+        setLiveResults({
+          media: mediaRes.status === 'fulfilled' ? mediaRes.value.slice(0, 3) : [],
+          anime: animeRes.status === 'fulfilled' ? animeRes.value.slice(0, 3) : [],
+          comics: comicsRes.status === 'fulfilled' ? comicsRes.value.slice(0, 3) : [],
+          sports: sportsRes.status === 'fulfilled' ? sportsRes.value.slice(0, 2) : []
+        });
+      } catch (err) {
+        console.warn('Live search error:', err);
+      } finally {
+        setLiveSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [localSearch]);
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
@@ -78,11 +165,13 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowLiveDropdown(false);
     onSearch(localSearch);
   };
 
   const handleClearSearch = () => {
     setLocalSearch('');
+    setShowLiveDropdown(false);
     onSearch('');
   };
 
@@ -105,18 +194,24 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const hasLiveResults =
+    liveResults.media.length > 0 ||
+    liveResults.anime.length > 0 ||
+    liveResults.comics.length > 0 ||
+    liveResults.sports.length > 0;
+
   return (
-    <header className="sticky top-0 z-40 bg-[#0B0F17]/95 backdrop-blur-md border-b border-slate-800/80 px-3 lg:px-6 py-3 transition-all">
+    <header className="sticky top-0 z-40 bg-[#0B0F17]/95 backdrop-blur-md border-b border-slate-800/80 px-3 lg:px-6 py-2.5 transition-all">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
         {/* Brand Logo */}
         <div
-          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-shrink-0"
+          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-shrink-0 group"
           onClick={() => {
             setActiveTab('home');
             handleClearSearch();
           }}
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white font-bold">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white font-bold group-hover:scale-105 transition-transform">
             <Film className="w-4 h-4" />
           </div>
           <div>
@@ -131,26 +226,220 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Global Instant Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md relative hidden md:block">
-          <input
-            type="text"
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder={getSearchPlaceholder()}
-            className="w-full bg-slate-900/80 border border-slate-800 rounded-xl py-2 pl-9 pr-8 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all font-sans"
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-          {localSearch && (
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+        {/* Global Instant Search Bar & Live Dropdown */}
+        <div ref={searchContainerRef} className="flex-1 max-w-md relative hidden md:block">
+          <form onSubmit={handleSearchSubmit} className="relative">
+            <input
+              type="text"
+              value={localSearch}
+              onFocus={() => setShowLiveDropdown(true)}
+              onChange={(e) => {
+                setLocalSearch(e.target.value);
+                setShowLiveDropdown(true);
+              }}
+              placeholder={getSearchPlaceholder()}
+              className="w-full bg-slate-900/90 border border-slate-800 focus:border-blue-500 rounded-xl py-2 pl-9 pr-8 text-xs text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner font-sans"
+            />
+            {liveSearching ? (
+              <Loader2 className="w-4 h-4 text-blue-400 absolute left-3 top-2.5 animate-spin" />
+            ) : (
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+            )}
+            {localSearch && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </form>
+
+          {/* Dynamic Live Floating Quick Search Overlay */}
+          {showLiveDropdown && localSearch.trim().length >= 2 && (
+            <div className="absolute left-0 right-0 top-full mt-2 bg-[#00122e]/95 backdrop-blur-xl border border-blue-900/80 rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in max-h-[75vh] overflow-y-auto">
+              {liveSearching && !hasLiveResults ? (
+                <div className="p-6 text-center text-xs text-blue-300 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                  <span>Searching movies, anime, manga, sports across 1,380 sources...</span>
+                </div>
+              ) : hasLiveResults ? (
+                <div className="p-3 space-y-3.5">
+                  {/* Movies & TV Results */}
+                  {liveResults.media.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between px-2 text-[10px] font-black text-rose-400 uppercase tracking-wider">
+                        <span>🎬 Movies & Series</span>
+                      </div>
+                      {liveResults.media.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setShowLiveDropdown(false);
+                            if (onSelectMedia) onSelectMedia(item);
+                            else {
+                              setActiveTab('media');
+                              onSearch(item.title);
+                            }
+                          }}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
+                        >
+                          <img
+                            src={item.poster || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=200'}
+                            alt={item.title}
+                            className="w-8 h-11 object-cover rounded-lg flex-shrink-0 bg-slate-900"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
+                              {item.title}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[10px] text-blue-200/70 font-mono mt-0.5">
+                              <span>{item.type?.toUpperCase() || 'MOVIE'}</span>
+                              <span>•</span>
+                              <span>{item.year || '2026'}</span>
+                              {item.rating && (
+                                <span className="flex items-center gap-0.5 text-amber-400 font-bold">
+                                  <Star className="w-2.5 h-2.5 fill-current" /> {item.rating}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white flex-shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Anime Results */}
+                  {liveResults.anime.length > 0 && (
+                    <div className="space-y-1.5 border-t border-blue-900/50 pt-2">
+                      <div className="flex items-center justify-between px-2 text-[10px] font-black text-purple-400 uppercase tracking-wider">
+                        <span>⛩️ Anime Simulcasts</span>
+                      </div>
+                      {liveResults.anime.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setShowLiveDropdown(false);
+                            if (onSelectAnime) onSelectAnime(item);
+                            else {
+                              setActiveTab('anime');
+                              onSearch(item.title);
+                            }
+                          }}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
+                        >
+                          <img
+                            src={item.coverImage || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200'}
+                            alt={item.title}
+                            className="w-8 h-11 object-cover rounded-lg flex-shrink-0 bg-slate-900"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
+                              {item.title}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[10px] text-blue-200/70 font-mono mt-0.5">
+                              <span>{item.episodes ? `${item.episodes} EPS` : 'ONGOING'}</span>
+                              <span>•</span>
+                              <span>{item.status || 'Simulcast'}</span>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white flex-shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Manga / Comics Results */}
+                  {liveResults.comics.length > 0 && (
+                    <div className="space-y-1.5 border-t border-blue-900/50 pt-2">
+                      <div className="flex items-center justify-between px-2 text-[10px] font-black text-sky-400 uppercase tracking-wider">
+                        <span>📖 Manga & Comics</span>
+                      </div>
+                      {liveResults.comics.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setShowLiveDropdown(false);
+                            if (onSelectComic) onSelectComic(item);
+                            else {
+                              setActiveTab('browse');
+                              onSearch(item.title);
+                            }
+                          }}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
+                        >
+                          <img
+                            src={item.coverImage || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200'}
+                            alt={item.title}
+                            className="w-8 h-11 object-cover rounded-lg flex-shrink-0 bg-slate-900"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
+                              {item.title}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[10px] text-blue-200/70 font-mono mt-0.5">
+                              <span>{item.author || 'MangaDex / Mihon'}</span>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white flex-shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Live Sports Results */}
+                  {liveResults.sports.length > 0 && (
+                    <div className="space-y-1.5 border-t border-blue-900/50 pt-2">
+                      <div className="flex items-center justify-between px-2 text-[10px] font-black text-amber-400 uppercase tracking-wider">
+                        <span>🏆 SuperSport Live Matches</span>
+                      </div>
+                      {liveResults.sports.map((match) => (
+                        <div
+                          key={match.id}
+                          onClick={() => {
+                            setShowLiveDropdown(false);
+                            if (onSelectSportsMatch) onSelectSportsMatch(match);
+                            else {
+                              setActiveTab('sports');
+                              onSearch(match.homeTeam?.name || '');
+                            }
+                          }}
+                          className="flex items-center justify-between p-2 rounded-xl hover:bg-blue-950/80 cursor-pointer transition-colors group"
+                        >
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
+                              {match.homeTeam?.name} vs {match.awayTeam?.name}
+                            </h4>
+                            <span className="text-[10px] text-blue-200/70 font-mono">
+                              {match.league} • {match.statusText || match.status}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-900 text-amber-300 flex-shrink-0">
+                            Watch
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleSearchSubmit}
+                    className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>View all matching results for "{localSearch}"</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="p-6 text-center text-xs text-blue-300">
+                  No matching titles found. Press Enter to perform a global multi-scraper search.
+                </div>
+              )}
+            </div>
           )}
-        </form>
+        </div>
 
         {/* Primary Navigation Hubs */}
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1">
@@ -178,7 +467,7 @@ export const Header: React.FC<HeaderProps> = ({
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'media'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-1 ring-indigo-400'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30 ring-1 ring-rose-400'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
