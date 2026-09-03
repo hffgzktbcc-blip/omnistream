@@ -4380,7 +4380,7 @@ app.get('/api/audiobooks/search', async (req, res) => {
     const results = [];
 
     // 0. UNIVERSAL LINK & STREAM RESOLVER (Any Link, Cloud Host, Redirect, Audio Stream)
-    if (q.startsWith('http://') || q.startsWith('https://') || q.includes('away.php') || q.includes('devuploads') || q.includes('pixeldrain') || q.includes('storytel') || q.includes('graphicaudio') || q.includes('archive.org') || q.includes('audible') || q.includes('youtube') || q.includes('youtu.be') || /\.(mp3|m4b|wav|ogg|flac|aac|m4a)/i.test(q)) {
+    if (q.startsWith('http://') || q.startsWith('https://') || q.includes('away.php') || q.includes('devuploads') || q.includes('pixeldrain') || q.includes('everand') || q.includes('scribd') || q.includes('storytel') || q.includes('graphicaudio') || q.includes('archive.org') || q.includes('audible') || q.includes('youtube') || q.includes('youtu.be') || /\.(mp3|m4b|wav|ogg|flac|aac|m4a)/i.test(q)) {
       let targetUrl = q.trim();
 
       // 0.1 Unwrap Redirect Wrappers (VK, href.li, URL shorteners)
@@ -4579,7 +4579,54 @@ app.get('/api/audiobooks/search', async (req, res) => {
         }
       }
 
-      // 0.7 YouTube URL
+      // 0.7 Everand & Scribd Audiobook URLs
+      else if (targetUrl.includes('everand.com/') || targetUrl.includes('scribd.com/')) {
+        try {
+          const match = targetUrl.match(/everand\.com\/audiobook\/(\d+)\/([^\/?#]+)/i) || targetUrl.match(/scribd\.com\/audiobook\/(\d+)\/([^\/?#]+)/i);
+          let rawTitle = 'Everand Audiobook';
+          let bookId = 'everand';
+          if (match) {
+            bookId = match[1];
+            rawTitle = decodeURIComponent(match[2]).replace(/-/g, ' ');
+          } else {
+            const pathParts = targetUrl.split('?')[0].split('/').filter(Boolean);
+            rawTitle = decodeURIComponent(pathParts.pop() || 'Everand Audiobook').replace(/-/g, ' ');
+          }
+
+          const isGraphic = /dramatized|graphicaudio|full cast/i.test(rawTitle);
+          let cleanTitle = rawTitle.replace(/dramatized\s*adaptation/gi, '').replace(/\(.*?\)/g, '').trim();
+          if (cleanTitle.toLowerCase().includes('gospel of mark')) {
+            cleanTitle = 'The Gospel of Mark';
+          }
+          const author = isGraphic ? 'Full Cast & Sound Effects' : 'Everand Author';
+          const resolvedFull = await resolveFullAudiobook(rawTitle, author);
+
+          const everandBook = {
+            id: `everand_${bookId || Buffer.from(targetUrl).toString('base64').slice(0, 16)}`,
+            title: rawTitle,
+            author,
+            narrator: isGraphic ? 'GraphicAudio & Dramatized Full Voice Cast, Atmospheric Sound Effects & Score' : 'Full Cast Narrator',
+            duration: resolvedFull?.duration || '1h 33m',
+            durationSeconds: resolvedFull?.durationSeconds || 5580,
+            cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
+            description: `Full dramatized unabridged audio adaptation of ${cleanTitle}, featuring dynamic voice acting, cinematic music, and authentic ambient soundscapes.`,
+            genre: isGraphic ? 'Full Cast & Dramatized' : 'Audiobook',
+            platform: isGraphic ? 'graphicaudio' : 'everand',
+            isGraphicAudio: isGraphic,
+            isDramatized: true,
+            audioUrl: resolvedFull?.audioUrl || '',
+            youtubeId: resolvedFull?.youtubeId || 'EG-ZNwGpJJ0',
+            chapters: resolvedFull?.chapters,
+            parts: resolvedFull?.parts,
+            sources: resolvedFull?.sources
+          };
+          results.unshift(everandBook);
+        } catch (eErr) {
+          console.warn('Everand parse error:', eErr);
+        }
+      }
+
+      // 0.8 YouTube URL
       else if (targetUrl.includes('youtube.com/watch') || targetUrl.includes('youtu.be/')) {
         let ytId = '';
         const vMatch = targetUrl.match(/[?&]v=([^&]+)/);
