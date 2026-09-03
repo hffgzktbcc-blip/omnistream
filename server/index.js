@@ -3965,6 +3965,54 @@ async function searchAudible(query, limit = 20) {
   }
 }
 
+// Helper for resolving true book metadata (author, 1200x1200px cover, description) from Apple Books / Open Library
+async function lookupRealBookMetadata(rawTitle, fallbackAuthor = '') {
+  const clean = (rawTitle || '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/dramatized\s*adaptation/gi, '')
+    .replace(/graphicaudio/gi, '')
+    .replace(/unabridged/gi, '')
+    .replace(/audiobook/gi, '')
+    .replace(/a movie in your mind/gi, '')
+    .replace(/[-_]/g, ' ')
+    .trim();
+
+  try {
+    const res = await safeFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(clean)}&entity=ebook&limit=1`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.results && data.results[0]) {
+        const r = data.results[0];
+        return {
+          title: r.trackName || clean,
+          author: r.artistName || fallbackAuthor,
+          cover: r.artworkUrl100 ? r.artworkUrl100.replace(/\/\d+x\d+bb\.jpg$/, '/1200x1200bb.jpg') : null,
+          description: r.description ? r.description.replace(/<[^>]+>/g, '').trim() : null
+        };
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const olRes = await safeFetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(clean)}&limit=1&fields=title,author_name,cover_i`);
+    if (olRes.ok) {
+      const olData = await olRes.json();
+      if (olData.docs && olData.docs[0]) {
+        const d = olData.docs[0];
+        return {
+          title: d.title || clean,
+          author: d.author_name?.[0] || fallbackAuthor,
+          cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : null,
+          description: null
+        };
+      }
+    }
+  } catch (e) {}
+
+  return { title: clean, author: fallbackAuthor, cover: null, description: null };
+}
+
 // Helper for dynamically locating verified full unabridged audio streams and multi-part plays
 async function resolveFullAudiobook(title, author = '') {
   const cleanTitle = (title || '')
@@ -3976,7 +4024,13 @@ async function resolveFullAudiobook(title, author = '') {
     .replace(/GraphicAudio/gi, '')
     .replace(/A Movie in Your Mind/gi, '')
     .trim();
-  const cleanAuthor = (author || '').replace(/Narrator.*/i, '').trim();
+
+  // Filter out placeholder noise authors
+  let cleanAuthor = (author || '').replace(/Narrator.*/i, '').trim();
+  if (/full cast|sound effects|library audiobook|everand author|storytel author|author/i.test(cleanAuthor)) {
+    cleanAuthor = '';
+  }
+
   const searchQ = cleanTitle + (cleanAuthor ? ' ' + cleanAuthor.split(',')[0].trim() : '');
 
   const sources = [];
@@ -4389,7 +4443,7 @@ app.get('/api/audiobooks/transcript', async (req, res) => {
   if (cached) return res.json(cached);
 
   try {
-    const { YoutubeTranscript } = require('youtube-transcript');
+    const { YoutubeTranscript } = await import('youtube-transcript');
     const raw = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' }).catch(() =>
       YoutubeTranscript.fetchTranscript(videoId)
     );
@@ -4681,39 +4735,39 @@ app.get('/api/audiobooks/search', async (req, res) => {
       else if (targetUrl.includes('everand.com/') || targetUrl.includes('scribd.com/')) {
         try {
           const match = targetUrl.match(/everand\.com\/audiobook\/(\d+)\/([^\/?#]+)/i) || targetUrl.match(/scribd\.com\/audiobook\/(\d+)\/([^\/?#]+)/i);
-          let rawTitle = 'Everand Audiobook';
+          let rawSlug = 'Everand Audiobook';
           let bookId = 'everand';
           if (match) {
             bookId = match[1];
-            rawTitle = decodeURIComponent(match[2]).replace(/-/g, ' ');
+            rawSlug = decodeURIComponent(match[2]).replace(/-/g, ' ');
           } else {
             const pathParts = targetUrl.split('?')[0].split('/').filter(Boolean);
-            rawTitle = decodeURIComponent(pathParts.pop() || 'Everand Audiobook').replace(/-/g, ' ');
+            rawSlug = decodeURIComponent(pathParts.pop() || 'Everand Audiobook').replace(/-/g, ' ');
           }
 
-          const isGraphic = /dramatized|graphicaudio|full cast/i.test(rawTitle);
-          let cleanTitle = rawTitle.replace(/dramatized\s*adaptation/gi, '').replace(/\(.*?\)/g, '').trim();
-          if (cleanTitle.toLowerCase().includes('gospel of mark')) {
-            cleanTitle = 'The Gospel of Mark';
-          }
-          const author = isGraphic ? 'Full Cast & Sound Effects' : 'Everand Author';
-          const resolvedFull = await resolveFullAudiobook(rawTitle, author);
+          const isGraphic = /dramatized|graphicaudio|full cast/i.test(rawSlug);
+          // Look up genuine book metadata (author, 1200x1200px jacket art, true title)
+          const meta = await lookupRealBookMetadata(rawSlug, isGraphic ? 'Full Voice Cast' : 'Everand');
+          const realTitle = meta.title || rawSlug;
+          const realAuthor = meta.author || '';
+
+          const resolvedFull = await resolveFullAudiobook(realTitle, realAuthor);
 
           const everandBook = {
             id: `everand_${bookId || Buffer.from(targetUrl).toString('base64').slice(0, 16)}`,
-            title: rawTitle,
-            author,
-            narrator: isGraphic ? 'GraphicAudio & Dramatized Full Voice Cast, Atmospheric Sound Effects & Score' : 'Full Cast Narrator',
-            duration: resolvedFull?.duration || '1h 33m',
-            durationSeconds: resolvedFull?.durationSeconds || 5580,
-            cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
-            description: `Full dramatized unabridged audio adaptation of ${cleanTitle}, featuring dynamic voice acting, cinematic music, and authentic ambient soundscapes.`,
+            title: realTitle,
+            author: realAuthor || (isGraphic ? 'GraphicAudio & Full Cast' : 'Featured Author'),
+            narrator: isGraphic ? 'GraphicAudio & Dramatized Full Voice Cast, Atmospheric Sound Effects & Score' : 'Unabridged Narrator',
+            duration: resolvedFull?.duration || 'Full Audio',
+            durationSeconds: resolvedFull?.durationSeconds || 3600 * 5,
+            cover: meta.cover || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
+            description: meta.description || `Full unabridged audiobook adaptation of ${realTitle}.`,
             genre: isGraphic ? 'Full Cast & Dramatized' : 'Audiobook',
             platform: isGraphic ? 'graphicaudio' : 'everand',
             isGraphicAudio: isGraphic,
-            isDramatized: true,
+            isDramatized: isGraphic,
             audioUrl: resolvedFull?.audioUrl || '',
-            youtubeId: resolvedFull?.youtubeId || 'EG-ZNwGpJJ0',
+            youtubeId: resolvedFull?.youtubeId || '',
             chapters: resolvedFull?.chapters,
             parts: resolvedFull?.parts,
             sources: resolvedFull?.sources
@@ -4727,40 +4781,44 @@ app.get('/api/audiobooks/search', async (req, res) => {
       // 0.8 Libby & OverDrive Library URLs
       else if (targetUrl.includes('libbyapp.com/') || targetUrl.includes('overdrive.com/')) {
         try {
-          let rawTitle = 'Libby Library Audiobook';
+          let rawSlug = 'Libby Library Audiobook';
           let bookId = 'libby';
 
           // 1. Overdrive Media URL
           const odMatch = targetUrl.match(/overdrive\.com\/media\/(\d+)(?:\/([^\/?#]+))?/i);
           if (odMatch) {
             bookId = odMatch[1];
-            if (odMatch[2]) rawTitle = decodeURIComponent(odMatch[2]).replace(/-/g, ' ');
+            if (odMatch[2]) rawSlug = decodeURIComponent(odMatch[2]).replace(/-/g, ' ');
           }
 
           // 2. Libby Query URL or Title URL
           const libbyQueryMatch = targetUrl.match(/query[=:\-]([^/?&#]+)/i) || targetUrl.match(/search\.query:([^/?&#]+)/i);
           if (libbyQueryMatch) {
-            rawTitle = decodeURIComponent(libbyQueryMatch[1]).replace(/[+\-_]/g, ' ');
+            rawSlug = decodeURIComponent(libbyQueryMatch[1]).replace(/[+\-_]/g, ' ');
           }
           const libbySlugMatch = targetUrl.match(/libbyapp\.com\/(?:audiobook|book|media)\/(\d+)(?:\/([^\/?#]+))?/i);
           if (libbySlugMatch) {
             bookId = libbySlugMatch[1];
-            if (libbySlugMatch[2]) rawTitle = decodeURIComponent(libbySlugMatch[2]).replace(/-/g, ' ');
+            if (libbySlugMatch[2]) rawSlug = decodeURIComponent(libbySlugMatch[2]).replace(/-/g, ' ');
           }
 
-          const isGraphic = /dramatized|graphicaudio|full cast/i.test(rawTitle);
-          const author = isGraphic ? 'Full Cast & Sound Effects' : 'Library Audiobook Author';
-          const resolvedFull = await resolveFullAudiobook(rawTitle, author);
+          const isGraphic = /dramatized|graphicaudio|full cast/i.test(rawSlug);
+          // Look up genuine book metadata
+          const meta = await lookupRealBookMetadata(rawSlug, isGraphic ? 'Full Cast' : 'Public Library');
+          const realTitle = meta.title || rawSlug;
+          const realAuthor = meta.author || '';
+
+          const resolvedFull = await resolveFullAudiobook(realTitle, realAuthor);
 
           const libbyBook = {
             id: `libby_${bookId || Buffer.from(targetUrl).toString('base64').slice(0, 16)}`,
-            title: rawTitle,
-            author,
+            title: realTitle,
+            author: realAuthor || (isGraphic ? 'GraphicAudio Full Cast' : 'Library Author'),
             narrator: isGraphic ? 'GraphicAudio Full Cast, Sound Effects & Score' : 'Unabridged Public Library Narrator',
-            duration: resolvedFull?.duration || '8h 24m',
-            durationSeconds: resolvedFull?.durationSeconds || 30240,
-            cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
-            description: `Full unabridged library audiobook stream of ${rawTitle}, verified and resolved directly from public digital archives.`,
+            duration: resolvedFull?.duration || 'Full Audio',
+            durationSeconds: resolvedFull?.durationSeconds || 3600 * 5,
+            cover: meta.cover || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
+            description: meta.description || `Full unabridged library audiobook stream of ${realTitle}, verified and resolved directly from public digital archives.`,
             genre: isGraphic ? 'Full Cast & Dramatized' : 'Library Audiobook',
             platform: 'libby',
             isGraphicAudio: isGraphic,
