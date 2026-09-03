@@ -5,13 +5,13 @@ const config: CapacitorConfig = {
   appName: 'OmniStream',
   webDir: 'dist',
   server: {
-    androidScheme: 'http',
-    cleartext: true,
-    allowNavigation: ['*']
+    androidScheme: 'https',
+    cleartext: true
   },
-  android: {
-    allowMixedContent: true,
-    webContentsDebuggingEnabled: true
+  ios: {
+    contentInset: 'always',
+    preferredContentMode: 'mobile',
+    scheme: 'OmniStream'
   }
 };
 

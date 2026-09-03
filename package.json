@@ -10,9 +10,15 @@
     "server": "node --watch server/index.js",
     "build": "vite build",
     "start": "node server/index.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ios:build": "npm run build && npx cap sync ios",
+    "ios:open": "npx cap open ios",
+    "ios:sync": "npx cap sync ios"
   },
   "dependencies": {
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/ios": "^8.5.1",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
