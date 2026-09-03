@@ -84,7 +84,7 @@ const AppContent: React.FC = () => {
   const loadingAbortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { activeMedia, playAudiobook, isMinimized, closePlayer } = usePlayback();
+  const { activeMedia, isMinimized, closePlayer } = usePlayback();
   const { showError, showSuccess, showWarning, showInfo } = useToast();
 
   // Active Reader State (Comics)
@@ -114,7 +114,6 @@ const AppContent: React.FC = () => {
     loadComics('all');
     loadAnime('trending');
     loadMedia('trending');
-    loadAudiobooks('popular');
     loadSports('all');
   }, []);
 
@@ -401,23 +400,8 @@ const AppContent: React.FC = () => {
       } catch (err: any) {
         showError(err.message || 'Failed to parse comic archive.');
       }
-    } else if (['mp3', 'm4b', 'm4a', 'aac'].includes(ext)) {
-      const audioUrl = URL.createObjectURL(file);
-      const customAudio: Audiobook = {
-        id: `audio_${Date.now()}`,
-        title: file.name.replace(/\.[^/.]+$/, ''),
-        author: 'Local Audiobook File',
-        narrator: 'Local Audio',
-        cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
-        audioUrl,
-        isLocalFile: true
-      };
-      setLocalAudiobooks((prev) => [customAudio, ...prev]);
-      setActiveAudiobookPlayer(customAudio);
-      playAudiobook(customAudio);
-      showSuccess(`Playing "${customAudio.title}"!`);
     } else {
-      showInfo('File accepted. Supported: .cbz, .zip, .cbr, .mp3, .m4b, .m4a', 'Drop Received');
+      showInfo('File accepted. Supported: .cbz, .zip, .cbr', 'Drop Received');
     }
   };
 
@@ -501,10 +485,6 @@ const AppContent: React.FC = () => {
         onSelectAnime={(a) => setSelectedAnime(a)}
         onSelectMedia={(m) => setSelectedMedia(m)}
         onSelectSportsMatch={(m) => setSelectedSportsMatch(m)}
-        onSelectAudiobook={(ab) => {
-          setActiveAudiobookPlayer(ab);
-          playAudiobook(ab);
-        }}
       />
 
       {/* Main Content Area */}
@@ -613,10 +593,6 @@ const AppContent: React.FC = () => {
               handleStartReading(comic, ch, pageNum || 1, panelIdx || 0);
             }}
             onOpenEBook={() => {}}
-            onOpenAudiobook={(book) => {
-              setActiveAudiobookPlayer(book);
-              playAudiobook(book);
-            }}
           />
         )}
 
