@@ -26,8 +26,13 @@ import {
   Link as LinkIcon,
   Globe,
   ExternalLink,
-  Loader2
+  Loader2,
+  Settings,
+  Zap,
+  HardDrive,
+  Server
 } from 'lucide-react';
+import { AudiobookSettingsModal } from './AudiobookSettingsModal';
 
 interface AudiobookCatalogProps {
   audiobooks: Audiobook[];
@@ -50,6 +55,20 @@ const AUDIOBOOK_PLATFORMS = [
     activeBg: 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-red-600/40 border-amber-400 ring-2 ring-amber-400/50'
   },
   {
+    id: 'abb',
+    name: '⚡ Debrid & AudiobookBay',
+    tag: 'DEBRID',
+    bg: 'bg-amber-600/20 text-amber-300 border-amber-500/40 hover:bg-amber-600 hover:text-slate-950',
+    activeBg: 'bg-amber-500 text-slate-950 shadow-amber-500/40 border-amber-400 ring-2 ring-amber-400/50'
+  },
+  {
+    id: 'local',
+    name: '📁 Local & Audiobookshelf',
+    tag: 'LOCAL',
+    bg: 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600 hover:text-white',
+    activeBg: 'bg-emerald-600 text-white shadow-emerald-600/40 border-emerald-400 ring-2 ring-emerald-400/50'
+  },
+  {
     id: 'dramatized',
     name: '🎭 Full Cast & Dramatized',
     tag: 'FULL CAST',
@@ -64,13 +83,6 @@ const AUDIOBOOK_PLATFORMS = [
     activeBg: 'bg-indigo-600 text-white shadow-indigo-600/40 border-indigo-400 ring-2 ring-indigo-400/50'
   },
   {
-    id: 'bbcsounds',
-    name: 'BBC Sounds Radio',
-    tag: 'BBC SOUNDS',
-    bg: 'bg-rose-600/20 text-rose-300 border-rose-500/40 hover:bg-rose-600 hover:text-white',
-    activeBg: 'bg-rose-600 text-white shadow-rose-600/40 border-rose-400 ring-2 ring-rose-400/50'
-  },
-  {
     id: 'libby',
     name: '📚 Libby & OverDrive',
     tag: 'LIBBY',
@@ -78,25 +90,18 @@ const AUDIOBOOK_PLATFORMS = [
     activeBg: 'bg-teal-600 text-white shadow-teal-600/40 border-teal-400 ring-2 ring-teal-400/50'
   },
   {
-    id: 'everand',
-    name: '📖 Everand & Scribd',
-    tag: 'EVERAND',
-    bg: 'bg-orange-600/20 text-orange-300 border-orange-500/40 hover:bg-orange-600 hover:text-white',
-    activeBg: 'bg-orange-600 text-white shadow-orange-600/40 border-orange-400 ring-2 ring-orange-400/50'
-  },
-  {
-    id: 'spotify',
-    name: 'Spotify Audiobooks',
-    tag: 'SPOTIFY',
-    bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-950',
-    activeBg: 'bg-emerald-500 text-slate-950 shadow-emerald-500/40 border-emerald-400 ring-2 ring-emerald-400/50'
-  },
-  {
     id: 'librivox',
-    name: 'LibriVox Public Domain',
+    name: '🏛️ LibriVox Public Domain',
     tag: 'LIBRIVOX',
     bg: 'bg-sky-600/20 text-sky-300 border-sky-500/40 hover:bg-sky-600 hover:text-white',
     activeBg: 'bg-sky-500 text-white shadow-sky-500/40 border-sky-400 ring-2 ring-sky-400/50'
+  },
+  {
+    id: 'bbcsounds',
+    name: 'BBC Sounds Radio',
+    tag: 'BBC SOUNDS',
+    bg: 'bg-rose-600/20 text-rose-300 border-rose-500/40 hover:bg-rose-600 hover:text-white',
+    activeBg: 'bg-rose-600 text-white shadow-rose-600/40 border-rose-400 ring-2 ring-rose-400/50'
   }
 ];
 
@@ -137,6 +142,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
 }) => {
   const [localSearch, setLocalSearch] = useState(searchQuery);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [pastedUrl, setPastedUrl] = useState('');
   const [isResolvingLink, setIsResolvingLink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -190,7 +196,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
       />
 
       {/* -------------------------------------------------------------
-          TOP BAR: STREAMING AUDIOBOOK NETWORK SELECTOR
+          TOP BAR: STREAMING AUDIOBOOK NETWORK SELECTOR & DEBRID SETTINGS
          ------------------------------------------------------------- */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
@@ -199,14 +205,23 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             <span>Audiobook Networks & Full Cast Dramatizations</span>
           </div>
 
-          {isPlatformActive && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => onSelectCategory('popular')}
-              className="text-xs text-slate-400 hover:text-white transition-colors underline font-medium cursor-pointer"
+              onClick={() => setShowSettingsModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-amber-400 border border-slate-800 hover:border-amber-500/40 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
-              ← Back to All Audiobooks
+              <Settings className="w-3.5 h-3.5" />
+              <span>Debrid & Library Settings</span>
             </button>
-          )}
+            {isPlatformActive && (
+              <button
+                onClick={() => onSelectCategory('popular')}
+                className="text-xs text-slate-400 hover:text-white transition-colors underline font-medium cursor-pointer"
+              >
+                ← Back to All
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Branded Network Selector Bar */}
@@ -712,6 +727,22 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
           </div>
         </div>
       )}
+
+      {/* Debrid, Local Folder & Audiobookshelf Settings Modal */}
+      <AudiobookSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        onImportLocalBooks={(books) => {
+          if (books.length > 0) {
+            onSelectCategory('local');
+          }
+        }}
+        onImportAbsBooks={(books) => {
+          if (books.length > 0) {
+            onSelectCategory('local');
+          }
+        }}
+      />
     </div>
   );
 };

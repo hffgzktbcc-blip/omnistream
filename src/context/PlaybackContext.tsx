@@ -198,7 +198,7 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setIsMinimized(false);
 
     // Auto-resolve full verified audio stream, chapters & multi-part tracks from the server
-    if (!book.chapters || book.chapters.length === 0 || !book.audioUrl || book.platform === 'audible' || !book.parts) {
+    if (!book.chapters || book.chapters.length === 0 || !book.audioUrl || !book.parts) {
       fetch(`/api/audiobooks/resolve?title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author || '')}`)
         .then((r) => r.json())
         .then((resolved) => {
@@ -206,8 +206,8 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setActiveMedia((prev) => {
               if (!prev || prev.type !== 'audiobook' || prev.item.id !== book.id) return prev;
 
-              const targetAudioUrl = resolved.audioUrl || prev.item.audioUrl || '';
-              const targetYtId = resolved.youtubeId || prev.item.youtubeId;
+              const targetAudioUrl = prev.item.audioUrl || resolved.audioUrl || '';
+              const targetYtId = prev.item.youtubeId || resolved.youtubeId;
 
               const updatedBook: Audiobook = {
                 ...prev.item,
@@ -219,9 +219,8 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 durationSeconds: resolved.durationSeconds || prev.item.durationSeconds
               };
 
-              const streamType = targetAudioUrl ? 'audio' : 'youtube';
-
-              if (audioRef.current && targetAudioUrl && audioRef.current.src !== targetAudioUrl) {
+              // Only start playing direct audio if no stream was currently playing
+              if (audioRef.current && targetAudioUrl && !audioRef.current.src && !prev.item.youtubeId) {
                 audioRef.current.src = targetAudioUrl;
                 audioRef.current.currentTime = resumePos;
                 audioRef.current.play().catch(() => {});
@@ -230,7 +229,6 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               return {
                 ...prev,
                 item: updatedBook,
-                activeStreamType: streamType,
                 duration: resolved.durationSeconds || prev.duration
               };
             });
