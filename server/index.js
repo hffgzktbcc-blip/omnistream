@@ -4122,7 +4122,7 @@ const CURATED_AUDIOBOOKS = [
     platform: 'bbcsounds',
     isDramatized: true
   },
-  // 2. GRAPHICAUDIO POST-APOCALYPTIC DRAMA
+  // 2. GRAPHICAUDIO POST-APOCALYPTIC & ACTION THRILLER DRAMAS
   {
     id: 'ab_deathlands_154_reapers_peace',
     title: 'Reaper\'s Peace: Deathlands #154 (GraphicAudio - A Movie in Your Mind)',
@@ -4133,6 +4133,22 @@ const CURATED_AUDIOBOOKS = [
     cover: 'https://covers.storytel.com/jpg-640/9798890555908.2f74fef2-48cc-4e8d-ba5d-aefe3f90e334?optimize=high',
     youtubeId: 'ykwuyyDnIwE',
     description: 'The bestselling post-apocalyptic GraphicAudio saga continues! The battle-weary Companions count their blessings when they find refuge at a tranquil ville, only to discover a deadly reckoning awaiting them in the wastes.',
+    genre: 'Full Cast & Dramatized',
+    platform: 'graphicaudio',
+    isGraphicAudio: true,
+    isDramatized: true
+  },
+  {
+    id: 'ab_jason_trapp_10_eyes_only',
+    title: 'Jason Trapp 10: Eyes Only (GraphicAudio - A Movie in Your Mind)',
+    author: 'Jack Slater',
+    narrator: 'GraphicAudio Full Voice Cast, Sound Effects & Orchestration',
+    duration: '10h 42m',
+    durationSeconds: 38520,
+    cover: 'https://www.graphicaudiointernational.net/media/catalog/product/cache/7ce806cc4796fb4daabf8be971ff5dcb/j/a/jason_trapp_10_eyes_only.jpg',
+    audioUrl: '/api/proxy/audio?url=' + encodeURIComponent('https://s3.amazonaws.com/graphicaudiosamples/JASONTRAPP10.mp3'),
+    youtubeId: 'UO7BYcXudnU',
+    description: 'Jason Trapp is back in another pulse-pounding, high-octane GraphicAudio full cast dramatization with custom cinematic music and realistic action sound design.',
     genre: 'Full Cast & Dramatized',
     platform: 'graphicaudio',
     isGraphicAudio: true,
@@ -4150,17 +4166,12 @@ app.get('/api/audiobooks/popular', async (req, res) => {
     let results = [];
 
     if (category === 'graphicaudio') {
-      const [gaAudible, dramatizedAudible] = await Promise.all([
-        searchAudible('graphicaudio', 15),
-        searchAudible('dramatized adaptation', 15)
-      ]);
-      results = [...CURATED_AUDIOBOOKS.filter(b => b.isGraphicAudio), ...gaAudible, ...dramatizedAudible];
+      const gaSanderson = await searchAudible('GraphicAudio Brandon Sanderson', 15);
+      const gaFantasy = await searchAudible('GraphicAudio dramatized', 15);
+      results = [...CURATED_AUDIOBOOKS.filter(b => b.isGraphicAudio || b.platform === 'graphicaudio'), ...gaSanderson, ...gaFantasy];
     } else if (category === 'dramatized') {
-      const [dramatizedAudible, fullCastAudible] = await Promise.all([
-        searchAudible('dramatized adaptation', 15),
-        searchAudible('full cast audio drama', 15)
-      ]);
-      results = [...CURATED_AUDIOBOOKS, ...dramatizedAudible, ...fullCastAudible];
+      const fullCast = await searchAudible('full cast audio drama', 20);
+      results = [...CURATED_AUDIOBOOKS, ...fullCast];
     } else if (category === 'audible') {
       const [bestsellers, sciFi, fantasy] = await Promise.all([
         searchAudible('audible original bestseller', 15),
@@ -4241,15 +4252,15 @@ app.get('/api/audiobooks/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json([]);
 
-  const cacheKey = `audiobooks_search_v5_${q.toLowerCase()}`;
+  const cacheKey = `audiobooks_search_v6_${q.toLowerCase()}`;
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
   try {
     const results = [];
 
-    // 0. Direct URL Parser (Storytel, Audible, GraphicAudio, Archive.org, YouTube)
-    if (q.startsWith('http://') || q.startsWith('https://') || q.includes('storytel.com') || q.includes('archive.org') || q.includes('audible.com')) {
+    // 0. Direct URL Parser (Storytel, GraphicAudio, Audible, Archive.org, YouTube)
+    if (q.startsWith('http://') || q.startsWith('https://') || q.includes('storytel.com') || q.includes('graphicaudio') || q.includes('archive.org') || q.includes('audible.com')) {
       // 0a. Storytel Direct Book URL
       if (q.includes('storytel.com/')) {
         try {
@@ -4296,7 +4307,51 @@ app.get('/api/audiobooks/search', async (req, res) => {
         }
       }
 
-      // 0b. Archive.org Direct Link or Identifier
+      // 0b. GraphicAudio Direct Product URL
+      if (q.includes('graphicaudiointernational.net/') || q.includes('graphicaudio.net/')) {
+        try {
+          const gRes = await safeFetch(q);
+          if (gRes.ok) {
+            const html = await gRes.text();
+            const rawTitle = html.match(/<title>(.*?)<\/title>/i)?.[1] || 'GraphicAudio Dramatized Adaptation';
+            const cleanTitle = rawTitle.replace(/\s*-\s*GraphicAudio.*$/i, '').trim();
+
+            const imgMatches = html.match(/https:\/\/www\.graphicaudiointernational\.net\/media\/catalog\/product\/[^\s\"']+\.(?:jpg|png|webp)/gi);
+            const cover = imgMatches ? imgMatches[0] : 'https://www.graphicaudiointernational.net/media/wysiwyg/graphicaudio-logo-2023-ga.jpg';
+
+            const sampleMatch = html.match(/https:\/\/s3\.amazonaws\.com\/graphicaudiosamples\/[A-Za-z0-9_-]+\.mp3/i);
+            const sampleUrl = sampleMatch ? sampleMatch[0] : '';
+
+            // Query Audible or YouTube for full metadata & stream
+            const author = cleanTitle.toLowerCase().includes('jason trapp') ? 'Jack Slater' : (cleanTitle.toLowerCase().includes('deathlands') ? 'James Axler' : 'GraphicAudio Author');
+            const resolvedFull = await resolveFullAudiobook(cleanTitle, author);
+
+            const gaBook = {
+              id: `ga_${Buffer.from(q).toString('base64').slice(0, 16)}`,
+              title: cleanTitle,
+              author,
+              narrator: 'GraphicAudio Full Voice Cast, Sound Effects & Orchestral Score',
+              duration: resolvedFull?.duration || '10h 42m',
+              durationSeconds: resolvedFull?.durationSeconds || 38520,
+              cover,
+              description: 'A Movie in Your Mind full cast dramatized audio experience with full sound effects and custom soundtrack.',
+              genre: 'Full Cast & Dramatized',
+              platform: 'graphicaudio',
+              isGraphicAudio: true,
+              isDramatized: true,
+              audioUrl: resolvedFull?.audioUrl || (sampleUrl ? `/api/proxy/audio?url=${encodeURIComponent(sampleUrl)}` : ''),
+              sampleAudioUrl: sampleUrl,
+              youtubeId: resolvedFull?.youtubeId || 'UO7BYcXudnU',
+              chapters: resolvedFull?.chapters
+            };
+            results.unshift(gaBook);
+          }
+        } catch (gErr) {
+          console.warn('GraphicAudio parse error:', gErr);
+        }
+      }
+
+      // 0c. Archive.org Direct Link or Identifier
       if (q.includes('archive.org/details/') || q.includes('archive.org/download/') || (q.startsWith('the-') && q.includes('soundscape'))) {
         let identifier = q.trim();
         const urlMatch = q.match(/archive\.org\/(?:details|download)\/([^/?#]+)/i);
