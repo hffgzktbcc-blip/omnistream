@@ -4380,6 +4380,92 @@ app.get('/api/audiobooks/resolve', async (req, res) => {
   }
 });
 
+app.get('/api/audiobooks/transcript', async (req, res) => {
+  const videoId = (req.query.videoId || '').trim();
+  if (!videoId) return res.status(400).json({ error: 'videoId is required' });
+
+  const cacheKey = `yt_transcript_v1_${videoId}`;
+  const cached = getCache(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const { YoutubeTranscript } = require('youtube-transcript');
+    const raw = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' }).catch(() =>
+      YoutubeTranscript.fetchTranscript(videoId)
+    );
+    const cues = (raw || [])
+      .map(c => ({
+        start: c.offset / 1000,
+        dur: c.duration / 1000,
+        text: (c.text || '').replace(/\s+/g, ' ').trim()
+      }))
+      .filter(c => c.text.length > 0);
+
+    const result = { videoId, cues, unavailable: cues.length === 0 };
+    setCache(cacheKey, result, 1000 * 60 * 60 * 24 * 7);
+    res.json(result);
+  } catch (err) {
+    console.warn('Transcript error for ' + videoId + ':', err.message);
+    res.json({ videoId, cues: [], unavailable: true });
+  }
+});
+
+app.get('/api/audiobooks/cover-lookup', async (req, res) => {
+  const title = (req.query.title || '').trim();
+  const author = (req.query.author || '').trim();
+  if (!title) return res.status(400).json({ error: 'Title is required' });
+
+  const cacheKey = `book_cover_v2_${title.toLowerCase()}_${author.toLowerCase()}`;
+  const cached = getCache(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const covers = [];
+
+    // 1. Apple Books (1200x1200px keyless)
+    try {
+      const apRes = await safeFetch(`https://itunes.apple.com/search?term=${encodeURIComponent([title, author].filter(Boolean).join(' '))}&entity=ebook&limit=4`);
+      if (apRes.ok) {
+        const apData = await apRes.json();
+        for (const r of apData.results || []) {
+          if (r.artworkUrl100) {
+            covers.push({
+              source: 'apple',
+              title: r.trackName,
+              author: r.artistName,
+              coverUrl: r.artworkUrl100.replace(/\/\d+x\d+bb\.jpg$/, '/1200x1200bb.jpg'),
+              description: r.description ? r.description.replace(/<[^>]+>/g, '').trim() : undefined
+            });
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 2. Open Library
+    try {
+      const olRes = await safeFetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(title)}${author ? `&author=${encodeURIComponent(author)}` : ''}&limit=4&fields=title,author_name,cover_i`);
+      if (olRes.ok) {
+        const olData = await olRes.json();
+        for (const d of olData.docs || []) {
+          if (d.cover_i) {
+            covers.push({
+              source: 'openlibrary',
+              title: d.title,
+              author: d.author_name?.[0],
+              coverUrl: `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg`
+            });
+          }
+        }
+      }
+    } catch (e) {}
+
+    setCache(cacheKey, covers, 1000 * 60 * 60 * 24 * 7);
+    res.json(covers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/audiobooks/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json([]);

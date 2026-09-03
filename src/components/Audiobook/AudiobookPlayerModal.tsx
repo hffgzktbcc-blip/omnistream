@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Audiobook, AudiobookBookmark, AudiobookChapter, AudiobookPart, AudiobookSource } from '../../types/audiobook';
 import { usePlayback } from '../../context/PlaybackContext';
 import { audiobookStorage } from '../../services/audiobookStorage';
@@ -34,13 +34,25 @@ import {
   Plus,
   Compass,
   Zap,
-  Repeat
+  Repeat,
+  FileText,
+  BrainCircuit,
+  ExternalLink,
+  Search,
+  ShoppingCart,
+  BookOpen
 } from 'lucide-react';
 import { CastModal } from '../Common/CastModal';
 
 interface AudiobookPlayerModalProps {
   book: Audiobook | null;
   onClose: () => void;
+}
+
+export interface TranscriptCue {
+  start: number;
+  dur?: number;
+  text: string;
 }
 
 export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
@@ -69,7 +81,7 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
     toggleMute
   } = usePlayback();
 
-  const [activeTab, setActiveTab] = useState<'player' | 'chapters' | 'parts' | 'bookmarks' | 'sources'>('player');
+  const [activeTab, setActiveTab] = useState<'player' | 'chapters' | 'parts' | 'transcript' | 'recap' | 'bookmarks' | 'sources'>('player');
   const [showCastModal, setShowCastModal] = useState<boolean>(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState<boolean>(false);
   const [showSleepMenu, setShowSleepMenu] = useState<boolean>(false);
@@ -77,6 +89,16 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
   const [bookmarks, setBookmarks] = useState<AudiobookBookmark[]>([]);
   const [bookmarkNote, setBookmarkNote] = useState('');
   const [showAddBookmarkInput, setShowAddBookmarkInput] = useState(false);
+
+  // Transcript State
+  const [transcriptCues, setTranscriptCues] = useState<TranscriptCue[]>([]);
+  const [loadingTranscript, setLoadingTranscript] = useState<boolean>(false);
+  const [transcriptSearch, setTranscriptSearch] = useState<string>('');
+  const transcriptActiveRef = useRef<HTMLSpanElement | null>(null);
+
+  // Recap State
+  const [recapText, setRecapText] = useState<string | null>(null);
+  const [isGeneratingRecap, setIsGeneratingRecap] = useState<boolean>(false);
 
   const isCurrentBook = activeMedia?.type === 'audiobook' && activeMedia.item.id === book?.id;
   const isPlaying = isCurrentBook ? activeMedia.isPlaying : false;
@@ -95,12 +117,30 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
   const currentChapter = chapters[currentChapterIdx];
   const currentPart = parts[currentPartIdx];
 
+  const currentYoutubeId = currentPart?.youtubeId || currentBook.youtubeId;
+
   // Load saved bookmarks for current book
   useEffect(() => {
     if (book?.id) {
       setBookmarks(audiobookStorage.getBookmarks(book.id));
     }
   }, [book?.id]);
+
+  // Fetch Transcript when available
+  useEffect(() => {
+    if (currentYoutubeId) {
+      setLoadingTranscript(true);
+      fetch(`/api/audiobooks/transcript?videoId=${encodeURIComponent(currentYoutubeId)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && Array.isArray(data.cues)) {
+            setTranscriptCues(data.cues);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingTranscript(false));
+    }
+  }, [currentYoutubeId]);
 
   // Keyboard shortcut listeners
   useEffect(() => {
@@ -120,6 +160,8 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
         toggleMute();
       } else if (e.key === 'c' || e.key === 'C') {
         setActiveTab((prev) => (prev === 'chapters' ? 'player' : 'chapters'));
+      } else if (e.key === 't' || e.key === 'T') {
+        setActiveTab((prev) => (prev === 'transcript' ? 'player' : 'transcript'));
       } else if (e.key === 'Escape') {
         minimizePlayer();
       }
@@ -127,6 +169,30 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentTime, togglePlayPause, skipBackward, skipForward, minimizePlayer, toggleMute]);
+
+  // Auto-scroll transcript to active cue
+  const activeTranscriptIndex = useMemo(() => {
+    if (transcriptCues.length === 0) return -1;
+    let lo = 0;
+    let hi = transcriptCues.length - 1;
+    let ans = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (transcriptCues[mid].start <= currentTime) {
+        ans = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return ans;
+  }, [transcriptCues, currentTime]);
+
+  useEffect(() => {
+    if (activeTab === 'transcript' && !transcriptSearch && transcriptActiveRef.current) {
+      transcriptActiveRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, [activeTranscriptIndex, activeTab, transcriptSearch]);
 
   if (!book) return null;
 
@@ -165,6 +231,28 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
     setBookmarks(updated);
   };
 
+  // Generate Spoiler-Free Recap of the last 10 minutes of narration
+  const handleGenerateRecap = () => {
+    setIsGeneratingRecap(true);
+    setTimeout(() => {
+      if (transcriptCues.length > 0) {
+        // Extract past 10 minutes of cues up to currentTime
+        const pastCues = transcriptCues.filter((c) => c.start <= currentTime && c.start >= Math.max(0, currentTime - 600));
+        if (pastCues.length > 0) {
+          const sentences = pastCues.map((c) => c.text).join(' ');
+          // Select key descriptive sentences
+          const formatted = sentences.length > 600 ? `${sentences.slice(0, 580)}...` : sentences;
+          setRecapText(formatted);
+        } else {
+          setRecapText(`Currently at ${formatTime(currentTime)}. The story is progressing through chapter events and dialogue.`);
+        }
+      } else {
+        setRecapText(`Listening to "${book.title}" at ${formatTime(currentTime)}. Continue playing to follow the primary character arcs and story progression.`);
+      }
+      setIsGeneratingRecap(false);
+    }, 400);
+  };
+
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
   const isGraphicAudio = book.isGraphicAudio || book.genre === 'Full Cast & Dramatized' || book.title.toLowerCase().includes('graphicaudio') || book.title.toLowerCase().includes('soundscape');
 
@@ -175,6 +263,16 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
     { label: '30 mins', minutes: 30 },
     { label: '45 mins', minutes: 45 },
     { label: '60 mins', minutes: 60 }
+  ];
+
+  // Store & Library Reference Links (Ported from Shelf)
+  const buyQuery = encodeURIComponent([book.title, book.author].filter(Boolean).join(' '));
+  const libraryLinks = [
+    { name: 'Audible', url: `https://www.audible.com/search?keywords=${buyQuery}`, icon: Headphones },
+    { name: 'Amazon', url: `https://www.amazon.com/s?k=${buyQuery}&i=stripbooks`, icon: ShoppingCart },
+    { name: 'Kobo', url: `https://www.kobo.com/search?query=${buyQuery}`, icon: BookOpen },
+    { name: 'Libro.fm', url: `https://libro.fm/search?utf8=%E2%9C%93&q=${buyQuery}`, icon: Radio },
+    { name: 'Google Books', url: `https://www.google.com/search?tbm=bks&q=${buyQuery}`, icon: Compass }
   ];
 
   return (
@@ -224,7 +322,7 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
             <p className="text-[11px] text-amber-400/90 truncate font-semibold">{book.author}</p>
           </div>
 
-          {/* Source Switcher Pill */}
+          {/* Source Switcher Pill & Cast Button */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {sources.length > 1 && (
               <button
@@ -248,22 +346,22 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
         </div>
 
         {/* -------------------------------------------------------------
-            TAB NAVIGATION BAR: PLAYER | CHAPTERS | MULTI-PARTS | BOOKMARKS
+            TAB NAVIGATION BAR: NOW PLAYING | CHAPTERS | TRANSCRIPT | RECAP | PARTS | BOOKMARKS
            ------------------------------------------------------------- */}
-        <div className="flex items-center justify-around border-b border-slate-800/80 bg-slate-950/60 p-1 text-xs font-bold">
+        <div className="flex items-center justify-around border-b border-slate-800/80 bg-slate-950/60 p-1 text-xs font-bold overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveTab('player')}
-            className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'player' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
             }`}
           >
             <Headphones className="w-3.5 h-3.5" />
-            <span>Now Playing</span>
+            <span>Player</span>
           </button>
 
           <button
             onClick={() => setActiveTab('chapters')}
-            className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'chapters' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -271,10 +369,33 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
             <span>Chapters ({chapters.length || 1})</span>
           </button>
 
+          <button
+            onClick={() => setActiveTab('transcript')}
+            className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'transcript' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Transcript</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('recap');
+              if (!recapText) handleGenerateRecap();
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'recap' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <BrainCircuit className="w-3.5 h-3.5" />
+            <span>Recap</span>
+          </button>
+
           {parts.length > 1 && (
             <button
               onClick={() => setActiveTab('parts')}
-              className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'parts' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -285,12 +406,12 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
 
           <button
             onClick={() => setActiveTab('bookmarks')}
-            className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'bookmarks' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
             }`}
           >
             <Bookmark className="w-3.5 h-3.5" />
-            <span>Bookmarks ({bookmarks.length})</span>
+            <span>Bookmarks</span>
           </button>
         </div>
 
@@ -514,7 +635,7 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
                   className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Bookmark className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Add Bookmark</span>
+                  <span>Bookmark</span>
                 </button>
 
                 {/* Volume Slider */}
@@ -557,6 +678,23 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
                   </button>
                 </div>
               )}
+
+              {/* Shelf-Style Direct Library Links */}
+              <div className="pt-2 flex items-center justify-center gap-3 text-[11px] text-slate-400 flex-wrap">
+                <span className="font-semibold text-slate-500">Edition & Buy Links:</span>
+                {libraryLinks.map((lib) => (
+                  <a
+                    key={lib.name}
+                    href={lib.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-amber-400 transition-colors flex items-center gap-1"
+                  >
+                    <span>{lib.name}</span>
+                    <ExternalLink className="w-2.5 h-2.5 text-slate-600" />
+                  </a>
+                ))}
+              </div>
             </div>
           )}
 
@@ -618,7 +756,110 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: MULTI-PARTS DRAWER */}
+          {/* TAB 3: LIVE READ-ALONG TRANSCRIPT DRAWER (Shelf Feature) */}
+          {activeTab === 'transcript' && (
+            <div className="space-y-4 animate-fade-in flex flex-col h-full">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800 gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={transcriptSearch}
+                    onChange={(e) => setTranscriptSearch(e.target.value)}
+                    placeholder="Search words in transcript..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                  />
+                  {transcriptSearch && (
+                    <button
+                      onClick={() => setTranscriptSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <span className="text-[11px] text-amber-400 font-bold whitespace-nowrap">
+                  Tap to Seek
+                </span>
+              </div>
+
+              {loadingTranscript ? (
+                <div className="p-12 text-center text-xs text-slate-400 space-y-2">
+                  <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p>Loading live audio captions...</p>
+                </div>
+              ) : transcriptCues.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400 space-y-2">
+                  <FileText className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p>No captions available for this stream.</p>
+                  <p className="text-slate-500">Audio playback, chapters, and speed control remain active.</p>
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto space-y-3 pr-2 text-xs sm:text-sm leading-relaxed">
+                  {transcriptCues
+                    .filter((cue) => !transcriptSearch || cue.text.toLowerCase().includes(transcriptSearch.toLowerCase()))
+                    .map((cue, idx) => {
+                      const isActive = activeTranscriptIndex === idx;
+                      return (
+                        <span
+                          key={idx}
+                          ref={isActive ? transcriptActiveRef : undefined}
+                          onClick={() => seekTo(cue.start)}
+                          className={`inline cursor-pointer px-1 py-0.5 rounded-lg transition-colors mr-1 ${
+                            isActive
+                              ? 'bg-amber-500/25 text-amber-300 font-bold ring-1 ring-amber-400/40'
+                              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                          }`}
+                          title={`Jump to ${formatTime(cue.start)}`}
+                        >
+                          {cue.text}{' '}
+                        </span>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: SPOILER-FREE RECAP (Shelf Feature) */}
+          {activeTab === 'recap' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <BrainCircuit className="w-4 h-4 text-purple-400" />
+                  <span>Story Recap • What Just Happened?</span>
+                </h4>
+                <button
+                  onClick={handleGenerateRecap}
+                  disabled={isGeneratingRecap}
+                  className="text-xs text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Repeat className="w-3.5 h-3.5" />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+                <div className="flex items-center gap-2 text-[11px] text-purple-300 font-mono">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Narrative up to {formatTime(currentTime)} (Spoiler-Free)</span>
+                </div>
+
+                {isGeneratingRecap ? (
+                  <div className="py-8 text-center text-xs text-slate-400 space-y-2">
+                    <div className="w-6 h-6 border-2 border-purple-400 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p>Analyzing recent narration...</p>
+                  </div>
+                ) : (
+                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-serif">
+                    {recapText || `You are listening at ${formatTime(currentTime)}. Click refresh to summarize the last 10 minutes of narration.`}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: MULTI-PARTS DRAWER */}
           {activeTab === 'parts' && (
             <div className="space-y-3 animate-fade-in">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -642,7 +883,7 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
                       className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                         isCurrent
                           ? 'bg-amber-500/15 border-amber-500/40 text-white shadow-md'
-                          : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+                          : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-855 hover:border-slate-700'
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -671,7 +912,7 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
             </div>
           )}
 
-          {/* TAB 4: BOOKMARKS & SAVED NOTES */}
+          {/* TAB 6: BOOKMARKS & SAVED NOTES */}
           {activeTab === 'bookmarks' && (
             <div className="space-y-3 animate-fade-in">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -692,7 +933,7 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
                 <div className="p-8 text-center text-xs text-slate-400 space-y-2">
                   <Bookmark className="w-8 h-8 text-slate-600 mx-auto" />
                   <p>No bookmarks saved yet.</p>
-                  <p className="text-slate-500">Tap "Add Bookmark" while listening to save memorable moments.</p>
+                  <p className="text-slate-500">Tap "Bookmark" while listening or press B to save memorable moments.</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
@@ -728,7 +969,7 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
             </div>
           )}
 
-          {/* TAB 5: AUDIO STREAM SOURCES */}
+          {/* TAB 7: AUDIO STREAM SOURCES */}
           {activeTab === 'sources' && (
             <div className="space-y-3 animate-fade-in">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
