@@ -71,6 +71,20 @@ const AUDIOBOOK_PLATFORMS = [
     activeBg: 'bg-rose-600 text-white shadow-rose-600/40 border-rose-400 ring-2 ring-rose-400/50'
   },
   {
+    id: 'libby',
+    name: '📚 Libby & OverDrive',
+    tag: 'LIBBY',
+    bg: 'bg-teal-600/20 text-teal-300 border-teal-500/40 hover:bg-teal-600 hover:text-white',
+    activeBg: 'bg-teal-600 text-white shadow-teal-600/40 border-teal-400 ring-2 ring-teal-400/50'
+  },
+  {
+    id: 'everand',
+    name: '📖 Everand & Scribd',
+    tag: 'EVERAND',
+    bg: 'bg-orange-600/20 text-orange-300 border-orange-500/40 hover:bg-orange-600 hover:text-white',
+    activeBg: 'bg-orange-600 text-white shadow-orange-600/40 border-orange-400 ring-2 ring-orange-400/50'
+  },
+  {
     id: 'spotify',
     name: 'Spotify Audiobooks',
     tag: 'SPOTIFY',

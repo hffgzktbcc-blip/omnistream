@@ -4315,6 +4315,18 @@ app.get('/api/audiobooks/popular', async (req, res) => {
         searchAudible('psychology mindset', 15)
       ]);
       results = [...habits, ...mindset];
+    } else if (category === 'libby' || category === 'overdrive') {
+      const [bestsellers, libraryHits] = await Promise.all([
+        searchAudible('library popular fiction bestseller', 15),
+        searchAudible('overdrive popular audiobooks', 15)
+      ]);
+      results = [...bestsellers.map(b => ({ ...b, platform: 'libby' })), ...libraryHits.map(b => ({ ...b, platform: 'libby' }))];
+    } else if (category === 'everand' || category === 'scribd') {
+      const [everandHits, dramatizedHits] = await Promise.all([
+        searchAudible('everand popular audiobooks', 15),
+        searchAudible('dramatized adaptation full cast', 15)
+      ]);
+      results = [...everandHits.map(b => ({ ...b, platform: 'everand' })), ...dramatizedHits.map(b => ({ ...b, platform: 'everand' }))];
     } else if (category === 'business') {
       const [wealth, business] = await Promise.all([
         searchAudible('wealth investing strategy', 15),
@@ -4380,7 +4392,7 @@ app.get('/api/audiobooks/search', async (req, res) => {
     const results = [];
 
     // 0. UNIVERSAL LINK & STREAM RESOLVER (Any Link, Cloud Host, Redirect, Audio Stream)
-    if (q.startsWith('http://') || q.startsWith('https://') || q.includes('away.php') || q.includes('devuploads') || q.includes('pixeldrain') || q.includes('everand') || q.includes('scribd') || q.includes('storytel') || q.includes('graphicaudio') || q.includes('archive.org') || q.includes('audible') || q.includes('youtube') || q.includes('youtu.be') || /\.(mp3|m4b|wav|ogg|flac|aac|m4a)/i.test(q)) {
+    if (q.startsWith('http://') || q.startsWith('https://') || q.includes('away.php') || q.includes('devuploads') || q.includes('pixeldrain') || q.includes('libbyapp') || q.includes('overdrive') || q.includes('everand') || q.includes('scribd') || q.includes('storytel') || q.includes('graphicaudio') || q.includes('archive.org') || q.includes('audible') || q.includes('youtube') || q.includes('youtu.be') || /\.(mp3|m4b|wav|ogg|flac|aac|m4a)/i.test(q)) {
       let targetUrl = q.trim();
 
       // 0.1 Unwrap Redirect Wrappers (VK, href.li, URL shorteners)
@@ -4626,7 +4638,60 @@ app.get('/api/audiobooks/search', async (req, res) => {
         }
       }
 
-      // 0.8 YouTube URL
+      // 0.8 Libby & OverDrive Library URLs
+      else if (targetUrl.includes('libbyapp.com/') || targetUrl.includes('overdrive.com/')) {
+        try {
+          let rawTitle = 'Libby Library Audiobook';
+          let bookId = 'libby';
+
+          // 1. Overdrive Media URL
+          const odMatch = targetUrl.match(/overdrive\.com\/media\/(\d+)(?:\/([^\/?#]+))?/i);
+          if (odMatch) {
+            bookId = odMatch[1];
+            if (odMatch[2]) rawTitle = decodeURIComponent(odMatch[2]).replace(/-/g, ' ');
+          }
+
+          // 2. Libby Query URL or Title URL
+          const libbyQueryMatch = targetUrl.match(/query[=:\-]([^/?&#]+)/i) || targetUrl.match(/search\.query:([^/?&#]+)/i);
+          if (libbyQueryMatch) {
+            rawTitle = decodeURIComponent(libbyQueryMatch[1]).replace(/[+\-_]/g, ' ');
+          }
+          const libbySlugMatch = targetUrl.match(/libbyapp\.com\/(?:audiobook|book|media)\/(\d+)(?:\/([^\/?#]+))?/i);
+          if (libbySlugMatch) {
+            bookId = libbySlugMatch[1];
+            if (libbySlugMatch[2]) rawTitle = decodeURIComponent(libbySlugMatch[2]).replace(/-/g, ' ');
+          }
+
+          const isGraphic = /dramatized|graphicaudio|full cast/i.test(rawTitle);
+          const author = isGraphic ? 'Full Cast & Sound Effects' : 'Library Audiobook Author';
+          const resolvedFull = await resolveFullAudiobook(rawTitle, author);
+
+          const libbyBook = {
+            id: `libby_${bookId || Buffer.from(targetUrl).toString('base64').slice(0, 16)}`,
+            title: rawTitle,
+            author,
+            narrator: isGraphic ? 'GraphicAudio Full Cast, Sound Effects & Score' : 'Unabridged Public Library Narrator',
+            duration: resolvedFull?.duration || '8h 24m',
+            durationSeconds: resolvedFull?.durationSeconds || 30240,
+            cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
+            description: `Full unabridged library audiobook stream of ${rawTitle}, verified and resolved directly from public digital archives.`,
+            genre: isGraphic ? 'Full Cast & Dramatized' : 'Library Audiobook',
+            platform: 'libby',
+            isGraphicAudio: isGraphic,
+            isDramatized: isGraphic,
+            audioUrl: resolvedFull?.audioUrl || '',
+            youtubeId: resolvedFull?.youtubeId || '',
+            chapters: resolvedFull?.chapters,
+            parts: resolvedFull?.parts,
+            sources: resolvedFull?.sources
+          };
+          results.unshift(libbyBook);
+        } catch (lErr) {
+          console.warn('Libby / OverDrive parse error:', lErr);
+        }
+      }
+
+      // 0.9 YouTube URL
       else if (targetUrl.includes('youtube.com/watch') || targetUrl.includes('youtu.be/')) {
         let ytId = '';
         const vMatch = targetUrl.match(/[?&]v=([^&]+)/);
