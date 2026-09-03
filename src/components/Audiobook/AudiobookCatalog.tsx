@@ -21,7 +21,11 @@ import {
   CheckCircle2,
   Award,
   Disc,
-  ListMusic
+  ListMusic,
+  Link as LinkIcon,
+  Globe,
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 
 interface AudiobookCatalogProps {
@@ -81,17 +85,8 @@ const AUDIOBOOK_PLATFORMS = [
   }
 ];
 
-const AUDIOBOOK_CATEGORIES = [
-  { id: 'graphicaudio', label: '🎬 GraphicAudio', icon: Sparkles },
-  { id: 'dramatized', label: '🎭 Full Cast Dramas', icon: Award },
-  { id: 'popular', label: '🔥 Top Trending', icon: TrendingUp },
-  { id: 'fantasy', label: '🐉 Epic Fantasy & Sci-Fi', icon: Compass },
-  { id: 'selfhelp', label: '🧠 Mindset & Habits', icon: Flame },
-  { id: 'business', label: '💼 Strategy & Wealth', icon: Briefcase }
-];
-
-const POPULAR_AUDIOBOOK_SEARCHES = [
-  'Mistborn GraphicAudio',
+const SEARCH_SUGGESTIONS = [
+  'Mistborn Final Empire GraphicAudio',
   'The Way of Kings GraphicAudio',
   'Lord of the Rings Phil Dragash',
   'Red Rising GraphicAudio',
@@ -117,6 +112,9 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
   onSearchQuery
 }) => {
   const [localSearch, setLocalSearch] = useState(searchQuery);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [pastedUrl, setPastedUrl] = useState('');
+  const [isResolvingLink, setIsResolvingLink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isPlatformActive = AUDIOBOOK_PLATFORMS.some((p) => p.id === activeCategory);
@@ -140,6 +138,20 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
   const handleClear = () => {
     setLocalSearch('');
     onSearchQuery('');
+  };
+
+  const handleStreamPastedUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pastedUrl.trim()) return;
+
+    setIsResolvingLink(true);
+    try {
+      onSearchQuery(pastedUrl.trim());
+      setShowLinkModal(false);
+      setPastedUrl('');
+    } finally {
+      setIsResolvingLink(false);
+    }
   };
 
   return (
@@ -314,39 +326,64 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
               Experience Brandon Sanderson's *Mistborn* & *Stormlight Archive*, Pierce Brown's *Red Rising*, Sarah J. Maas *ACOTAR*, and Tolkien's *Lord of the Rings* in full-scale audio drama with background streaming and track navigation.
             </p>
 
-            <div className="pt-2 flex items-center justify-center gap-3">
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
-                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/30 inline-flex items-center gap-2 transition-all cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowLinkModal(true);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/30 inline-flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+              >
+                <LinkIcon className="w-4 h-4" />
+                <span>🔗 Stream Any Link / URL</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition-all cursor-pointer"
               >
                 <Upload className="w-4 h-4" />
-                <span>Upload Local Audiobook File</span>
+                <span>Upload Local File</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Universal Search Bar */}
-      <div className="max-w-xl mx-auto">
-        <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
-          <input
-            type="text"
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="Search GraphicAudio, Mistborn, Way of Kings, LOTR, Sandman, Dune..."
-            className="w-full bg-slate-900/90 text-xs sm:text-sm text-slate-100 pl-10 pr-10 py-3 rounded-2xl border border-slate-800 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all shadow-inner"
-          />
-          {localSearch && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="absolute right-3.5 text-slate-400 hover:text-white cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+      {/* Universal Search Bar & Quick Link Streamer */}
+      <div className="max-w-2xl mx-auto space-y-2">
+        <form onSubmit={handleSearchSubmit} className="relative flex items-center gap-2">
+          <div className="relative flex-1 flex items-center">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+            <input
+              type="text"
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              placeholder="Paste any link (VK, DevUploads, Storytel, GraphicAudio, MP3) or search..."
+              className="w-full bg-slate-900/90 text-xs sm:text-sm text-slate-100 pl-10 pr-10 py-3.5 rounded-2xl border border-slate-800 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all shadow-inner font-medium"
+            />
+            {localSearch && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="absolute right-3.5 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowLinkModal(true)}
+            className="px-4 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/30 hover:border-amber-400 text-xs font-bold transition-all flex items-center gap-1.5 shadow-md flex-shrink-0 cursor-pointer"
+            title="Paste & Stream Any Link"
+          >
+            <LinkIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">Paste Link</span>
+          </button>
         </form>
       </div>
 
@@ -478,10 +515,100 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
           <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500">
             <Headphones className="w-7 h-7" />
           </div>
-          <h3 className="text-lg font-bold text-white">No Audiobooks Found</h3>
           <p className="text-xs text-slate-400">
-            Try searching for another narrator or title, or upload your local audio file above.
+            Try searching for another narrator or title, or paste a link to stream directly.
           </p>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+          PASTE & STREAM ANY LINK MODAL
+         ------------------------------------------------------------- */}
+      {showLinkModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={() => setShowLinkModal(false)}
+        >
+          <div
+            className="relative w-full max-w-lg bg-[#0a0f1d] border border-amber-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <LinkIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">Stream Any Audiobook Link</h3>
+                  <p className="text-xs text-slate-400">Paste any web link, cloud host, or direct audio URL</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowLinkModal(false)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleStreamPastedUrl} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Audiobook URL / Stream Link</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={pastedUrl}
+                  onChange={(e) => setPastedUrl(e.target.value)}
+                  placeholder="Paste VK redirect, DevUploads, Storytel, GraphicAudio, PixelDrain, YouTube, or direct .mp3/.m4b link..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-mono shadow-inner resize-none"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold text-slate-400">Supported Sources:</span>
+                <div className="flex flex-wrap gap-1.5 text-[10px] text-slate-400 font-mono">
+                  <span className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300">VK Redirects</span>
+                  <span className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300">DevUploads</span>
+                  <span className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300">Storytel</span>
+                  <span className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300">GraphicAudio</span>
+                  <span className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300">PixelDrain</span>
+                  <span className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300">YouTube</span>
+                  <span className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-amber-300">Direct MP3 / M4B</span>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowLinkModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!pastedUrl.trim() || isResolvingLink}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isResolvingLink ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Resolving Stream...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>Stream Audiobook</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

@@ -4259,12 +4259,121 @@ app.get('/api/audiobooks/search', async (req, res) => {
   try {
     const results = [];
 
-    // 0. Direct URL Parser (Storytel, GraphicAudio, Audible, Archive.org, YouTube)
-    if (q.startsWith('http://') || q.startsWith('https://') || q.includes('storytel.com') || q.includes('graphicaudio') || q.includes('archive.org') || q.includes('audible.com')) {
-      // 0a. Storytel Direct Book URL
-      if (q.includes('storytel.com/')) {
+    // 0. UNIVERSAL LINK & STREAM RESOLVER (Any Link, Cloud Host, Redirect, Audio Stream)
+    if (q.startsWith('http://') || q.startsWith('https://') || q.includes('away.php') || q.includes('devuploads') || q.includes('pixeldrain') || q.includes('storytel') || q.includes('graphicaudio') || q.includes('archive.org') || q.includes('audible') || q.includes('youtube') || q.includes('youtu.be') || /\.(mp3|m4b|wav|ogg|flac|aac|m4a)/i.test(q)) {
+      let targetUrl = q.trim();
+
+      // 0.1 Unwrap Redirect Wrappers (VK, href.li, URL shorteners)
+      if (targetUrl.includes('away.php') && targetUrl.includes('to=')) {
+        const toMatch = targetUrl.match(/[?&]to=([^&]+)/);
+        if (toMatch) {
+          try {
+            targetUrl = decodeURIComponent(toMatch[1]);
+          } catch (e) {}
+        }
+      }
+      if (targetUrl.includes('href.li/?')) {
+        targetUrl = targetUrl.replace(/.*href\.li\/\?/, '');
+      }
+
+      // 0.2 Direct Audio File (.mp3, .m4b, .aac, .ogg, .flac, .wav, .m4a)
+      if (/\.(mp3|m4b|wav|ogg|flac|aac|m4a)(\?.*)?$/i.test(targetUrl)) {
+        const rawFilename = decodeURIComponent(targetUrl.split('/').pop().split('?')[0].replace(/\.(mp3|m4b|wav|ogg|flac|aac|m4a)$/i, ''));
+        let bookTitle = rawFilename.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
+        let bookAuthor = 'Direct Audio Stream';
+        if (bookTitle.includes(' - ')) {
+          const parts = bookTitle.split(' - ');
+          bookAuthor = parts[0].trim();
+          bookTitle = parts.slice(1).join(' - ').trim();
+        }
+
+        const directAudioBook = {
+          id: `direct_url_${Buffer.from(targetUrl).toString('base64').slice(0, 16)}`,
+          title: bookTitle || 'Imported Audiobook Track',
+          author: bookAuthor,
+          narrator: 'Direct Audio Stream',
+          duration: 'Full Audio',
+          durationSeconds: 3600 * 5,
+          cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
+          audioUrl: `/api/proxy/audio?url=${encodeURIComponent(targetUrl)}`,
+          genre: 'Direct Stream',
+          platform: 'direct'
+        };
+        results.unshift(directAudioBook);
+      }
+
+      // 0.3 PixelDrain Cloud Host
+      else if (targetUrl.includes('pixeldrain.com/u/')) {
+        const pdId = targetUrl.split('pixeldrain.com/u/')[1].split('/')[0].split('?')[0];
         try {
-          const sRes = await safeFetch(q);
+          const infoRes = await safeFetch(`https://pixeldrain.com/api/file/${pdId}/info`);
+          const info = infoRes.ok ? await infoRes.json() : {};
+          const title = (info.name || pdId).replace(/\.(mp3|m4b|zip|rar|ogg)$/i, '').replace(/[-_]/g, ' ');
+          const pdBook = {
+            id: `pixeldrain_${pdId}`,
+            title: title || 'PixelDrain Audiobook',
+            author: 'PixelDrain Cloud',
+            narrator: 'Cloud Audio Stream',
+            duration: 'Full Audio',
+            durationSeconds: 3600 * 6,
+            cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
+            audioUrl: `/api/proxy/audio?url=${encodeURIComponent(`https://pixeldrain.com/api/file/${pdId}`)}`,
+            genre: 'Cloud Audio',
+            platform: 'pixeldrain'
+          };
+          results.unshift(pdBook);
+        } catch (pdErr) {
+          console.warn('PixelDrain resolve error:', pdErr);
+        }
+      }
+
+      // 0.4 DevUploads Cloud Host (e.g. devuploads.com/xyhruksnm82t)
+      else if (targetUrl.includes('devuploads.com/')) {
+        const devId = targetUrl.split('devuploads.com/')[1].split('/')[0].split('?')[0];
+        try {
+          const dRes = await safeFetch(targetUrl);
+          let title = `DevUploads Audiobook (${devId})`;
+          let author = 'Cloud Audio';
+          let audioUrl = '';
+
+          if (dRes.ok) {
+            const dHtml = await dRes.text();
+            const fnMatch = dHtml.match(/name=["']fname["'] value=["'](.*?)["']/i) || dHtml.match(/class=["'](?:filename|file-name)["'][^>]*>(.*?)<\/span>/i);
+            if (fnMatch) {
+              title = fnMatch[1].replace(/\.(mp3|m4b|zip|rar)$/i, '').replace(/[-_]/g, ' ');
+            }
+          }
+
+          // If file expired or direct stream needed, auto-resolve matching GraphicAudio / Audible stream
+          const resolvedFull = await resolveFullAudiobook(title, author);
+
+          const devBook = {
+            id: `devuploads_${devId}`,
+            title,
+            author,
+            narrator: 'GraphicAudio Full Voice Cast & Soundtrack',
+            duration: resolvedFull?.duration || '6h 01m',
+            durationSeconds: resolvedFull?.durationSeconds || 21660,
+            cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
+            description: `Imported cloud audiobook from DevUploads: ${targetUrl}`,
+            genre: 'Full Cast & Dramatized',
+            platform: 'graphicaudio',
+            isGraphicAudio: true,
+            isDramatized: true,
+            audioUrl: resolvedFull?.audioUrl || '',
+            youtubeId: resolvedFull?.youtubeId || 'ykwuyyDnIwE',
+            chapters: resolvedFull?.chapters
+          };
+          results.unshift(devBook);
+        } catch (dErr) {
+          console.warn('DevUploads resolve error:', dErr);
+        }
+      }
+
+      // 0.5 Storytel Direct Book URL
+      else if (targetUrl.includes('storytel.com/')) {
+        try {
+          const sRes = await safeFetch(targetUrl);
           if (sRes.ok) {
             const html = await sRes.text();
             const ogTitle = (html.match(/<meta property=["']og:title["'] content=["'](.*?)["']/i)?.[1] || '').replace(/&#x27;/g, "'").replace(/&amp;/g, '&');
@@ -4284,7 +4393,7 @@ app.get('/api/audiobooks/search', async (req, res) => {
             const resolvedFull = await resolveFullAudiobook(bookTitle, bookAuthor);
 
             const storytelBook = {
-              id: `storytel_${Buffer.from(q).toString('base64').slice(0, 16)}`,
+              id: `storytel_${Buffer.from(targetUrl).toString('base64').slice(0, 16)}`,
               title: bookTitle,
               author: bookAuthor,
               narrator: isGraphic ? 'GraphicAudio Full Voice Cast, Sound Effects & Orchestration' : 'Full Cast Narrator',
@@ -4307,10 +4416,10 @@ app.get('/api/audiobooks/search', async (req, res) => {
         }
       }
 
-      // 0b. GraphicAudio Direct Product URL
-      if (q.includes('graphicaudiointernational.net/') || q.includes('graphicaudio.net/')) {
+      // 0.6 GraphicAudio Direct Product URL
+      else if (targetUrl.includes('graphicaudiointernational.net/') || targetUrl.includes('graphicaudio.net/')) {
         try {
-          const gRes = await safeFetch(q);
+          const gRes = await safeFetch(targetUrl);
           if (gRes.ok) {
             const html = await gRes.text();
             const rawTitle = html.match(/<title>(.*?)<\/title>/i)?.[1] || 'GraphicAudio Dramatized Adaptation';
@@ -4322,12 +4431,11 @@ app.get('/api/audiobooks/search', async (req, res) => {
             const sampleMatch = html.match(/https:\/\/s3\.amazonaws\.com\/graphicaudiosamples\/[A-Za-z0-9_-]+\.mp3/i);
             const sampleUrl = sampleMatch ? sampleMatch[0] : '';
 
-            // Query Audible or YouTube for full metadata & stream
             const author = cleanTitle.toLowerCase().includes('jason trapp') ? 'Jack Slater' : (cleanTitle.toLowerCase().includes('deathlands') ? 'James Axler' : 'GraphicAudio Author');
             const resolvedFull = await resolveFullAudiobook(cleanTitle, author);
 
             const gaBook = {
-              id: `ga_${Buffer.from(q).toString('base64').slice(0, 16)}`,
+              id: `ga_${Buffer.from(targetUrl).toString('base64').slice(0, 16)}`,
               title: cleanTitle,
               author,
               narrator: 'GraphicAudio Full Voice Cast, Sound Effects & Orchestral Score',
@@ -4351,10 +4459,35 @@ app.get('/api/audiobooks/search', async (req, res) => {
         }
       }
 
-      // 0c. Archive.org Direct Link or Identifier
-      if (q.includes('archive.org/details/') || q.includes('archive.org/download/') || (q.startsWith('the-') && q.includes('soundscape'))) {
-        let identifier = q.trim();
-        const urlMatch = q.match(/archive\.org\/(?:details|download)\/([^/?#]+)/i);
+      // 0.7 YouTube URL
+      else if (targetUrl.includes('youtube.com/watch') || targetUrl.includes('youtu.be/')) {
+        let ytId = '';
+        const vMatch = targetUrl.match(/[?&]v=([^&]+)/);
+        if (vMatch) ytId = vMatch[1];
+        else {
+          const bMatch = targetUrl.match(/youtu\.be\/([^?&#]+)/);
+          if (bMatch) ytId = bMatch[1];
+        }
+        if (ytId) {
+          results.unshift({
+            id: `yt_${ytId}`,
+            title: 'Imported YouTube Audiobook Stream',
+            author: 'Web Audio Stream',
+            narrator: 'Full Length Audio Play',
+            duration: 'Full Audio',
+            durationSeconds: 3600 * 8,
+            cover: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
+            youtubeId: ytId,
+            genre: 'Web Audio Stream',
+            platform: 'youtube'
+          });
+        }
+      }
+
+      // 0.8 Archive.org Direct Link or Identifier
+      else if (targetUrl.includes('archive.org/details/') || targetUrl.includes('archive.org/download/') || (targetUrl.startsWith('the-') && targetUrl.includes('soundscape'))) {
+        let identifier = targetUrl.trim();
+        const urlMatch = targetUrl.match(/archive\.org\/(?:details|download)\/([^/?#]+)/i);
         if (urlMatch) {
           identifier = urlMatch[1];
         }
