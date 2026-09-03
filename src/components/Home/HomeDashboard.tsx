@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Comic } from '../../types/comic';
 import { Anime } from '../../types/anime';
 import { MediaItem } from '../../types/media';
-import { Audiobook } from '../../types/audiobook';
 import { SportsMatch } from '../../types/sports';
 import { animeStorage } from '../../services/animeStorage';
 import { storage } from '../../services/storage';
@@ -10,7 +9,6 @@ import {
   BookOpen,
   Tv,
   Film,
-  Headphones,
   Trophy,
   Sparkles,
   Play,
@@ -31,17 +29,15 @@ import {
 
 interface HomeDashboardProps {
   onNavigateTab: (
-    tab: 'home' | 'browse' | 'anime' | 'media' | 'audiobooks' | 'sports' | 'rss' | 'library'
+    tab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library'
   ) => void;
   onSelectComic: (comic: Comic) => void;
   onSelectAnime: (anime: Anime) => void;
   onSelectMedia: (media: MediaItem) => void;
-  onSelectAudiobook: (book: Audiobook) => void;
   onSelectSportsMatch: (match: SportsMatch) => void;
   trendingComics?: Comic[];
   trendingAnime?: Anime[];
   trendingMedia?: MediaItem[];
-  popularAudiobooks?: Audiobook[];
   liveSports?: SportsMatch[];
 }
 
@@ -136,12 +132,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onSelectComic,
   onSelectAnime,
   onSelectMedia,
-  onSelectAudiobook,
   onSelectSportsMatch,
   trendingComics = [],
   trendingAnime = [],
   trendingMedia = [],
-  popularAudiobooks = [],
   liveSports = []
 }) => {
   const [activeSpotlight, setActiveSpotlight] = useState(0);

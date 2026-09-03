@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Comic, ReadingProgress, Bookmark } from '../types/comic';
 import { EBook } from '../types/ebook';
-import { Audiobook } from '../types/audiobook';
 import { storage } from '../services/storage';
 import { ebookStorage } from '../services/ebookStorage';
 import { offlineStorage, OfflineComicSummary } from '../services/offlineStorage';
@@ -14,7 +13,6 @@ import {
   Play,
   ArrowRight,
   BookText,
-  Headphones,
   Sparkles,
   Upload,
   CheckCircle2,
@@ -33,13 +31,11 @@ interface LibraryViewProps {
     panelIndex?: number
   ) => void;
   onOpenEBook?: (book: EBook) => void;
-  onOpenAudiobook?: (book: Audiobook) => void;
 }
 
 export const LibraryView: React.FC<LibraryViewProps> = ({
   onOpenComic,
-  onOpenEBook,
-  onOpenAudiobook
+  onOpenEBook
 }) => {
   const [activeTab, setActiveTab] = useState<'comics' | 'ebooks' | 'bookmarks'>('comics');
   const [comicSubCategory, setComicSubCategory] = useState<'reading' | 'downloaded' | 'favorites' | 'completed'>('reading');

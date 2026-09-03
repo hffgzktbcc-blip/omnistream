@@ -31,14 +31,6 @@ export const MiniPlayer: React.FC = () => {
 
   const getMediaDetails = () => {
     switch (activeMedia.type) {
-      case 'audiobook':
-        return {
-          title: activeMedia.item.title,
-          subtitle: activeMedia.item.author || 'Audiobook',
-          cover: activeMedia.item.cover,
-          icon: Headphones,
-          color: 'amber'
-        };
       case 'anime':
         return {
           title: activeMedia.item.title.english || activeMedia.item.title.romaji,
@@ -73,9 +65,8 @@ export const MiniPlayer: React.FC = () => {
   const details = getMediaDetails();
   const Icon = details.icon;
 
-  const isAudiobook = activeMedia.type === 'audiobook';
   const progressPercent =
-    isAudiobook && activeMedia.duration > 0
+    activeMedia.duration > 0
       ? (activeMedia.currentTime / activeMedia.duration) * 100
       : 0;
 

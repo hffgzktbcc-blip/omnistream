@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Comic, Chapter, ComicPage } from './types/comic';
 import { Anime } from './types/anime';
 import { MediaItem } from './types/media';
-import { Audiobook } from './types/audiobook';
 import { SportsMatch } from './types/sports';
 import { api } from './services/api';
 import { readLocalComicArchive } from './services/archiveReader';
@@ -22,8 +21,6 @@ import { AnimeDetailModal } from './components/Anime/AnimeDetailModal';
 import { MediaCatalog } from './components/Media/MediaCatalog';
 import { MediaDetailModal } from './components/Media/MediaDetailModal';
 import { UnifiedVideoPlayer, UnifiedPlayerSession } from './components/Common/UnifiedVideoPlayer';
-import { AudiobookCatalog } from './components/Audiobook/AudiobookCatalog';
-import { AudiobookPlayerModal } from './components/Audiobook/AudiobookPlayerModal';
 import { SportsCatalog } from './components/Sports/SportsCatalog';
 import { SportsPlayerModal } from './components/Sports/SportsPlayerModal';
 import { RSSPuller } from './components/RSS/RSSPuller';
@@ -42,7 +39,7 @@ import { Loader2, X } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    'home' | 'browse' | 'anime' | 'media' | 'audiobooks' | 'sports' | 'rss' | 'library' | 'arr'
+    'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr'
   >('home');
   const [arrModalMedia, setArrModalMedia] = useState<any | null>(null);
 
@@ -66,13 +63,6 @@ const AppContent: React.FC = () => {
 
   // Unified Video Player Session State (Anime, Movies & TV)
   const [activePlayerSession, setActivePlayerSession] = useState<UnifiedPlayerSession | null>(null);
-
-  // Audiobook State
-  const [audiobooks, setAudiobooks] = useState<Audiobook[]>([]);
-  const [localAudiobooks, setLocalAudiobooks] = useState<Audiobook[]>([]);
-  const [loadingAudiobooks, setLoadingAudiobooks] = useState<boolean>(false);
-  const [activeAudiobookCategory, setActiveAudiobookCategory] = useState<string>('popular');
-  const [activeAudiobookPlayer, setActiveAudiobookPlayer] = useState<Audiobook | null>(null);
 
   // Live Sports State
   const [sportsMatches, setSportsMatches] = useState<SportsMatch[]>([]);
@@ -149,13 +139,6 @@ const AppContent: React.FC = () => {
     }
   }, [activeMediaCategory, activeTab]);
 
-  // Load Audiobooks
-  useEffect(() => {
-    if (activeTab === 'audiobooks' || activeTab === 'home') {
-      loadAudiobooks(activeAudiobookCategory);
-    }
-  }, [activeAudiobookCategory, activeTab]);
-
   // Load Sports
   useEffect(() => {
     if (activeTab === 'sports' || activeTab === 'home') {
@@ -205,18 +188,6 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const loadAudiobooks = async (category: string) => {
-    setLoadingAudiobooks(true);
-    try {
-      const data = await api.getPopularAudiobooks(category);
-      setAudiobooks(data);
-    } catch (err) {
-      console.error('Failed to load audiobooks:', err);
-    } finally {
-      setLoadingAudiobooks(false);
-    }
-  };
-
   const loadSports = async (sport: string) => {
     setLoadingSports(true);
     try {
@@ -235,7 +206,6 @@ const AppContent: React.FC = () => {
       if (activeTab === 'browse') loadComics(activeCategory);
       if (activeTab === 'anime') loadAnime(activeAnimeCategory);
       if (activeTab === 'media') loadMedia(activeMediaCategory);
-      if (activeTab === 'audiobooks') loadAudiobooks(activeAudiobookCategory);
       if (activeTab === 'sports') loadSports(activeSport);
       return;
     }
@@ -273,18 +243,6 @@ const AppContent: React.FC = () => {
         console.error('Media search failed:', err);
       } finally {
         setLoadingMedia(false);
-      }
-    }
-
-    if (activeTab === 'audiobooks' || activeTab === 'home') {
-      setLoadingAudiobooks(true);
-      try {
-        const results = await api.searchAudiobooks(query);
-        setAudiobooks(results);
-      } catch (err) {
-        console.error('Audiobook search failed:', err);
-      } finally {
-        setLoadingAudiobooks(false);
       }
     }
 
@@ -561,15 +519,10 @@ const AppContent: React.FC = () => {
             onSelectComic={(c) => setSelectedComic(c)}
             onSelectAnime={(a) => setSelectedAnime(a)}
             onSelectMedia={(item) => setSelectedMedia(item)}
-            onSelectAudiobook={(ab) => {
-              setActiveAudiobookPlayer(ab);
-              playAudiobook(ab);
-            }}
             onSelectSportsMatch={(m) => setSelectedSportsMatch(m)}
             trendingComics={comics}
             trendingAnime={animeList}
             trendingMedia={mediaList}
-            popularAudiobooks={audiobooks}
             liveSports={sportsMatches}
           />
         )}
@@ -627,28 +580,7 @@ const AppContent: React.FC = () => {
           />
         )}
 
-        {/* 4. AUDIOBOOKS STREAMING HUB */}
-        {activeTab === 'audiobooks' && (
-          <AudiobookCatalog
-            audiobooks={audiobooks}
-            localAudiobooks={localAudiobooks}
-            loading={loadingAudiobooks}
-            onSelectBook={(book) => {
-              setActiveAudiobookPlayer(book);
-              playAudiobook(book);
-            }}
-            onUploadFile={handleFileUpload}
-            onSelectCategory={(cat) => {
-              setActiveAudiobookCategory(cat);
-              setSearchQuery('');
-            }}
-            activeCategory={activeAudiobookCategory}
-            searchQuery={searchQuery}
-            onSearchQuery={handleSearch}
-          />
-        )}
-
-        {/* 5. LIVE SPORTS STREAMING HUB */}
+        {/* 4. LIVE SPORTS STREAMING HUB */}
         {activeTab === 'sports' && (
           <SportsCatalog
             matches={sportsMatches}
@@ -763,17 +695,6 @@ const AppContent: React.FC = () => {
           onUpdateSession={(updates) =>
             setActivePlayerSession((prev) => (prev ? { ...prev, ...updates } : null))
           }
-        />
-      )}
-
-      {/* Audiobook Player Modal */}
-      {(activeAudiobookPlayer || (activeMedia?.type === 'audiobook' && !isMinimized)) && (
-        <AudiobookPlayerModal
-          book={activeMedia?.type === 'audiobook' ? activeMedia.item : activeAudiobookPlayer}
-          onClose={() => {
-            setActiveAudiobookPlayer(null);
-            closePlayer();
-          }}
         />
       )}
 

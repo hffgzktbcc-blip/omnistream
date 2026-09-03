@@ -18,7 +18,7 @@ interface CastModalProps {
   isOpen: boolean;
   onClose: () => void;
   mediaTitle: string;
-  mediaType: 'movie' | 'tv' | 'anime' | 'audiobook' | 'sports';
+  mediaType: 'movie' | 'tv' | 'anime' | 'sports';
   onAirPlayNative?: () => void;
 }
 

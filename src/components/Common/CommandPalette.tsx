@@ -103,16 +103,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       }
     },
     {
-      id: 'tab_audiobooks',
-      label: 'Stream Audiobooks & Dramatizations',
-      category: 'Navigation',
-      icon: Headphones,
-      action: () => {
-        onNavigateTab('audiobooks');
-        onClose();
-      }
-    },
-    {
       id: 'tab_sports',
       label: 'Watch Live Sports Streaming',
       category: 'Navigation',

@@ -12,16 +12,6 @@ import { URL } from 'url';
 import JSZip from 'jszip';
 import { analyzeSearchIntent, scoreAndRankResults } from './aiSearchEngine.js';
 import child_process from 'child_process';
-import {
-  getAudiobookSettings,
-  saveAudiobookSettings,
-  searchAudiobookBay,
-  getAudiobookBayDetails,
-  unrestrictWithRealDebrid,
-  unrestrictWithTorbox,
-  scanLocalAudiobooksFolder,
-  syncAudiobookshelf
-} from './audiobookIntegration.js';
 
 const dnsPromises = dns.promises;
 const __filename = fileURLToPath(import.meta.url);
@@ -5154,120 +5144,6 @@ app.get('/api/audiobooks/search', async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// 9.5 PREMIUM AUDIOBOOK DEBRID, ABB, LOCAL SCAN & AUDIOBOOKSHELF API
-// ---------------------------------------------------------------------------
-
-// 1. Get & Save Settings
-app.get('/api/audiobooks/settings', (req, res) => {
-  res.json(getAudiobookSettings());
-});
-
-app.post('/api/audiobooks/settings', express.json(), (req, res) => {
-  const updated = saveAudiobookSettings(req.body);
-  res.json(updated);
-});
-
-// 2. AudiobookBay (ABB) Search
-app.get('/api/audiobooks/abb/search', async (req, res) => {
-  try {
-    const q = req.query.q || '';
-    const results = await searchAudiobookBay(q);
-    res.json(results);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// 3. Debrid Unrestrict (Real-Debrid / Torbox)
-app.post('/api/audiobooks/debrid/unrestrict', express.json(), async (req, res) => {
-  try {
-    const { magnet, postUrl, provider = 'realdebrid', apiKey } = req.body;
-    let targetMagnet = magnet;
-    if (!targetMagnet && postUrl) {
-      const details = await getAudiobookBayDetails(postUrl);
-      targetMagnet = details?.magnet;
-    }
-    if (!targetMagnet) {
-      return res.status(400).json({ error: 'Magnet link or postUrl required' });
-    }
-
-    if (provider === 'torbox') {
-      const data = await unrestrictWithTorbox(targetMagnet, apiKey);
-      return res.json(data);
-    } else {
-      const data = await unrestrictWithRealDebrid(targetMagnet, apiKey);
-      return res.json(data);
-    }
-  } catch (e) {
-    console.error('Debrid unrestrict error:', e);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// 4. Local Audiobooks Scanner
-app.get('/api/audiobooks/local/scan', (req, res) => {
-  const dir = req.query.dir || undefined;
-  const books = scanLocalAudiobooksFolder(dir);
-  res.json(books);
-});
-
-// 5. Local Audiobooks Range Streamer
-app.get('/api/audiobooks/local/stream', (req, res) => {
-  const filePath = req.query.path;
-  if (!filePath || !fs.existsSync(filePath)) {
-    return res.status(404).send('Audiobook file not found on local disk.');
-  }
-
-  const stat = fs.statSync(filePath);
-  const fileSize = stat.size;
-  const range = req.headers.range;
-
-  const ext = path.extname(filePath).toLowerCase();
-  const mimeTypes = {
-    '.m4b': 'audio/mp4',
-    '.m4a': 'audio/mp4',
-    '.mp3': 'audio/mpeg',
-    '.aac': 'audio/aac',
-    '.flac': 'audio/flac',
-    '.ogg': 'audio/ogg',
-    '.opus': 'audio/opus'
-  };
-  const contentType = mimeTypes[ext] || 'audio/mpeg';
-
-  if (range) {
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    const chunksize = (end - start) + 1;
-    const file = fs.createReadStream(filePath, { start, end });
-    res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunksize,
-      'Content-Type': contentType,
-    });
-    file.pipe(res);
-  } else {
-    res.writeHead(200, {
-      'Content-Length': fileSize,
-      'Content-Type': contentType,
-      'Accept-Ranges': 'bytes'
-    });
-    fs.createReadStream(filePath).pipe(res);
-  }
-});
-
-// 6. Audiobookshelf Sync
-app.get('/api/audiobooks/abs/sync', async (req, res) => {
-  try {
-    const { url, token } = req.query;
-    const books = await syncAudiobookshelf(url, token);
-    res.json(books);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
 // -------------------------------------------------------------
 // 10. LIVE SPORTS FIXTURES & STREAMING ENGINE
 // -------------------------------------------------------------
