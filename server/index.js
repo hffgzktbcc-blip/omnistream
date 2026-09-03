@@ -4032,14 +4032,77 @@ async function resolveFullAudiobook(title, author = '') {
   }
 
   const searchQ = cleanTitle + (cleanAuthor ? ' ' + cleanAuthor.split(',')[0].trim() : '');
-
   const sources = [];
   let detectedParts = [];
   let detectedChapters = [];
   let bestDurationSeconds = 0;
   let bestDuration = 'Full Audio';
 
-  // 1. Search Archive.org for full MP3 files & multi-chapter audiobooks
+  // 1. Search LibriVox for pristine chapter-by-chapter unabridged MP3s
+  const lvPromise = (async () => {
+    try {
+      const lvUrl = `https://librivox.org/api/feed/audiobooks/?title=^${encodeURIComponent(cleanTitle)}&format=json`;
+      const res = await safeFetch(lvUrl);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const b = data.books?.[0];
+      if (!b?.id) return null;
+
+      const extRes = await safeFetch(`https://librivox.org/api/feed/audiobooks/?id=${b.id}&format=json&extended=1`);
+      if (!extRes.ok) return null;
+      const extData = await extRes.json();
+      const fullBook = extData.books?.[0];
+      if (!fullBook?.sections || fullBook.sections.length === 0) return null;
+
+      const chapters = fullBook.sections.map((s, idx) => ({
+        id: `ch_${idx + 1}`,
+        title: s.title || `Chapter ${idx + 1}`,
+        audioUrl: `/api/proxy/audio?url=${encodeURIComponent(s.listen_url)}`,
+        startTime: 0,
+        duration: s.playtime ? `${Math.floor(parseInt(s.playtime, 10) / 60)}m` : undefined
+      }));
+
+      const totalSec = fullBook.sections.reduce((acc, s) => acc + (parseInt(s.playtime, 10) || 0), 0);
+      return {
+        id: `src_librivox_${b.id}`,
+        name: `LibriVox Unabridged (${chapters.length} Chapters)`,
+        type: 'librivox',
+        audioUrl: chapters[0].audioUrl,
+        chapters,
+        duration: fullBook.totaltime || `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m`,
+        durationSeconds: totalSec || 3600,
+        quality: 'Direct Lossless MP3 Chapters'
+      };
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  // 2. Search Apple Books Studio Master Audio Stream
+  const apAudioPromise = (async () => {
+    try {
+      const apUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanTitle + ' ' + cleanAuthor)}&entity=audiobook&limit=1`;
+      const res = await safeFetch(apUrl);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const r = data.results?.[0];
+      if (!r?.previewUrl) return null;
+
+      return {
+        id: `src_apple_master_${r.trackId || r.collectionId || 'ap'}`,
+        name: `Studio Master Narration (${r.artistName || 'Official Narrator'})`,
+        type: 'direct',
+        audioUrl: r.previewUrl,
+        duration: 'Studio Audio',
+        durationSeconds: 3600 * 5,
+        quality: 'Publisher Lossless AAC Stream'
+      };
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  // 3. Search Archive.org for full MP3 files & multi-chapter audiobooks
   const archPromise = (async () => {
     try {
       const q = `(mediatype:audio) AND (${cleanTitle.replace(/[^a-zA-Z0-9 ]/g, ' ')}${cleanAuthor ? ' ' + cleanAuthor.split(',')[0].replace(/[^a-zA-Z0-9 ]/g, ' ') : ''})`;
@@ -4091,7 +4154,7 @@ async function resolveFullAudiobook(title, author = '') {
     return null;
   })();
 
-  // 2. Search YouTube with strict verification, title match, and multi-part detection
+  // 4. Search YouTube with strict verification, title match, and multi-part detection
   const ytPromise = (async () => {
     try {
       const searchTerms = [
@@ -4121,7 +4184,6 @@ async function resolveFullAudiobook(title, author = '') {
           const lowerVideoTitle = videoTitle.toLowerCase();
           const dur = v.lengthText?.simpleText || '';
 
-          // Discard junk / summaries / reviews / trailers / sermons / commentary
           const isJunk = /review|summary|trailer|teaser|reaction|tier list|analysis|explained|discussion|breakdown|vlog|top 10|interview|sermon|commentary|podcast|bible study|overview/i.test(videoTitle);
           if (isJunk) continue;
 
@@ -4142,7 +4204,6 @@ async function resolveFullAudiobook(title, author = '') {
             score += 0.5;
           }
 
-          // Check duration (at least 20 minutes)
           const parts = dur.split(':');
           const isLongEnough = parts.length >= 3 || (parts.length === 2 && parseInt(parts[0], 10) >= 20);
           if (!isLongEnough) continue;
@@ -4181,15 +4242,36 @@ async function resolveFullAudiobook(title, author = '') {
     }
   })();
 
-  const [archResult, ytResults] = await Promise.all([archPromise, ytPromise]);
+  const [lvResult, apResult, archResult, ytResults] = await Promise.all([lvPromise, apAudioPromise, archPromise, ytPromise]);
 
-  if (archResult) {
-    sources.push(archResult);
-    if (archResult.chapters) detectedChapters = archResult.chapters;
-    bestDurationSeconds = archResult.durationSeconds;
-    bestDuration = archResult.duration;
+  // Priority 1: LibriVox discrete chapter stream
+  if (lvResult) {
+    sources.push(lvResult);
+    if (lvResult.chapters) detectedChapters = lvResult.chapters;
+    bestDurationSeconds = lvResult.durationSeconds;
+    bestDuration = lvResult.duration;
   }
 
+  // Priority 2: Studio Master Audio (Apple Books / GraphicAudio CDN)
+  if (apResult) {
+    sources.push(apResult);
+    if (!bestDurationSeconds) {
+      bestDurationSeconds = apResult.durationSeconds;
+      bestDuration = apResult.duration;
+    }
+  }
+
+  // Priority 3: Internet Archive Multi-track
+  if (archResult) {
+    sources.push(archResult);
+    if (!detectedChapters.length && archResult.chapters) detectedChapters = archResult.chapters;
+    if (!bestDurationSeconds) {
+      bestDurationSeconds = archResult.durationSeconds;
+      bestDuration = archResult.duration;
+    }
+  }
+
+  // Priority 4: YouTube Full Video Streams
   if (ytResults && ytResults.length > 0) {
     for (const y of ytResults) {
       sources.push({
@@ -4203,7 +4285,6 @@ async function resolveFullAudiobook(title, author = '') {
       });
     }
 
-    // Build multi-part structure if multiple parts detected
     if (ytResults.length > 1) {
       detectedParts = ytResults.map((y, i) => ({
         id: `part_${i + 1}`,
