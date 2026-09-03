@@ -85,7 +85,16 @@ const AUDIOBOOK_PLATFORMS = [
   }
 ];
 
-const SEARCH_SUGGESTIONS = [
+const AUDIOBOOK_CATEGORIES = [
+  { id: 'graphicaudio', label: '🎬 GraphicAudio', icon: Sparkles },
+  { id: 'dramatized', label: '🎭 Full Cast Dramas', icon: Award },
+  { id: 'popular', label: '🔥 Top Trending', icon: TrendingUp },
+  { id: 'fantasy', label: '🐉 Epic Fantasy & Sci-Fi', icon: Compass },
+  { id: 'selfhelp', label: '🧠 Mindset & Habits', icon: Flame },
+  { id: 'business', label: '💼 Strategy & Wealth', icon: Briefcase }
+];
+
+const POPULAR_AUDIOBOOK_SEARCHES = [
   'Mistborn Final Empire GraphicAudio',
   'The Way of Kings GraphicAudio',
   'Lord of the Rings Phil Dragash',
