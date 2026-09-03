@@ -12,6 +12,45 @@ export interface AudiobookBookmark {
   timestamp: number;
   note?: string;
   createdAt: number;
+  chapterIndex?: number;
+  partIndex?: number;
+}
+
+export interface AudiobookSource {
+  id: string;
+  name: string;
+  type: 'direct' | 'archive' | 'youtube' | 'local';
+  audioUrl?: string;
+  youtubeId?: string;
+  duration?: string;
+  durationSeconds?: number;
+  chapters?: AudiobookChapter[];
+  quality?: string;
+}
+
+export interface AudiobookPart {
+  id: string;
+  partNumber: number;
+  title: string;
+  duration?: string;
+  durationSeconds?: number;
+  audioUrl?: string;
+  youtubeId?: string;
+  chapters?: AudiobookChapter[];
+}
+
+export interface AudiobookListeningProgress {
+  bookId: string;
+  title: string;
+  author: string;
+  cover?: string;
+  currentTime: number;
+  duration: number;
+  currentChapterIndex: number;
+  currentPartIndex: number;
+  lastPlayedAt: number;
+  completed: boolean;
+  percent: number;
 }
 
 export interface Audiobook {
@@ -26,13 +65,19 @@ export interface Audiobook {
   audioUrl?: string;
   description?: string;
   genre?: string;
-  platform?: string; // 'graphicaudio' | 'audible' | 'bbcsounds' | 'archive' | 'spotify'
+  platform?: string; // 'graphicaudio' | 'audible' | 'bbcsounds' | 'archive' | 'spotify' | 'direct' | 'pixeldrain' | 'youtube'
   isGraphicAudio?: boolean;
   isDramatized?: boolean;
   chapters?: AudiobookChapter[];
+  parts?: AudiobookPart[];
+  sources?: AudiobookSource[];
+  selectedSourceId?: string;
   bookmarks?: AudiobookBookmark[];
   currentProgress?: number; // 0 to 100
   lastPosition?: number; // seconds
+  lastChapterIndex?: number;
+  lastPartIndex?: number;
   updatedAt?: number;
   isLocalUpload?: boolean;
 }
+

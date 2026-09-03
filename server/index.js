@@ -3965,7 +3965,7 @@ async function searchAudible(query, limit = 20) {
   }
 }
 
-// Helper for dynamically locating full unabridged audio streams on the internet
+// Helper for dynamically locating verified full unabridged audio streams and multi-part plays
 async function resolveFullAudiobook(title, author = '') {
   const cleanTitle = (title || '')
     .replace(/\(.*?\)/g, '')
@@ -3979,7 +3979,13 @@ async function resolveFullAudiobook(title, author = '') {
   const cleanAuthor = (author || '').replace(/Narrator.*/i, '').trim();
   const searchQ = cleanTitle + (cleanAuthor ? ' ' + cleanAuthor.split(',')[0].trim() : '');
 
-  // 1. Search Archive.org for full MP3 files
+  const sources = [];
+  let detectedParts = [];
+  let detectedChapters = [];
+  let bestDurationSeconds = 0;
+  let bestDuration = 'Full Audio';
+
+  // 1. Search Archive.org for full MP3 files & multi-chapter audiobooks
   const archPromise = (async () => {
     try {
       const q = `(mediatype:audio) AND (${cleanTitle.replace(/[^a-zA-Z0-9 ]/g, ' ')}${cleanAuthor ? ' ' + cleanAuthor.split(',')[0].replace(/[^a-zA-Z0-9 ]/g, ' ') : ''})`;
@@ -4003,18 +4009,24 @@ async function resolveFullAudiobook(title, author = '') {
               const rawUrl = `https://archive.org/download/${doc.identifier}/${encodeURIComponent(f.name)}`;
               return {
                 id: `ch_${idx + 1}`,
-                title: f.title || f.name.replace(/\.mp3$/i, '').replace(/^[0-9]+[_\s-]+/i, ''),
+                title: f.title || f.name.replace(/\.mp3$/i, '').replace(/^[0-9]+[_\s-]+/i, '').replace(/_/g, ' '),
                 startTime: 0,
                 duration: f.length ? `${Math.floor(parseFloat(f.length) / 60)}m` : undefined,
                 audioUrl: `/api/proxy/audio?url=${encodeURIComponent(rawUrl)}`
               };
             });
             const firstRawUrl = `https://archive.org/download/${doc.identifier}/${encodeURIComponent(firstMp3.name)}`;
+            const durFormatted = totalSec > 0 ? `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m` : 'Full Audio';
+
             return {
-              source: 'archive',
+              id: `src_arch_${doc.identifier}`,
+              name: `Internet Archive (${chapters.length} Chapters)`,
+              type: 'archive',
               audioUrl: `/api/proxy/audio?url=${encodeURIComponent(firstRawUrl)}`,
               chapters: chapters.length > 1 ? chapters : undefined,
-              durationSeconds: Math.round(totalSec) || 3600
+              duration: durFormatted,
+              durationSeconds: Math.round(totalSec) || 3600,
+              quality: 'Direct HD Stream'
             };
           }
         }
@@ -4025,40 +4037,148 @@ async function resolveFullAudiobook(title, author = '') {
     return null;
   })();
 
-  // 2. Search YouTube for full-length unabridged streams (> 30 mins)
+  // 2. Search YouTube with strict verification, title match, and multi-part detection
   const ytPromise = (async () => {
     try {
-      const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQ + ' full audiobook unabridged')}`;
-      const res = await safeFetch(ytUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      if (!res.ok) return null;
+      const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQ + ' full audiobook')}`;
+      const res = await safeFetch(ytUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } });
+      if (!res.ok) return [];
       const html = await res.text();
       const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
-      if (match) {
-        const data = JSON.parse(match[1]);
-        const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
-        for (const item of contents) {
-          const v = item.videoRenderer;
-          if (v && v.videoId && v.lengthText?.simpleText) {
-            const dur = v.lengthText.simpleText;
-            const parts = dur.split(':');
-            if (parts.length >= 3 || parseInt(parts[0], 10) >= 30) {
-              return {
-                source: 'youtube',
-                youtubeId: v.videoId,
-                duration: dur
-              };
-            }
-          }
+      if (!match) return [];
+
+      const data = JSON.parse(match[1]);
+      const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+
+      const verifiedStreams = [];
+      const titleTokens = cleanTitle.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+
+      for (const item of contents) {
+        const v = item.videoRenderer;
+        if (!v || !v.videoId || !v.title?.runs?.[0]?.text) continue;
+
+        const videoTitle = v.title.runs[0].text;
+        const dur = v.lengthText?.simpleText || '';
+
+        // Discard junk / summaries / reviews / trailers
+        const isJunk = /review|summary|trailer|teaser|reaction|tier list|analysis|explained|discussion|breakdown|vlog|top 10|interview/i.test(videoTitle);
+        if (isJunk) continue;
+
+        // Ensure title contains relevant keywords
+        const lowerVideoTitle = videoTitle.toLowerCase();
+        const matchesKeyWords = titleTokens.length === 0 || titleTokens.some(w => lowerVideoTitle.includes(w));
+        if (!matchesKeyWords) continue;
+
+        // Check duration (at least 20 minutes)
+        const parts = dur.split(':');
+        const isLongEnough = parts.length >= 3 || (parts.length === 2 && parseInt(parts[0], 10) >= 20);
+        if (!isLongEnough) continue;
+
+        // Calculate duration in seconds
+        let sec = 0;
+        if (parts.length === 3) {
+          sec = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+        } else if (parts.length === 2) {
+          sec = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
         }
+
+        // Multi-Part check: e.g. "Part 1 of 3", "Part 1", "Part 2"
+        const partMatch = videoTitle.match(/Part\s*(\d+)(?:\s*of\s*(\d+))?/i);
+        const partNumber = partMatch ? parseInt(partMatch[1], 10) : (verifiedStreams.length + 1);
+
+        verifiedStreams.push({
+          id: `src_yt_${v.videoId}`,
+          name: videoTitle.length > 45 ? `${videoTitle.slice(0, 45)}...` : videoTitle,
+          type: 'youtube',
+          youtubeId: v.videoId,
+          duration: dur,
+          durationSeconds: sec,
+          partNumber,
+          videoTitle
+        });
+
+        if (verifiedStreams.length >= 4) break;
       }
+
+      return verifiedStreams;
     } catch (e) {
       console.warn('YouTube full audio resolve error:', e);
+      return [];
     }
-    return null;
   })();
 
-  const [archResult, ytResult] = await Promise.all([archPromise, ytPromise]);
-  return archResult || ytResult || null;
+  const [archResult, ytResults] = await Promise.all([archPromise, ytPromise]);
+
+  if (archResult) {
+    sources.push(archResult);
+    if (archResult.chapters) detectedChapters = archResult.chapters;
+    bestDurationSeconds = archResult.durationSeconds;
+    bestDuration = archResult.duration;
+  }
+
+  if (ytResults && ytResults.length > 0) {
+    for (const y of ytResults) {
+      sources.push({
+        id: y.id,
+        name: `YouTube: ${y.name}`,
+        type: 'youtube',
+        youtubeId: y.youtubeId,
+        duration: y.duration,
+        durationSeconds: y.durationSeconds,
+        quality: 'Full Audio Play'
+      });
+    }
+
+    // Build multi-part structure if multiple parts detected
+    if (ytResults.length > 1) {
+      detectedParts = ytResults.map((y, i) => ({
+        id: `part_${i + 1}`,
+        partNumber: y.partNumber || (i + 1),
+        title: y.name || `Part ${i + 1}`,
+        duration: y.duration,
+        durationSeconds: y.durationSeconds,
+        youtubeId: y.youtubeId
+      }));
+    }
+
+    if (!bestDurationSeconds && ytResults[0]) {
+      bestDurationSeconds = ytResults[0].durationSeconds;
+      bestDuration = ytResults[0].duration;
+    }
+  }
+
+  // Generate Smart Chapters if no chapters exist and total duration > 30 mins
+  if (detectedChapters.length === 0 && bestDurationSeconds > 1800) {
+    const chapterLengthSec = 1800; // 30-minute milestones
+    const totalChapters = Math.ceil(bestDurationSeconds / chapterLengthSec);
+    detectedChapters = Array.from({ length: Math.min(totalChapters, 20) }, (_, i) => {
+      const startSec = i * chapterLengthSec;
+      const h = Math.floor(startSec / 3600);
+      const m = Math.floor((startSec % 3600) / 60);
+      const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:00`;
+      return {
+        id: `ch_${i + 1}`,
+        title: `Chapter ${i + 1} (${timeStr})`,
+        startTime: startSec,
+        endTime: Math.min(startSec + chapterLengthSec, bestDurationSeconds),
+        duration: '30m'
+      };
+    });
+  }
+
+  const primary = sources[0];
+  if (!primary) return null;
+
+  return {
+    source: primary.type,
+    audioUrl: primary.audioUrl || '',
+    youtubeId: primary.youtubeId || (primary.audioUrl ? undefined : ytResults?.[0]?.youtubeId),
+    duration: bestDuration,
+    durationSeconds: bestDurationSeconds,
+    chapters: detectedChapters.length > 0 ? detectedChapters : undefined,
+    parts: detectedParts.length > 1 ? detectedParts : undefined,
+    sources: sources.length > 1 ? sources : undefined
+  };
 }
 
 const CURATED_AUDIOBOOKS = [

@@ -767,10 +767,13 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Audiobook Player Modal */}
-      {activeAudiobookPlayer && !isMinimized && (
+      {(activeAudiobookPlayer || (activeMedia?.type === 'audiobook' && !isMinimized)) && (
         <AudiobookPlayerModal
-          book={activeAudiobookPlayer}
-          onClose={() => setActiveAudiobookPlayer(null)}
+          book={activeMedia?.type === 'audiobook' ? activeMedia.item : activeAudiobookPlayer}
+          onClose={() => {
+            setActiveAudiobookPlayer(null);
+            closePlayer();
+          }}
         />
       )}
 

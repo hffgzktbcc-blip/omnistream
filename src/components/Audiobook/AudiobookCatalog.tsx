@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Audiobook } from '../../types/audiobook';
 import { AudiobookCard } from './AudiobookCard';
+import { audiobookStorage } from '../../services/audiobookStorage';
 import {
   Headphones,
   Upload,
@@ -395,6 +396,83 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
           </button>
         </form>
       </div>
+
+      {/* -------------------------------------------------------------
+          CONTINUE LISTENING SHELF (PERSISTENT PROGRESS & RESUME)
+         ------------------------------------------------------------- */}
+      {(() => {
+        const recentHistory = audiobookStorage.getRecentHistory();
+        if (recentHistory.length === 0 || searchQuery) return null;
+
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Continue Listening ({recentHistory.length})
+                </h3>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {recentHistory.slice(0, 4).map((hist) => {
+                const matchingBook = audiobooks.find((b) => b.id === hist.bookId) || {
+                  id: hist.bookId,
+                  title: hist.title,
+                  author: hist.author,
+                  cover: hist.cover,
+                  durationSeconds: hist.duration,
+                  lastPosition: hist.currentTime
+                };
+
+                const leftSec = Math.max(0, hist.duration - hist.currentTime);
+                const leftH = Math.floor(leftSec / 3600);
+                const leftM = Math.floor((leftSec % 3600) / 60);
+                const leftStr = leftH > 0 ? `${leftH}h ${leftM}m left` : `${leftM}m left`;
+
+                return (
+                  <div
+                    key={hist.bookId}
+                    onClick={() => onSelectBook(matchingBook as Audiobook)}
+                    className="group p-3.5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 hover:border-amber-500/50 transition-all cursor-pointer shadow-lg flex items-center gap-3.5"
+                  >
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 shadow-md">
+                      {hist.cover ? (
+                        <img src={hist.cover} alt={hist.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-600">
+                          <Headphones className="w-6 h-6" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <Play className="w-5 h-5 text-amber-400 fill-current opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                      </div>
+                    </div>
+
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <h4 className="text-xs sm:text-sm font-black text-white truncate group-hover:text-amber-300 transition-colors">
+                        {hist.title}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 truncate">{hist.author}</p>
+
+                      <div className="space-y-1 pt-0.5">
+                        <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                          <span className="text-amber-400 font-bold">{leftStr}</span>
+                          <span>{hist.percent}%</span>
+                        </div>
+                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div className="h-full bg-amber-500 rounded-full" style={{ width: `${hist.percent}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Local Uploaded Audiobooks Shelf */}
       {localAudiobooks.length > 0 && !searchQuery && (

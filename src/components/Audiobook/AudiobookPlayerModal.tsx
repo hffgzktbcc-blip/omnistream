@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Audiobook, AudiobookBookmark, AudiobookChapter } from '../../types/audiobook';
+import React, { useState, useEffect, useRef } from 'react';
+import { Audiobook, AudiobookBookmark, AudiobookChapter, AudiobookPart, AudiobookSource } from '../../types/audiobook';
 import { usePlayback } from '../../context/PlaybackContext';
+import { audiobookStorage } from '../../services/audiobookStorage';
 import {
   X,
   Play,
@@ -26,7 +27,14 @@ import {
   Radio,
   Sliders,
   ShieldCheck,
-  Disc
+  Disc,
+  Layers,
+  ChevronDown,
+  Trash2,
+  Plus,
+  Compass,
+  Zap,
+  Repeat
 } from 'lucide-react';
 import { CastModal } from '../Common/CastModal';
 
@@ -53,14 +61,20 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
     playChapter,
     nextChapter,
     prevChapter,
+    playPart,
+    nextPart,
+    prevPart,
+    switchAudioSource,
     setVolume,
     toggleMute
   } = usePlayback();
 
-  const [audioOnlyMode, setAudioOnlyMode] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'player' | 'chapters' | 'bookmarks'>('player');
-  const [bookmarks, setBookmarks] = useState<AudiobookBookmark[]>(book?.bookmarks || []);
+  const [activeTab, setActiveTab] = useState<'player' | 'chapters' | 'parts' | 'bookmarks' | 'sources'>('player');
   const [showCastModal, setShowCastModal] = useState<boolean>(false);
+  const [showSpeedMenu, setShowSpeedMenu] = useState<boolean>(false);
+  const [showSleepMenu, setShowSleepMenu] = useState<boolean>(false);
+  const [showRemainingTime, setShowRemainingTime] = useState<boolean>(true);
+  const [bookmarks, setBookmarks] = useState<AudiobookBookmark[]>([]);
   const [bookmarkNote, setBookmarkNote] = useState('');
   const [showAddBookmarkInput, setShowAddBookmarkInput] = useState(false);
 
@@ -70,20 +84,30 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
   const duration = isCurrentBook ? activeMedia.duration : (book?.durationSeconds || 3600 * 5);
   const currentSpeed = isCurrentBook ? activeMedia.speed : 1.0;
   const currentChapterIdx = isCurrentBook ? activeMedia.currentChapterIndex : 0;
+  const currentPartIdx = isCurrentBook ? activeMedia.currentPartIndex : 0;
   const currentVolume = isCurrentBook ? activeMedia.volume : 1.0;
   const isMuted = isCurrentBook ? activeMedia.isMuted : false;
 
-  const chapters: AudiobookChapter[] = book?.chapters || [];
+  const currentBook = isCurrentBook ? activeMedia.item : (book || {} as Audiobook);
+  const chapters: AudiobookChapter[] = currentBook.chapters || [];
+  const parts: AudiobookPart[] = currentBook.parts || [];
+  const sources: AudiobookSource[] = currentBook.sources || [];
   const currentChapter = chapters[currentChapterIdx];
+  const currentPart = parts[currentPartIdx];
+
+  // Load saved bookmarks for current book
+  useEffect(() => {
+    if (book?.id) {
+      setBookmarks(audiobookStorage.getBookmarks(book.id));
+    }
+  }, [book?.id]);
 
   // Keyboard shortcut listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
 
-      if (e.key === 'b' || e.key === 'B') {
-        handleAddQuickBookmark();
-      } else if (e.key === ' ') {
+      if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
         togglePlayPause();
       } else if (e.key === 'ArrowLeft') {
@@ -107,7 +131,7 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
   if (!book) return null;
 
   const formatTime = (secs: number) => {
-    if (!secs || isNaN(secs)) return '00:00';
+    if (!secs || isNaN(secs) || secs < 0) return '00:00';
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
     const s = Math.floor(secs % 60);
@@ -117,52 +141,68 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  const remainingSeconds = Math.max(0, duration - currentTime);
+
   const handleAddQuickBookmark = () => {
+    if (!book.id) return;
     const newBm: AudiobookBookmark = {
       id: `bm_${Date.now()}`,
       timestamp: currentTime,
       note: bookmarkNote.trim() || `Bookmark at ${formatTime(currentTime)}`,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      chapterIndex: currentChapterIdx,
+      partIndex: currentPartIdx
     };
-    const updated = [newBm, ...bookmarks];
+    const updated = audiobookStorage.saveBookmark(book.id, newBm);
     setBookmarks(updated);
     setBookmarkNote('');
     setShowAddBookmarkInput(false);
   };
 
-  const handleSetSleepTimer = (minutes: number) => {
-    if (sleepTimerMinutes === minutes) {
-      setSleepTimer(null);
-    } else {
-      setSleepTimer(minutes);
-    }
+  const handleDeleteBookmark = (bmId: string) => {
+    if (!book.id) return;
+    const updated = audiobookStorage.deleteBookmark(book.id, bmId);
+    setBookmarks(updated);
   };
 
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+  const isGraphicAudio = book.isGraphicAudio || book.genre === 'Full Cast & Dramatized' || book.title.toLowerCase().includes('graphicaudio') || book.title.toLowerCase().includes('soundscape');
 
-  const embedUrl = book.youtubeId
-    ? `https://www.youtube-nocookie.com/embed/${book.youtubeId}?autoplay=1&enablejsapi=1&start=${Math.floor(currentTime)}`
-    : '';
-
-  const hasDirectAudio = Boolean(currentChapter?.audioUrl || book.audioUrl);
-  const isGraphicAudio = book.isGraphicAudio || book.genre === 'Full Cast & Dramatized' || book.title.toLowerCase().includes('graphicaudio') || book.title.toLowerCase().includes('soundscape') || book.title.toLowerCase().includes('full cast');
+  const speeds = [0.75, 1.0, 1.2, 1.25, 1.5, 1.75, 2.0, 2.5];
+  const sleepOptions = [
+    { label: 'Off', minutes: null },
+    { label: '15 mins', minutes: 15 },
+    { label: '30 mins', minutes: 30 },
+    { label: '45 mins', minutes: 45 },
+    { label: '60 mins', minutes: 60 }
+  ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-2xl animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-2xl animate-fade-in">
       <div
-        className="relative w-full max-w-2xl bg-[#070b14] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-2xl bg-[#080d1a] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Dynamic Background Glow */}
-        <div className="absolute -top-32 -left-32 w-80 h-80 rounded-full blur-3xl bg-amber-500/10 pointer-events-none" />
-        <div className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full blur-3xl bg-purple-500/10 pointer-events-none" />
+        {/* Dynamic Cover Ambient Glow */}
+        {book.cover && (
+          <div
+            className="absolute inset-0 opacity-15 blur-3xl scale-125 pointer-events-none transition-all duration-700"
+            style={{
+              backgroundImage: `url(${book.cover})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          />
+        )}
 
-        {/* Top Header */}
-        <div className="p-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-3 relative z-10">
-          <div className="flex items-center gap-3 min-w-0">
+        {/* -------------------------------------------------------------
+            TOP HEADER: DOCK, TITLE, SOURCE PILL & CLOSE
+           ------------------------------------------------------------- */}
+        <div className="p-3.5 sm:p-4 bg-slate-900/90 border-b border-slate-800/80 flex items-center justify-between gap-3 relative z-10 backdrop-blur-md">
+          <div className="flex items-center gap-2">
             <button
               onClick={minimizePlayer}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
               title="Dock & Listen in Background (Esc)"
             >
               <Minimize2 className="w-4 h-4" />
@@ -176,479 +216,568 @@ export const AudiobookPlayerModal: React.FC<AudiobookPlayerModalProps> = ({
             >
               <X className="w-4 h-4" />
             </button>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs sm:text-sm font-black text-white truncate">
-                  {book.title}
-                </h3>
-                {isGraphicAudio && (
-                  <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md flex-shrink-0">
-                    GraphicAudio
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-amber-400 flex items-center gap-1 truncate mt-0.5">
-                <User className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                <span className="truncate">{book.author}</span>
-                {currentChapter && (
-                  <span className="text-slate-400 truncate">• {currentChapter.title}</span>
-                )}
-              </p>
-            </div>
           </div>
 
-          {/* Mode Switcher & Tools */}
+          {/* Active Title */}
+          <div className="min-w-0 flex-1 text-center px-2">
+            <h3 className="text-xs sm:text-sm font-black text-white truncate">{book.title}</h3>
+            <p className="text-[11px] text-amber-400/90 truncate font-semibold">{book.author}</p>
+          </div>
+
+          {/* Source Switcher Pill */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* Audio / Video Switcher */}
-            {book.youtubeId && (
+            {sources.length > 1 && (
               <button
-                onClick={() => setAudioOnlyMode(!audioOnlyMode)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  audioOnlyMode
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-                }`}
-                title="Toggle Audio-Only / Video Mode"
+                onClick={() => setActiveTab(activeTab === 'sources' ? 'player' : 'sources')}
+                className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                title="Switch Audio Stream Source"
               >
-                {audioOnlyMode ? <Headphones className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
-                <span className="hidden sm:inline">{audioOnlyMode ? 'Audio' : 'Video'}</span>
+                <Zap className="w-3 h-3 text-amber-400" />
+                <span className="hidden sm:inline">Sources ({sources.length})</span>
               </button>
             )}
 
-            {/* Chapters Drawer Button */}
-            {chapters.length > 0 && (
-              <button
-                onClick={() => setActiveTab(activeTab === 'chapters' ? 'player' : 'chapters')}
-                className={`p-2 rounded-xl border transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold ${
-                  activeTab === 'chapters'
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-                }`}
-                title={`Chapters (${chapters.length}) - Press 'C'`}
-              >
-                <ListMusic className="w-4 h-4" />
-                <span className="text-[10px] hidden sm:inline">{chapters.length} Tracks</span>
-              </button>
-            )}
-
-            {/* AirPlay / Cast Button */}
             <button
               onClick={() => setShowCastModal(true)}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold transition-all cursor-pointer"
-              title="Cast to Apple TV, HomePod or TV Box"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              title="Cast Audio (AirPlay / Chromecast)"
             >
               <Airplay className="w-4 h-4" />
-            </button>
-
-            {/* Bookmarks Toggle */}
-            <button
-              onClick={() => setActiveTab(activeTab === 'bookmarks' ? 'player' : 'bookmarks')}
-              className={`p-2 rounded-xl border transition-colors cursor-pointer ${
-                activeTab === 'bookmarks'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400'
-                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-              }`}
-              title="Bookmarks (Press B)"
-            >
-              <Bookmark className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Tab View: CHAPTERS TRACK LIST */}
-        {activeTab === 'chapters' && chapters.length > 0 && (
-          <div className="p-4 overflow-y-auto max-h-[60vh] space-y-2 relative z-10 animate-fade-in">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <ListMusic className="w-4 h-4 text-amber-400" />
-                <span>Audio Tracks & Chapters ({chapters.length})</span>
-              </span>
-              <button
-                onClick={() => setActiveTab('player')}
-                className="text-xs text-amber-400 hover:text-amber-300 font-semibold cursor-pointer"
-              >
-                Back to Player
-              </button>
-            </div>
+        {/* -------------------------------------------------------------
+            TAB NAVIGATION BAR: PLAYER | CHAPTERS | MULTI-PARTS | BOOKMARKS
+           ------------------------------------------------------------- */}
+        <div className="flex items-center justify-around border-b border-slate-800/80 bg-slate-950/60 p-1 text-xs font-bold">
+          <button
+            onClick={() => setActiveTab('player')}
+            className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'player' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Headphones className="w-3.5 h-3.5" />
+            <span>Now Playing</span>
+          </button>
 
-            <div className="space-y-1.5">
-              {chapters.map((ch, idx) => {
-                const isSelected = currentChapterIdx === idx;
-                return (
-                  <div
-                    key={ch.id || idx}
-                    onClick={() => {
-                      playChapter(idx);
-                      setActiveTab('player');
-                    }}
-                    className={`p-3 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition-all border ${
-                      isSelected
-                        ? 'bg-amber-500/15 border-amber-400/60 text-amber-300 shadow-md shadow-amber-500/10'
-                        : 'bg-slate-900/70 border-slate-800/80 hover:bg-slate-800 text-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono text-xs font-bold flex-shrink-0 ${
-                          isSelected ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {isSelected && isPlaying ? (
-                          <Disc className="w-4 h-4 animate-spin" />
-                        ) : (
-                          idx + 1
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold truncate">{ch.title}</h4>
-                        {ch.duration && (
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {ch.duration}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+          <button
+            onClick={() => setActiveTab('chapters')}
+            className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'chapters' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <ListMusic className="w-3.5 h-3.5" />
+            <span>Chapters ({chapters.length || 1})</span>
+          </button>
 
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {isSelected && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-400 text-slate-950">
-                          ACTIVE
+          {parts.length > 1 && (
+            <button
+              onClick={() => setActiveTab('parts')}
+              className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'parts' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Parts ({parts.length})</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setActiveTab('bookmarks')}
+            className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'bookmarks' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+            <span>Bookmarks ({bookmarks.length})</span>
+          </button>
+        </div>
+
+        {/* -------------------------------------------------------------
+            TAB CONTENT
+           ------------------------------------------------------------- */}
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 relative z-10">
+          {/* TAB 1: NOW PLAYING VIEW */}
+          {activeTab === 'player' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Hero Album / Book Artwork with Pulsing Equalizer Ring */}
+              <div className="flex flex-col items-center justify-center pt-2">
+                <div className="relative group">
+                  {/* Equalizer Ring */}
+                  <div className={`absolute -inset-2 rounded-3xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 opacity-30 blur-xl transition-opacity ${isPlaying ? 'opacity-70 animate-pulse' : 'opacity-20'}`} />
+
+                  <div className="relative w-44 h-44 sm:w-56 sm:h-56 rounded-3xl overflow-hidden shadow-2xl border-2 border-slate-700/80 bg-slate-900 flex items-center justify-center">
+                    {book.cover ? (
+                      <img
+                        src={book.cover}
+                        alt={book.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Headphones className="w-16 h-16 text-slate-600" />
+                    )}
+
+                    {/* GraphicAudio / Full Cast Badge Overlay */}
+                    {isGraphicAudio && (
+                      <div className="absolute top-2 left-2 right-2">
+                        <span className="px-2.5 py-1 rounded-lg bg-red-600/90 backdrop-blur-md text-white font-black text-[9px] uppercase tracking-wider shadow flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 fill-current" />
+                          <span>GraphicAudio • A Movie in Your Mind®</span>
                         </span>
-                      )}
-                      <Play className="w-4 h-4 text-slate-400" />
-                    </div>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                </div>
 
-        {/* Tab View: BOOKMARKS */}
-        {activeTab === 'bookmarks' && (
-          <div className="p-4 overflow-y-auto max-h-[60vh] space-y-3 relative z-10 animate-fade-in">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Bookmark className="w-4 h-4 text-amber-400" />
-                <span>Saved Bookmarks & Moments ({bookmarks.length})</span>
-              </span>
-              <button
-                onClick={() => setShowAddBookmarkInput(!showAddBookmarkInput)}
-                className="px-2.5 py-1 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400 cursor-pointer"
-              >
-                + Add Moment (B)
-              </button>
-            </div>
+                {/* Subtitle & Current Part/Chapter Badge */}
+                <div className="text-center mt-4 space-y-1 max-w-md">
+                  <h2 className="text-base sm:text-lg font-black text-white leading-snug truncate">
+                    {book.title}
+                  </h2>
+                  <p className="text-xs text-slate-400 truncate">
+                    Narrated by {book.narrator || 'Full Voice Cast & Sound Design'}
+                  </p>
 
-            {showAddBookmarkInput && (
-              <div className="p-3 rounded-2xl bg-slate-900 border border-amber-500/40 space-y-2">
-                <input
-                  type="text"
-                  value={bookmarkNote}
-                  onChange={(e) => setBookmarkNote(e.target.value)}
-                  placeholder={`Note at ${formatTime(currentTime)} (e.g., Epic Battle scene)`}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddQuickBookmark();
-                  }}
-                />
-                <div className="flex justify-end gap-2">
+                  <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                    {parts.length > 1 && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-amber-300 text-[10px] font-bold">
+                        Part {currentPartIdx + 1} of {parts.length}
+                      </span>
+                    )}
+
+                    {currentChapter && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-sky-300 text-[10px] font-bold truncate max-w-xs">
+                        {currentChapter.title}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline & Precision Scrub Bar */}
+              <div className="space-y-2 max-w-xl mx-auto px-2">
+                <div className="relative group">
+                  <input
+                    type="range"
+                    min={0}
+                    max={duration || 100}
+                    value={currentTime}
+                    onChange={(e) => seekTo(parseFloat(e.target.value))}
+                    className="w-full h-2.5 bg-slate-800 rounded-full appearance-none cursor-pointer accent-amber-500 transition-all hover:h-3.5 focus:outline-none"
+                    style={{
+                      background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${progressPercent}%, #1e293b ${progressPercent}%, #1e293b 100%)`
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+                  <span className="font-bold text-slate-200">{formatTime(currentTime)}</span>
+
                   <button
-                    onClick={() => setShowAddBookmarkInput(false)}
-                    className="px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white"
+                    onClick={() => setShowRemainingTime(!showRemainingTime)}
+                    className="hover:text-amber-400 transition-colors cursor-pointer"
+                    title="Click to toggle Total / Remaining Time"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddQuickBookmark}
-                    className="px-3 py-1 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold"
-                  >
-                    Save Timestamp
+                    {showRemainingTime ? `-${formatTime(remainingSeconds)}` : formatTime(duration)}
                   </button>
                 </div>
               </div>
-            )}
 
-            {bookmarks.length === 0 ? (
-              <p className="text-xs text-slate-500 italic text-center py-6">
-                No bookmarks saved yet. Press 'B' during playback to save memorable moments.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {bookmarks.map((bm) => (
-                  <div
-                    key={bm.id}
-                    onClick={() => {
-                      seekTo(bm.timestamp);
-                      setActiveTab('player');
-                    }}
-                    className="p-3 rounded-2xl bg-slate-900/80 hover:bg-slate-800 text-xs flex items-center justify-between cursor-pointer text-slate-200 border border-slate-800 hover:border-amber-400/50"
-                  >
-                    <span className="font-semibold">{bm.note}</span>
-                    <span className="text-[10px] text-amber-400 font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800">
-                      {formatTime(bm.timestamp)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+              {/* Flagship Controls: Skip 15s / 30s, Play/Pause, Next/Prev Parts */}
+              <div className="flex items-center justify-center gap-4 sm:gap-6 pt-2">
+                {/* Previous Chapter / Part */}
+                <button
+                  onClick={prevChapter}
+                  className="p-2.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all cursor-pointer"
+                  title="Previous Chapter / Part"
+                >
+                  <SkipBack className="w-5 h-5" />
+                </button>
 
-        {/* Main Player View */}
-        {activeTab === 'player' && (
-          <div className="p-6 flex flex-col items-center justify-center space-y-6 relative z-10 overflow-y-auto">
-            {/* Persistent Web/YouTube Audio Stream Iframe (Always mounted so audio never cuts out) */}
-            {book.youtubeId && (
-              <div className={audioOnlyMode ? "opacity-0 pointer-events-none fixed -top-96 -left-96 w-1 h-1 overflow-hidden" : "w-full aspect-video rounded-2xl overflow-hidden bg-black border border-slate-800 shadow-xl"}>
-                <iframe
-                  src={embedUrl}
-                  title={book.title}
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
-                  className="w-full h-full border-0"
-                />
-              </div>
-            )}
+                {/* Rewind 15s */}
+                <button
+                  onClick={() => skipBackward(15)}
+                  className="p-3 rounded-2xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all hover:scale-105 active:scale-95 cursor-pointer flex flex-col items-center"
+                  title="Rewind 15 Seconds (Left Arrow)"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                  <span className="text-[9px] font-mono font-bold mt-0.5">15s</span>
+                </button>
 
-            {/* 1. Audio-Only Visualizer Mode */}
-            {audioOnlyMode && (
-              <div className="flex flex-col items-center text-center space-y-4 w-full">
-                {/* Cover Art with dynamic artwork frame */}
-                <div className="relative w-44 sm:w-52 aspect-square rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/30 bg-slate-900 group">
-                  {book.cover ? (
-                    <img
-                      src={book.cover}
-                      alt={book.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
+                {/* Main Play / Pause Button */}
+                <button
+                  onClick={togglePlayPause}
+                  className="w-16 h-16 sm:w-18 sm:h-18 rounded-3xl bg-gradient-to-tr from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black shadow-xl shadow-amber-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 cursor-pointer"
+                  title="Play / Pause (Space)"
+                >
+                  {isPlaying ? (
+                    <Pause className="w-8 h-8 fill-current" />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-b from-amber-950/30 to-slate-950 text-amber-400">
-                      <Headphones className="w-16 h-16 mb-2" />
-                      <span className="text-xs font-bold text-white">{book.title}</span>
-                    </div>
+                    <Play className="w-8 h-8 fill-current translate-x-0.5" />
                   )}
+                </button>
 
-                  {/* Audio Source / Quality Badge */}
-                  <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[9px] font-mono text-amber-300 border border-white/10 flex items-center gap-1.5 shadow-md">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>
-                      {book.chapters && book.chapters.length > 1
-                        ? `Full Unabridged (${book.chapters.length} Tracks)`
-                        : hasDirectAudio
-                        ? 'Full Unabridged Audio'
-                        : book.youtubeId
-                        ? 'Full Length Audio Play'
-                        : 'Audible Official Audio'}
-                    </span>
-                  </div>
+                {/* Fast Forward 30s */}
+                <button
+                  onClick={() => skipForward(30)}
+                  className="p-3 rounded-2xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all hover:scale-105 active:scale-95 cursor-pointer flex flex-col items-center"
+                  title="Fast Forward 30 Seconds (Right Arrow)"
+                >
+                  <RotateCw className="w-5 h-5" />
+                  <span className="text-[9px] font-mono font-bold mt-0.5">30s</span>
+                </button>
 
-                  {/* Animated Waveform Equalizer */}
-                  {isPlaying && (
-                    <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-1 px-4 bg-black/40 backdrop-blur-sm py-1.5">
-                      {Array.from({ length: 16 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="w-1 bg-gradient-to-t from-amber-500 to-amber-300 rounded-full animate-pulse"
-                          style={{
-                            height: `${8 + ((i * 7) % 18)}px`,
-                            animationDuration: `${0.4 + (i % 4) * 0.2}s`
+                {/* Next Chapter / Part */}
+                <button
+                  onClick={nextChapter}
+                  className="p-2.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all cursor-pointer"
+                  title="Next Chapter / Part"
+                >
+                  <SkipForward className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Utility Tools Drawer Bar (Speed, Sleep Timer, Quick Bookmark, Volume) */}
+              <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2 max-w-xl mx-auto flex-wrap">
+                {/* Speed Toggle */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Gauge className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{currentSpeed}x</span>
+                  </button>
+
+                  {showSpeedMenu && (
+                    <div className="absolute bottom-full mb-2 left-0 w-32 rounded-2xl bg-slate-950 border border-slate-800 shadow-2xl p-1.5 z-30 space-y-1 text-xs">
+                      {speeds.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            setPlaybackSpeed(s);
+                            setShowSpeedMenu(false);
                           }}
-                        />
+                          className={`w-full text-left px-2.5 py-1.5 rounded-xl transition-colors font-bold ${
+                            currentSpeed === s ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-900'
+                          }`}
+                        >
+                          {s}x {s === 1.0 ? '(Normal)' : ''}
+                        </button>
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* Title & Narrator */}
-                <div className="space-y-1 max-w-md">
-                  <h2 className="text-base sm:text-lg font-black text-white line-clamp-1">
-                    {book.title}
-                  </h2>
-                  <p className="text-xs text-slate-300">
-                    By <span className="text-white font-bold">{book.author}</span>
-                    {book.narrator && (
-                      <span className="text-amber-400"> • {book.narrator}</span>
+                {/* Sleep Timer */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSleepMenu(!showSleepMenu)}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      sleepTimerSecondsLeft
+                        ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                        : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'
+                    }`}
+                  >
+                    <Moon className="w-3.5 h-3.5 text-purple-400" />
+                    <span>
+                      {sleepTimerSecondsLeft ? `${Math.ceil(sleepTimerSecondsLeft / 60)}m left` : 'Sleep Timer'}
+                    </span>
+                  </button>
+
+                  {showSleepMenu && (
+                    <div className="absolute bottom-full mb-2 left-0 w-36 rounded-2xl bg-slate-950 border border-slate-800 shadow-2xl p-1.5 z-30 space-y-1 text-xs">
+                      {sleepOptions.map((opt) => (
+                        <button
+                          key={opt.label}
+                          onClick={() => {
+                            setSleepTimer(opt.minutes);
+                            setShowSleepMenu(false);
+                          }}
+                          className={`w-full text-left px-2.5 py-1.5 rounded-xl transition-colors font-bold ${
+                            sleepTimerMinutes === opt.minutes
+                              ? 'bg-purple-600 text-white'
+                              : 'text-slate-300 hover:bg-slate-900'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Quick Bookmark Button */}
+                <button
+                  onClick={() => setShowAddBookmarkInput(!showAddBookmarkInput)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Bookmark className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Add Bookmark</span>
+                </button>
+
+                {/* Volume Slider */}
+                <div className="flex items-center gap-2">
+                  <button onClick={toggleMute} className="text-slate-400 hover:text-white cursor-pointer">
+                    {isMuted || currentVolume === 0 ? (
+                      <VolumeX className="w-4 h-4 text-rose-400" />
+                    ) : (
+                      <Volume2 className="w-4 h-4 text-slate-300" />
                     )}
-                  </p>
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={isMuted ? 0 : currentVolume}
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
+                    className="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer accent-amber-500"
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Interactive Progress Bar & Time */}
-            <div className="w-full space-y-2">
-              <div
-                className="relative h-2.5 w-full bg-slate-900 border border-slate-800 rounded-full cursor-pointer overflow-hidden group shadow-inner"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const clickX = e.clientX - rect.left;
-                  const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-                  seekTo(ratio * duration);
-                }}
-              >
-                <div
-                  className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 rounded-full transition-all duration-150 relative"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                <span className="text-amber-400 font-bold">{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
-
-            {/* Playback Transport Controls */}
-            <div className="flex items-center justify-center gap-3 sm:gap-5">
-              {/* Previous Chapter */}
-              {chapters.length > 1 && (
-                <button
-                  onClick={prevChapter}
-                  disabled={currentChapterIdx <= 0}
-                  className={`p-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 transition-all ${
-                    currentChapterIdx <= 0
-                      ? 'opacity-40 cursor-not-allowed'
-                      : 'hover:bg-slate-800 hover:text-white cursor-pointer hover:scale-105'
-                  }`}
-                  title="Previous Chapter"
-                >
-                  <SkipBack className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* Rewind 15s */}
-              <button
-                onClick={() => skipBackward(15)}
-                className="p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white transition-all hover:scale-105 border border-slate-800 flex flex-col items-center gap-0.5 cursor-pointer"
-                title="Rewind 15s (Left Arrow)"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span className="text-[9px] font-mono">15s</span>
-              </button>
-
-              {/* Big Play / Pause */}
-              <button
-                onClick={togglePlayPause}
-                className="p-5 rounded-3xl bg-gradient-to-tr from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black shadow-xl shadow-amber-500/30 transition-all hover:scale-110 cursor-pointer"
-                title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-              >
-                {isPlaying ? (
-                  <Pause className="w-7 h-7 fill-current" />
-                ) : (
-                  <Play className="w-7 h-7 fill-current ml-0.5" />
-                )}
-              </button>
-
-              {/* Forward 30s */}
-              <button
-                onClick={() => skipForward(30)}
-                className="p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white transition-all hover:scale-105 border border-slate-800 flex flex-col items-center gap-0.5 cursor-pointer"
-                title="Forward 30s (Right Arrow)"
-              >
-                <RotateCw className="w-4 h-4" />
-                <span className="text-[9px] font-mono">30s</span>
-              </button>
-
-              {/* Next Chapter */}
-              {chapters.length > 1 && (
-                <button
-                  onClick={nextChapter}
-                  disabled={currentChapterIdx >= chapters.length - 1}
-                  className={`p-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 transition-all ${
-                    currentChapterIdx >= chapters.length - 1
-                      ? 'opacity-40 cursor-not-allowed'
-                      : 'hover:bg-slate-800 hover:text-white cursor-pointer hover:scale-105'
-                  }`}
-                  title="Next Chapter"
-                >
-                  <SkipForward className="w-4 h-4" />
-                </button>
+              {/* Quick Add Bookmark Input */}
+              {showAddBookmarkInput && (
+                <div className="p-3.5 rounded-2xl bg-slate-900 border border-amber-500/30 flex items-center gap-2 max-w-xl mx-auto animate-fade-in">
+                  <input
+                    type="text"
+                    value={bookmarkNote}
+                    onChange={(e) => setBookmarkNote(e.target.value)}
+                    placeholder={`Note for bookmark at ${formatTime(currentTime)}...`}
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleAddQuickBookmark}
+                    className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow cursor-pointer"
+                  >
+                    Save
+                  </button>
+                </div>
               )}
             </div>
+          )}
 
-            {/* Volume & Speed & Sleep Timer Controls */}
-            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 border-t border-slate-800/80 pt-4">
-              {/* Volume Slider */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleMute}
-                  className="text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
-                  title="Toggle Mute (M)"
-                >
-                  {isMuted || currentVolume === 0 ? (
-                    <VolumeX className="w-4 h-4 text-rose-400" />
-                  ) : (
-                    <Volume2 className="w-4 h-4" />
-                  )}
-                </button>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={isMuted ? 0 : currentVolume}
-                  onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-20 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                />
+          {/* TAB 2: CHAPTERS DRAWER */}
+          {activeTab === 'chapters' && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <ListMusic className="w-4 h-4 text-sky-400" />
+                  <span>Audiobook Chapters ({chapters.length || 1})</span>
+                </h4>
+                <span className="text-[11px] text-slate-400 font-mono">1-Click Jump</span>
               </div>
 
-              {/* Speed Selector */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <Gauge className="w-3.5 h-3.5 text-amber-400" />
-                <span className="font-semibold text-slate-300">Speed:</span>
-                {[0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setPlaybackSpeed(s)}
-                    className={`px-2 py-0.5 rounded-md font-bold text-[11px] transition-all cursor-pointer ${
-                      currentSpeed === s
-                        ? 'bg-amber-500 text-slate-950 shadow-sm'
-                        : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {s}x
-                  </button>
-                ))}
+              {chapters.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400 space-y-2">
+                  <p>Single-track audiobook stream.</p>
+                  <p className="text-slate-500">Duration: {formatTime(duration)}</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  {chapters.map((ch, idx) => {
+                    const isCurrent = currentChapterIdx === idx;
+                    return (
+                      <div
+                        key={ch.id || idx}
+                        onClick={() => {
+                          playChapter(idx);
+                          setActiveTab('player');
+                        }}
+                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                          isCurrent
+                            ? 'bg-sky-500/15 border-sky-500/40 text-white shadow-md'
+                            : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span
+                            className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
+                              isCurrent ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+                            }`}
+                          >
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs sm:text-sm font-bold truncate">{ch.title}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs font-mono text-slate-400 flex-shrink-0">
+                          {ch.duration && <span>{ch.duration}</span>}
+                          {isCurrent && isPlaying && (
+                            <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: MULTI-PARTS DRAWER */}
+          {activeTab === 'parts' && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-amber-400" />
+                  <span>Audiobook Parts & Volumes ({parts.length})</span>
+                </h4>
+                <span className="text-[11px] text-slate-400 font-mono">Continuous Autoplay</span>
               </div>
 
-              {/* Sleep Timer */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <Moon className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="font-semibold text-slate-300">Sleep:</span>
-                {[15, 30, 45, 60].map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => handleSetSleepTimer(m)}
-                    className={`px-2 py-0.5 rounded-md font-bold text-[11px] transition-all cursor-pointer ${
-                      sleepTimerMinutes === m
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {m}m
-                  </button>
-                ))}
-                {sleepTimerSecondsLeft !== null && (
-                  <span className="text-[10px] text-indigo-300 font-mono px-1.5 py-0.5 rounded bg-indigo-950 border border-indigo-700">
-                    {Math.floor(sleepTimerSecondsLeft / 60)}:
-                    {(sleepTimerSecondsLeft % 60).toString().padStart(2, '0')}
-                  </span>
-                )}
+              <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                {parts.map((p, idx) => {
+                  const isCurrent = currentPartIdx === idx;
+                  return (
+                    <div
+                      key={p.id || idx}
+                      onClick={() => {
+                        playPart(idx);
+                        setActiveTab('player');
+                      }}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isCurrent
+                          ? 'bg-amber-500/15 border-amber-500/40 text-white shadow-md'
+                          : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
+                            isCurrent ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {p.partNumber || idx + 1}
+                        </div>
+                        <div>
+                          <h5 className="text-xs sm:text-sm font-bold truncate">{p.title}</h5>
+                          {p.duration && <p className="text-[11px] text-slate-400 font-mono">{p.duration}</p>}
+                        </div>
+                      </div>
+
+                      {isCurrent && (
+                        <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                          {isPlaying ? 'Playing Now' : 'Selected'}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* TAB 4: BOOKMARKS & SAVED NOTES */}
+          {activeTab === 'bookmarks' && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Bookmark className="w-4 h-4 text-amber-400" />
+                  <span>Saved Bookmarks ({bookmarks.length})</span>
+                </h4>
+                <button
+                  onClick={() => setShowAddBookmarkInput(true)}
+                  className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New</span>
+                </button>
+              </div>
+
+              {bookmarks.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400 space-y-2">
+                  <Bookmark className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p>No bookmarks saved yet.</p>
+                  <p className="text-slate-500">Tap "Add Bookmark" while listening to save memorable moments.</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  {bookmarks.map((bm) => (
+                    <div
+                      key={bm.id}
+                      className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 hover:border-slate-700 transition-all"
+                    >
+                      <div
+                        onClick={() => {
+                          seekTo(bm.timestamp);
+                          setActiveTab('player');
+                        }}
+                        className="min-w-0 flex-1 cursor-pointer"
+                      >
+                        <span className="text-xs font-mono font-bold text-amber-400">
+                          {formatTime(bm.timestamp)}
+                        </span>
+                        <p className="text-xs text-white font-medium truncate mt-0.5">{bm.note}</p>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteBookmark(bm.id)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                        title="Delete Bookmark"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5: AUDIO STREAM SOURCES */}
+          {activeTab === 'sources' && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span>Audio Stream Sources</span>
+                </h4>
+                <span className="text-[11px] text-slate-400 font-mono">1-Click Switch</span>
+              </div>
+
+              <div className="space-y-2.5">
+                {sources.map((s) => (
+                  <div
+                    key={s.id}
+                    onClick={() => {
+                      switchAudioSource(s.id);
+                      setActiveTab('player');
+                    }}
+                    className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-all cursor-pointer flex items-center justify-between gap-3"
+                  >
+                    <div>
+                      <h5 className="text-xs sm:text-sm font-bold text-white">{s.name}</h5>
+                      <p className="text-[11px] text-slate-400 font-mono">
+                        {s.type.toUpperCase()} • {s.duration || 'Full Stream'}
+                      </p>
+                    </div>
+
+                    <button className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors">
+                      Switch
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Apple TV / AirPlay Casting Modal */}
-      <CastModal
-        isOpen={showCastModal}
-        onClose={() => setShowCastModal(false)}
-        mediaTitle={`${book.title} • ${book.author}`}
-        mediaType="audiobook"
-      />
+      {/* Cast Modal */}
+      {showCastModal && (
+        <CastModal
+          isOpen={showCastModal}
+          onClose={() => setShowCastModal(false)}
+          title={book.title}
+          subtitle={`By ${book.author}`}
+          mediaUrl={book.audioUrl || ''}
+          posterUrl={book.cover}
+        />
+      )}
     </div>
   );
 };
