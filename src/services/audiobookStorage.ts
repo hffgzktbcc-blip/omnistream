@@ -39,7 +39,9 @@ export const audiobookStorage = {
 
   getRecentHistory(): AudiobookListeningProgress[] {
     const all = this.getAllProgress();
-    return Object.values(all).sort((a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0));
+    return (Object.values(all) as AudiobookListeningProgress[]).sort(
+      (a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0)
+    );
   },
 
   saveBookmark(bookId: string, bookmark: AudiobookBookmark): AudiobookBookmark[] {

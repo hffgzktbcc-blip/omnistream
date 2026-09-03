@@ -35,13 +35,34 @@ import { AndroidTVModal } from './components/Common/AndroidTVModal';
 import { ArrHub } from './components/Arr/ArrHub';
 import { AddArrModal } from './components/Arr/AddArrModal';
 import { tvNavigation } from './services/tvNavigation';
+import { AudiobookCatalog } from './components/Audiobooks/AudiobookCatalog';
+import { AudiobookDetailModal } from './components/Audiobooks/AudiobookDetailModal';
+import { AudioPlayerBar } from './components/Audiobooks/AudioPlayerBar';
+import { JacketCoverModal } from './components/Audiobooks/JacketCoverModal';
+import { AudiobookTimerModal } from './components/Audiobooks/AudiobookTimerModal';
+import { AudiobookBookmarksModal } from './components/Audiobooks/AudiobookBookmarksModal';
+import { Audiobook, AudioTrack, AudiobookListeningProgress } from './types/audiobook';
 import { Loader2, X } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr'
+    'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr' | 'audiobooks'
   >('home');
   const [arrModalMedia, setArrModalMedia] = useState<any | null>(null);
+
+  // Audiobooks State (AudioBay & Shelf)
+  const [selectedAudiobook, setSelectedAudiobook] = useState<Audiobook | null>(null);
+  const [playingAudiobook, setPlayingAudiobook] = useState<{
+    book: Audiobook;
+    tracks: AudioTrack[];
+    trackIndex: number;
+    initialTime?: number;
+  } | null>(null);
+  const [showJacketModal, setShowJacketModal] = useState<boolean>(false);
+  const [showTimerModal, setShowTimerModal] = useState<boolean>(false);
+  const [showBookmarksModal, setShowBookmarksModal] = useState<boolean>(false);
+  const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
+  const [sleepSecondsLeft, setSleepSecondsLeft] = useState<number | null>(null);
 
   // Comic State
   const [comics, setComics] = useState<Comic[]>([]);
@@ -598,6 +619,26 @@ const AppContent: React.FC = () => {
 
         {/* 8. SONARR & RADARR AUTOMATION */}
         {activeTab === 'arr' && <ArrHub />}
+
+        {/* 9. AUDIOBOOKS HUB (AudioBay + Shelf) */}
+        {activeTab === 'audiobooks' && (
+          <AudiobookCatalog
+            onSelectBook={(book) => setSelectedAudiobook(book)}
+            onResumeListening={(progress) => {
+              // Build a minimal Audiobook from progress and re-open detail
+              const resumeBook: Audiobook = {
+                id: progress.bookId,
+                title: progress.title,
+                author: progress.author,
+                cover: progress.cover,
+                description: '',
+                narrator: '',
+                categories: []
+              };
+              setSelectedAudiobook(resumeBook);
+            }}
+          />
+        )}
       </main>
 
       {/* Persistent Floating MiniPlayer */}
@@ -701,6 +742,95 @@ const AppContent: React.FC = () => {
         isOpen={showAndroidTVModal}
         onClose={() => setShowAndroidTVModal(false)}
       />
+
+      {/* ──── AUDIOBOOK MODALS & PLAYER (AudioBay + Shelf) ──── */}
+
+      {/* Audiobook Detail Modal */}
+      <AudiobookDetailModal
+        book={selectedAudiobook}
+        isOpen={!!selectedAudiobook}
+        onClose={() => setSelectedAudiobook(null)}
+        onPlayTrack={(book, tracks, trackIndex) => {
+          setPlayingAudiobook({ book, tracks, trackIndex });
+          setSelectedAudiobook(null);
+        }}
+        onOpenJacketPicker={() => setShowJacketModal(true)}
+        onOpenBookmarks={() => setShowBookmarksModal(true)}
+      />
+
+      {/* Jacket Cover Picker (Shelf feature) */}
+      <JacketCoverModal
+        book={selectedAudiobook || playingAudiobook?.book || null}
+        isOpen={showJacketModal}
+        onClose={() => setShowJacketModal(false)}
+        onSelectCover={(newCover) => {
+          // Update the cover on the playing book if active
+          if (playingAudiobook) {
+            setPlayingAudiobook({
+              ...playingAudiobook,
+              book: { ...playingAudiobook.book, cover: newCover }
+            });
+          }
+          setShowJacketModal(false);
+        }}
+      />
+
+      {/* Sleep Timer Modal (Shelf feature) */}
+      <AudiobookTimerModal
+        isOpen={showTimerModal}
+        onClose={() => setShowTimerModal(false)}
+        activeTimer={sleepTimerMinutes}
+        secondsLeft={sleepSecondsLeft}
+        onSetTimer={(minutes) => {
+          setSleepTimerMinutes(minutes);
+          if (minutes !== null && minutes > 0) {
+            setSleepSecondsLeft(minutes * 60);
+          } else {
+            setSleepSecondsLeft(null);
+          }
+          setShowTimerModal(false);
+        }}
+      />
+
+      {/* Bookmarks Modal (Shelf feature) */}
+      <AudiobookBookmarksModal
+        book={playingAudiobook?.book || null}
+        isOpen={showBookmarksModal}
+        onClose={() => setShowBookmarksModal(false)}
+        currentTime={0}
+        currentTrackIndex={playingAudiobook?.trackIndex || 0}
+        currentTrackName={playingAudiobook?.tracks[playingAudiobook.trackIndex]?.name}
+        onSeekTo={(seconds, trackIndex) => {
+          if (playingAudiobook && trackIndex !== undefined) {
+            setPlayingAudiobook({
+              ...playingAudiobook,
+              trackIndex,
+              initialTime: seconds
+            });
+          }
+          setShowBookmarksModal(false);
+        }}
+      />
+
+      {/* Persistent Audio Player Bar (always visible when playing) */}
+      {playingAudiobook && (
+        <AudioPlayerBar
+          book={playingAudiobook.book}
+          tracks={playingAudiobook.tracks}
+          currentTrackIndex={playingAudiobook.trackIndex}
+          initialTime={playingAudiobook.initialTime}
+          onClose={() => setPlayingAudiobook(null)}
+          onOpenTimer={() => setShowTimerModal(true)}
+          onOpenBookmarks={() => setShowBookmarksModal(true)}
+          onTrackChange={(idx) =>
+            setPlayingAudiobook((prev) =>
+              prev ? { ...prev, trackIndex: idx, initialTime: 0 } : null
+            )
+          }
+          sleepMinutes={sleepTimerMinutes}
+          sleepSecondsLeft={sleepSecondsLeft}
+        />
+      )}
 
       {/* App-Wide Universal Drag and Drop Ingestion */}
       <GlobalDropzone onFilesDropped={handleUniversalFilesDrop} />

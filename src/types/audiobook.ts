@@ -53,6 +53,16 @@ export interface AudiobookListeningProgress {
   percent: number;
 }
 
+export interface AudioTrack {
+  index: number;
+  name: string;
+  path: string;
+  length: number;
+  sizeFormatted: string;
+  streamUrl: string;
+  downloadUrl: string;
+}
+
 export interface Audiobook {
   id: string;
   title: string;
@@ -65,7 +75,7 @@ export interface Audiobook {
   audioUrl?: string;
   description?: string;
   genre?: string;
-  platform?: string; // 'graphicaudio' | 'audible' | 'bbcsounds' | 'archive' | 'spotify' | 'direct' | 'pixeldrain' | 'youtube'
+  platform?: string; // 'audiobay' | 'graphicaudio' | 'audible' | 'bbcsounds' | 'archive' | 'spotify' | 'direct' | 'pixeldrain' | 'youtube'
   isGraphicAudio?: boolean;
   isDramatized?: boolean;
   chapters?: AudiobookChapter[];
@@ -79,5 +89,16 @@ export interface Audiobook {
   lastPartIndex?: number;
   updatedAt?: number;
   isLocalUpload?: boolean;
+  // AudioBay & Swarm Fields
+  rawTitle?: string;
+  url?: string;
+  infoHash?: string;
+  magnet?: string;
+  format?: string;
+  bitrate?: string;
+  size?: string;
+  categories?: string[];
+  trackers?: string[];
+  tracks?: AudioTrack[];
 }
 

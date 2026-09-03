@@ -31,9 +31,9 @@ import { MediaItem } from '../types/media';
 import { SportsMatch } from '../types/sports';
 
 interface HeaderProps {
-  activeTab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr';
+  activeTab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr' | 'audiobooks';
   setActiveTab: (
-    tab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr'
+    tab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr' | 'audiobooks'
   ) => void;
   onSearch: (query: string) => void;
   searchQuery: string;
@@ -547,6 +547,22 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Manga & Comics</span>
+          </button>
+
+          {/* Audiobooks (AudioBay + Shelf) */}
+          <button
+            onClick={() => {
+              setActiveTab('audiobooks');
+              handleClearSearch();
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'audiobooks'
+                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30 ring-1 ring-amber-400 font-black'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Headphones className="w-3.5 h-3.5" />
+            <span>Audiobooks</span>
           </button>
 
           {/* Live Sports */}

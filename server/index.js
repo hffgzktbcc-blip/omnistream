@@ -12,6 +12,7 @@ import { URL } from 'url';
 import JSZip from 'jszip';
 import { analyzeSearchIntent, scoreAndRankResults } from './aiSearchEngine.js';
 import child_process from 'child_process';
+import audiobooksRouter from './audiobooks.js';
 
 const dnsPromises = dns.promises;
 const __filename = fileURLToPath(import.meta.url);
@@ -184,6 +185,9 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '50mb' }));
+
+// AudioBay Swarm & Streaming Engine
+app.use('/api/audiobooks', audiobooksRouter);
 
 // In-memory cache
 const cache = new Map();
