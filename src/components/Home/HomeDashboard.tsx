@@ -185,7 +185,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const safeAnime = Array.isArray(trendingAnime) ? trendingAnime : [];
   const safeComics = Array.isArray(trendingComics) ? trendingComics : [];
   const safeSports = Array.isArray(liveSports) ? liveSports : [];
-  const safeAudiobooks = Array.isArray(popularAudiobooks) ? popularAudiobooks : [];
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-10 animate-fade-in">
