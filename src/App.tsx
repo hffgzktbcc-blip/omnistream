@@ -94,7 +94,7 @@ const AppContent: React.FC = () => {
   const loadingAbortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { playAudiobook, isMinimized } = usePlayback();
+  const { activeMedia, playAudiobook, isMinimized, closePlayer } = usePlayback();
   const { showError, showSuccess, showWarning, showInfo } = useToast();
 
   // Active Reader State (Comics)
