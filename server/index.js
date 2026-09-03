@@ -4094,67 +4094,87 @@ async function resolveFullAudiobook(title, author = '') {
   // 2. Search YouTube with strict verification, title match, and multi-part detection
   const ytPromise = (async () => {
     try {
-      const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQ + ' full audiobook')}`;
-      const res = await safeFetch(ytUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } });
-      if (!res.ok) return [];
-      const html = await res.text();
-      const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
-      if (!match) return [];
+      const searchTerms = [
+        `${cleanTitle} ${cleanAuthor} full audiobook unabridged`.trim(),
+        `${cleanTitle} full audiobook`.trim()
+      ];
 
-      const data = JSON.parse(match[1]);
-      const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+      const candidates = [];
+      const titleTokens = cleanTitle.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !['the', 'and', 'for', 'with', 'from', 'into'].includes(w));
 
-      const verifiedStreams = [];
-      const titleTokens = cleanTitle.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      for (const q of searchTerms) {
+        const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+        const res = await safeFetch(ytUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } });
+        if (!res.ok) continue;
+        const html = await res.text();
+        const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+        if (!match) continue;
 
-      for (const item of contents) {
-        const v = item.videoRenderer;
-        if (!v || !v.videoId || !v.title?.runs?.[0]?.text) continue;
+        const data = JSON.parse(match[1]);
+        const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
 
-        const videoTitle = v.title.runs[0].text;
-        const dur = v.lengthText?.simpleText || '';
+        for (const item of contents) {
+          const v = item.videoRenderer;
+          if (!v || !v.videoId || !v.title?.runs?.[0]?.text) continue;
 
-        // Discard junk / summaries / reviews / trailers
-        const isJunk = /review|summary|trailer|teaser|reaction|tier list|analysis|explained|discussion|breakdown|vlog|top 10|interview/i.test(videoTitle);
-        if (isJunk) continue;
+          const videoTitle = v.title.runs[0].text;
+          const lowerVideoTitle = videoTitle.toLowerCase();
+          const dur = v.lengthText?.simpleText || '';
 
-        // Ensure title contains relevant keywords
-        const lowerVideoTitle = videoTitle.toLowerCase();
-        const matchesKeyWords = titleTokens.length === 0 || titleTokens.some(w => lowerVideoTitle.includes(w));
-        if (!matchesKeyWords) continue;
+          // Discard junk / summaries / reviews / trailers / sermons / commentary
+          const isJunk = /review|summary|trailer|teaser|reaction|tier list|analysis|explained|discussion|breakdown|vlog|top 10|interview|sermon|commentary|podcast|bible study|overview/i.test(videoTitle);
+          if (isJunk) continue;
 
-        // Check duration (at least 20 minutes)
-        const parts = dur.split(':');
-        const isLongEnough = parts.length >= 3 || (parts.length === 2 && parseInt(parts[0], 10) >= 20);
-        if (!isLongEnough) continue;
+          let score = 0;
+          let matchedTokens = 0;
+          for (const t of titleTokens) {
+            if (lowerVideoTitle.includes(t)) {
+              score += 1.0;
+              matchedTokens++;
+            }
+          }
+          if (matchedTokens === 0) continue;
 
-        // Calculate duration in seconds
-        let sec = 0;
-        if (parts.length === 3) {
-          sec = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
-        } else if (parts.length === 2) {
-          sec = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+          if (/audiobook|audio book|unabridged|read by|narrated|full cast|dramatized/i.test(lowerVideoTitle)) {
+            score += 1.5;
+          }
+          if (/part 1|chapter 1|complete/i.test(lowerVideoTitle)) {
+            score += 0.5;
+          }
+
+          // Check duration (at least 20 minutes)
+          const parts = dur.split(':');
+          const isLongEnough = parts.length >= 3 || (parts.length === 2 && parseInt(parts[0], 10) >= 20);
+          if (!isLongEnough) continue;
+
+          let sec = 0;
+          if (parts.length === 3) {
+            sec = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+          } else if (parts.length === 2) {
+            sec = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+          }
+
+          const partMatch = videoTitle.match(/Part\s*(\d+)(?:\s*of\s*(\d+))?/i);
+          const partNumber = partMatch ? parseInt(partMatch[1], 10) : (candidates.length + 1);
+
+          if (!candidates.some(c => c.youtubeId === v.videoId)) {
+            candidates.push({
+              id: `src_yt_${v.videoId}`,
+              name: videoTitle.length > 45 ? `${videoTitle.slice(0, 45)}...` : videoTitle,
+              type: 'youtube',
+              youtubeId: v.videoId,
+              duration: dur,
+              durationSeconds: sec,
+              partNumber,
+              videoTitle,
+              score
+            });
+          }
         }
-
-        // Multi-Part check: e.g. "Part 1 of 3", "Part 1", "Part 2"
-        const partMatch = videoTitle.match(/Part\s*(\d+)(?:\s*of\s*(\d+))?/i);
-        const partNumber = partMatch ? parseInt(partMatch[1], 10) : (verifiedStreams.length + 1);
-
-        verifiedStreams.push({
-          id: `src_yt_${v.videoId}`,
-          name: videoTitle.length > 45 ? `${videoTitle.slice(0, 45)}...` : videoTitle,
-          type: 'youtube',
-          youtubeId: v.videoId,
-          duration: dur,
-          durationSeconds: sec,
-          partNumber,
-          videoTitle
-        });
-
-        if (verifiedStreams.length >= 4) break;
       }
 
-      return verifiedStreams;
+      candidates.sort((a, b) => b.score - a.score);
+      return candidates.slice(0, 5);
     } catch (e) {
       console.warn('YouTube full audio resolve error:', e);
       return [];
@@ -4370,17 +4390,25 @@ app.get('/api/audiobooks/popular', async (req, res) => {
       ]);
       results = [...habits, ...mindset];
     } else if (category === 'libby' || category === 'overdrive') {
-      const [bestsellers, libraryHits] = await Promise.all([
-        searchAudible('library popular fiction bestseller', 15),
-        searchAudible('overdrive popular audiobooks', 15)
+      const [fiction, trending, mystery] = await Promise.all([
+        searchAudible('fiction bestseller', 15),
+        searchAudible('trending audiobooks', 15),
+        searchAudible('mystery thriller bestseller', 10)
       ]);
-      results = [...bestsellers.map(b => ({ ...b, platform: 'libby' })), ...libraryHits.map(b => ({ ...b, platform: 'libby' }))];
+      results = [
+        ...fiction.map(b => ({ ...b, platform: 'libby' })),
+        ...trending.map(b => ({ ...b, platform: 'libby' })),
+        ...mystery.map(b => ({ ...b, platform: 'libby' }))
+      ];
     } else if (category === 'everand' || category === 'scribd') {
-      const [everandHits, dramatizedHits] = await Promise.all([
-        searchAudible('everand popular audiobooks', 15),
-        searchAudible('dramatized adaptation full cast', 15)
+      const [fiction, dramatizedHits] = await Promise.all([
+        searchAudible('bestselling novel', 15),
+        searchAudible('full cast dramatized adaptation', 15)
       ]);
-      results = [...everandHits.map(b => ({ ...b, platform: 'everand' })), ...dramatizedHits.map(b => ({ ...b, platform: 'everand' }))];
+      results = [
+        ...fiction.map(b => ({ ...b, platform: 'everand' })),
+        ...dramatizedHits.map(b => ({ ...b, platform: 'everand' }))
+      ];
     } else if (category === 'business') {
       const [wealth, business] = await Promise.all([
         searchAudible('wealth investing strategy', 15),
