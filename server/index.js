@@ -6469,6 +6469,432 @@ When the user asks to modify the app, debug, add features, or explain code:
   });
 });
 
+// ============================================================================
+// SECTION 13: SONARR & RADARR AUTOMATION & PVR SUITE
+// ============================================================================
+const ARR_CONFIG_FILE = path.join(__dirname, '../data/arr_config.json');
+
+function getArrConfig() {
+  try {
+    if (fs.existsSync(ARR_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(ARR_CONFIG_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.warn('Error reading arr_config.json:', err.message);
+  }
+  return {
+    sonarrUrl: process.env.SONARR_URL || 'http://localhost:8989',
+    sonarrApiKey: process.env.SONARR_API_KEY || '',
+    radarrUrl: process.env.RADARR_URL || 'http://localhost:7878',
+    radarrApiKey: process.env.RADARR_API_KEY || '',
+    autoSearchOnAdd: true,
+    defaultSonarrProfileId: 1,
+    defaultRadarrProfileId: 1
+  };
+}
+
+function saveArrConfig(cfg) {
+  try {
+    const dir = path.dirname(ARR_CONFIG_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(ARR_CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving arr_config.json:', err);
+  }
+}
+
+// 1. Configuration & Connection Test
+app.get('/api/arr/config', (req, res) => {
+  res.json(getArrConfig());
+});
+
+app.post('/api/arr/config', express.json(), (req, res) => {
+  const current = getArrConfig();
+  const updated = { ...current, ...req.body };
+  saveArrConfig(updated);
+  res.json({ success: true, config: updated });
+});
+
+app.post('/api/arr/test', express.json(), async (req, res) => {
+  const { type, url, apiKey } = req.body;
+  if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
+
+  const cleanUrl = url.replace(/\/+$/, '');
+  const endpoint = `${cleanUrl}/api/v3/system/status`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const r = await fetch(endpoint, {
+      headers: { 'X-Api-Key': apiKey || '' },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (r.ok) {
+      const data = await r.json();
+      return res.json({
+        success: true,
+        connected: true,
+        version: data.version,
+        appName: data.appName || (type === 'radarr' ? 'Radarr' : 'Sonarr')
+      });
+    } else if (r.status === 401 || r.status === 403) {
+      return res.json({
+        success: false,
+        connected: false,
+        error: 'Invalid API Key. Please verify in Settings > General > Security.'
+      });
+    } else {
+      return res.json({
+        success: false,
+        connected: false,
+        error: `Server responded with HTTP ${r.status}`
+      });
+    }
+  } catch (err) {
+    return res.json({
+      success: false,
+      connected: false,
+      error: `Could not connect to ${cleanUrl} (${err.message})`
+    });
+  }
+});
+
+// Helper for proxying Arr requests
+async function fetchArr(service, endpoint, options = {}) {
+  const cfg = getArrConfig();
+  const baseUrl = service === 'sonarr' ? cfg.sonarrUrl : cfg.radarrUrl;
+  const apiKey = service === 'sonarr' ? cfg.sonarrApiKey : cfg.radarrApiKey;
+
+  if (!baseUrl) throw new Error(`${service} URL is not configured`);
+
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  const fullUrl = `${cleanBase}/api/v3${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
+  const headers = {
+    'X-Api-Key': apiKey || '',
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+
+  try {
+    const response = await fetch(fullUrl, {
+      ...options,
+      headers,
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    return response;
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
+  }
+}
+
+// 2. Sonarr TV Series Endpoints
+app.get('/api/sonarr/series', async (req, res) => {
+  try {
+    const response = await fetchArr('sonarr', '/series');
+    if (response.ok) {
+      const data = await response.json();
+      return res.json(data);
+    }
+    return res.status(response.status).json({ error: 'Sonarr series fetch failed' });
+  } catch (err) {
+    // Return empty list if Sonarr is offline/unconfigured
+    return res.json([]);
+  }
+});
+
+app.post('/api/sonarr/series', express.json(), async (req, res) => {
+  try {
+    const { title, tvdbId, tmdbId, qualityProfileId, rootFolderPath, seasonFolder, monitored, searchForMissingEpisodes } = req.body;
+    const cfg = getArrConfig();
+
+    // If tvdbId is missing but title/tmdbId given, look up via Sonarr /series/lookup
+    let resolvedTvdbId = tvdbId;
+    let seriesPayload = null;
+
+    const lookupRes = await fetchArr('sonarr', `/series/lookup?term=${encodeURIComponent(title || `tmdb:${tmdbId}`)}`).catch(() => null);
+    if (lookupRes && lookupRes.ok) {
+      const results = await lookupRes.json();
+      if (results && results.length > 0) {
+        seriesPayload = results[0];
+        resolvedTvdbId = seriesPayload.tvdbId;
+      }
+    }
+
+    if (!seriesPayload) {
+      seriesPayload = {
+        title,
+        tvdbId: resolvedTvdbId || 0,
+        titleSlug: (title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        images: [],
+        seasons: []
+      };
+    }
+
+    const payload = {
+      ...seriesPayload,
+      qualityProfileId: qualityProfileId || cfg.defaultSonarrProfileId || 1,
+      rootFolderPath: rootFolderPath || cfg.defaultSonarrRootFolder || '/tv',
+      seasonFolder: seasonFolder !== false,
+      monitored: monitored !== false,
+      addOptions: {
+        searchForMissingEpisodes: searchForMissingEpisodes !== false
+      }
+    };
+
+    const addRes = await fetchArr('sonarr', '/series', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    if (addRes.ok) {
+      const created = await addRes.json();
+      return res.json({ success: true, series: created });
+    }
+    const errText = await addRes.text();
+    return res.status(addRes.status).json({ error: 'Failed to add series to Sonarr', details: errText });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/sonarr/queue', async (req, res) => {
+  try {
+    const response = await fetchArr('sonarr', '/queue?includeSeries=true&includeEpisode=true&pageSize=50');
+    if (response.ok) {
+      const data = await response.json();
+      const records = (data.records || []).map(r => ({
+        ...r,
+        type: 'sonarr',
+        mediaTitle: r.series?.title || r.title
+      }));
+      return res.json(records);
+    }
+    return res.json([]);
+  } catch (err) {
+    return res.json([]);
+  }
+});
+
+app.get('/api/sonarr/calendar', async (req, res) => {
+  try {
+    const today = new Date();
+    const start = new Date(today.getTime() - 86400000 * 2).toISOString();
+    const end = new Date(today.getTime() + 86400000 * 14).toISOString();
+    const response = await fetchArr('sonarr', `/calendar?includeSeries=true&includeEpisode=true&start=${start}&end=${end}`);
+    if (response.ok) {
+      const data = await response.json();
+      const items = (data || []).map(item => ({
+        id: item.id,
+        seriesId: item.seriesId,
+        episodeId: item.id,
+        title: item.title,
+        seriesTitle: item.series?.title,
+        seasonNumber: item.seasonNumber,
+        episodeNumber: item.episodeNumber,
+        airDateUtc: item.airDateUtc,
+        hasFile: item.hasFile,
+        overview: item.overview,
+        images: item.series?.images,
+        type: 'sonarr'
+      }));
+      return res.json(items);
+    }
+    return res.json([]);
+  } catch (err) {
+    return res.json([]);
+  }
+});
+
+app.get('/api/sonarr/profiles', async (req, res) => {
+  try {
+    const [profilesRes, rootRes] = await Promise.all([
+      fetchArr('sonarr', '/qualityprofile').catch(() => null),
+      fetchArr('sonarr', '/rootfolder').catch(() => null)
+    ]);
+
+    const profiles = profilesRes && profilesRes.ok ? await profilesRes.json() : [];
+    const rootFolders = rootRes && rootRes.ok ? await rootRes.json() : [];
+
+    return res.json({ profiles, rootFolders });
+  } catch (err) {
+    return res.json({ profiles: [], rootFolders: [] });
+  }
+});
+
+app.post('/api/sonarr/search', express.json(), async (req, res) => {
+  const { seriesId, episodeIds } = req.body;
+  try {
+    const body = episodeIds && episodeIds.length > 0
+      ? { name: 'EpisodeSearch', episodeIds }
+      : { name: 'SeriesSearch', seriesId };
+
+    const cmdRes = await fetchArr('sonarr', '/command', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+
+    if (cmdRes.ok) {
+      const result = await cmdRes.json();
+      return res.json({ success: true, command: result });
+    }
+    return res.status(cmdRes.status).json({ error: 'Search command failed' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Radarr Movies Endpoints
+app.get('/api/radarr/movies', async (req, res) => {
+  try {
+    const response = await fetchArr('radarr', '/movie');
+    if (response.ok) {
+      const data = await response.json();
+      return res.json(data);
+    }
+    return res.status(response.status).json({ error: 'Radarr movies fetch failed' });
+  } catch (err) {
+    return res.json([]);
+  }
+});
+
+app.post('/api/radarr/movie', express.json(), async (req, res) => {
+  try {
+    const { title, tmdbId, qualityProfileId, rootFolderPath, monitored, searchForMovie } = req.body;
+    const cfg = getArrConfig();
+
+    let moviePayload = null;
+    const lookupRes = await fetchArr('radarr', `/movie/lookup?term=${encodeURIComponent(tmdbId ? `tmdb:${tmdbId}` : title)}`).catch(() => null);
+    if (lookupRes && lookupRes.ok) {
+      const results = await lookupRes.json();
+      if (results && results.length > 0) {
+        moviePayload = results[0];
+      }
+    }
+
+    if (!moviePayload) {
+      moviePayload = {
+        title,
+        tmdbId: Number(tmdbId) || 0,
+        titleSlug: (title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        images: []
+      };
+    }
+
+    const payload = {
+      ...moviePayload,
+      qualityProfileId: qualityProfileId || cfg.defaultRadarrProfileId || 1,
+      rootFolderPath: rootFolderPath || cfg.defaultRadarrRootFolder || '/movies',
+      monitored: monitored !== false,
+      addOptions: {
+        searchForMovie: searchForMovie !== false
+      }
+    };
+
+    const addRes = await fetchArr('radarr', '/movie', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    if (addRes.ok) {
+      const created = await addRes.json();
+      return res.json({ success: true, movie: created });
+    }
+    const errText = await addRes.text();
+    return res.status(addRes.status).json({ error: 'Failed to add movie to Radarr', details: errText });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/radarr/queue', async (req, res) => {
+  try {
+    const response = await fetchArr('radarr', '/queue?includeMovie=true&pageSize=50');
+    if (response.ok) {
+      const data = await response.json();
+      const records = (data.records || []).map(r => ({
+        ...r,
+        type: 'radarr',
+        mediaTitle: r.movie?.title || r.title
+      }));
+      return res.json(records);
+    }
+    return res.json([]);
+  } catch (err) {
+    return res.json([]);
+  }
+});
+
+app.get('/api/radarr/calendar', async (req, res) => {
+  try {
+    const today = new Date();
+    const start = new Date(today.getTime() - 86400000 * 2).toISOString();
+    const end = new Date(today.getTime() + 86400000 * 30).toISOString();
+    const response = await fetchArr('radarr', `/calendar?start=${start}&end=${end}`);
+    if (response.ok) {
+      const data = await response.json();
+      const items = (data || []).map(item => ({
+        id: item.id,
+        movieId: item.id,
+        title: item.title,
+        inCinemas: item.inCinemas,
+        physicalRelease: item.physicalRelease,
+        digitalRelease: item.digitalRelease,
+        hasFile: item.hasFile,
+        overview: item.overview,
+        images: item.images,
+        type: 'radarr'
+      }));
+      return res.json(items);
+    }
+    return res.json([]);
+  } catch (err) {
+    return res.json([]);
+  }
+});
+
+app.get('/api/radarr/profiles', async (req, res) => {
+  try {
+    const [profilesRes, rootRes] = await Promise.all([
+      fetchArr('radarr', '/qualityprofile').catch(() => null),
+      fetchArr('radarr', '/rootfolder').catch(() => null)
+    ]);
+
+    const profiles = profilesRes && profilesRes.ok ? await profilesRes.json() : [];
+    const rootFolders = rootRes && rootRes.ok ? await rootRes.json() : [];
+
+    return res.json({ profiles, rootFolders });
+  } catch (err) {
+    return res.json({ profiles: [], rootFolders: [] });
+  }
+});
+
+app.post('/api/radarr/search', express.json(), async (req, res) => {
+  const { movieIds } = req.body;
+  try {
+    const body = { name: 'MoviesSearch', movieIds: movieIds || [] };
+    const cmdRes = await fetchArr('radarr', '/command', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+
+    if (cmdRes.ok) {
+      const result = await cmdRes.json();
+      return res.json({ success: true, command: result });
+    }
+    return res.status(cmdRes.status).json({ error: 'Movie search command failed' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Production Static Serving
 const DIST_PATH = path.join(__dirname, '../dist');
 if (fs.existsSync(DIST_PATH)) {

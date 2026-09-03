@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
 import { MediaItem, TVSeason } from '../../types/media';
-import { X, Play, Star, Calendar, Clock, Film, Tv, Clapperboard } from 'lucide-react';
+import { X, Play, Star, Calendar, Clock, Film, Tv, Clapperboard, Download } from 'lucide-react';
 
 interface MediaDetailModalProps {
   item: MediaItem | null;
   onClose: () => void;
   onPlayMedia: (item: MediaItem, season?: number, episode?: number) => void;
+  onAddToArr?: (media: {
+    title: string;
+    tmdbId?: number | string;
+    type: 'movie' | 'tv' | 'anime';
+    posterUrl?: string;
+    year?: number | string;
+    overview?: string;
+  }) => void;
 }
 
 export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
   item,
   onClose,
-  onPlayMedia
+  onPlayMedia,
+  onAddToArr
 }) => {
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
 
@@ -58,22 +67,21 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
 
         {/* Backdrop Banner Header */}
         {backdropUrl && (
-          <div className="relative h-44 sm:h-56 w-full overflow-hidden bg-slate-800 flex-shrink-0">
+          <div className="relative h-48 sm:h-64 w-full overflow-hidden flex-shrink-0">
             <img
               src={backdropUrl}
               alt={title}
-              className="w-full h-full object-cover opacity-50"
+              className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
           </div>
         )}
 
-        {/* Scrollable Content Body */}
-        <div className="overflow-y-auto p-6 md:p-8 space-y-6 -mt-16 sm:-mt-24 relative z-10">
-          {/* Header Row */}
+        {/* Content Body */}
+        <div className="p-6 sm:p-8 overflow-y-auto space-y-6">
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             {/* Poster */}
-            <div className="w-36 sm:w-44 aspect-[2/3] rounded-2xl overflow-hidden bg-slate-800 shadow-2xl flex-shrink-0 border-2 border-slate-700/80">
+            <div className="w-32 sm:w-44 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl bg-slate-800 flex-shrink-0 border border-slate-700 -mt-16 sm:-mt-24 relative z-10">
               <img
                 src={posterUrl}
                 alt={title}
@@ -120,14 +128,34 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
               )}
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex items-center gap-3 pt-2 flex-wrap">
                 <button
                   onClick={() => onPlayMedia(item, isMovie ? undefined : selectedSeason, 1)}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all hover:scale-105"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-current" />
                   <span>{isMovie ? 'Stream Full Movie' : `Stream Season ${selectedSeason} Ep 1`}</span>
                 </button>
+
+                {onAddToArr && (
+                  <button
+                    onClick={() =>
+                      onAddToArr({
+                        title,
+                        tmdbId: item.id,
+                        type: isMovie ? 'movie' : 'tv',
+                        posterUrl,
+                        year: releaseYear,
+                        overview: item.overview
+                      })
+                    }
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                    title={`Add to ${isMovie ? 'Radarr' : 'Sonarr'}`}
+                  >
+                    <Download className="w-4 h-4 text-cyan-400" />
+                    <span>{isMovie ? 'Add to Radarr' : 'Add to Sonarr'}</span>
+                  </button>
+                )}
               </div>
 
               {/* Genres */}

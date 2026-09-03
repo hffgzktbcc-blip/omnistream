@@ -25,13 +25,22 @@ interface AnimeDetailModalProps {
   onClose: () => void;
   onPlayEpisode: (anime: Anime, episodeNumber: number) => void;
   onReadManga?: (title: string) => void;
+  onAddToArr?: (media: {
+    title: string;
+    tmdbId?: number | string;
+    type: 'movie' | 'tv' | 'anime';
+    posterUrl?: string;
+    year?: number | string;
+    overview?: string;
+  }) => void;
 }
 
 export const AnimeDetailModal: React.FC<AnimeDetailModalProps> = ({
   anime,
   onClose,
   onPlayEpisode,
-  onReadManga
+  onReadManga,
+  onAddToArr
 }) => {
   const [audioType, setAudioType] = useState<'sub' | 'dub'>(() => animeStorage.getAudioPreference());
   const [watchStatus, setWatchStatus] = useState<AnimeWatchStatus>(() => {
@@ -240,11 +249,30 @@ export const AnimeDetailModal: React.FC<AnimeDetailModalProps> = ({
                       onClose();
                       onReadManga(title);
                     }}
-                    className="px-4 py-2.5 rounded-xl bg-slate-800/90 hover:bg-emerald-600 hover:text-white text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 shadow transition-all hover:scale-105 cursor-pointer"
-                    title="Jump to Manga Reader for this title"
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
                   >
-                    <BookOpen className="w-4 h-4" />
+                    <BookOpen className="w-4 h-4 text-sky-400" />
                     <span>Read Manga</span>
+                  </button>
+                )}
+
+                {/* Add to Sonarr */}
+                {onAddToArr && (
+                  <button
+                    onClick={() =>
+                      onAddToArr({
+                        title,
+                        type: 'anime',
+                        posterUrl: anime.coverImage?.large,
+                        year: anime.seasonYear,
+                        overview: anime.description
+                      })
+                    }
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                    title="Add to Sonarr (Anime PVR)"
+                  >
+                    <Tv className="w-4 h-4 text-sky-400" />
+                    <span>Add to Sonarr</span>
                   </button>
                 )}
               </div>

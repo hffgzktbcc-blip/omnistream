@@ -35,13 +35,16 @@ import { HomeDashboard } from './components/Home/HomeDashboard';
 import { offlineStorage } from './services/offlineStorage';
 import { ExtensionManagerModal } from './components/Extensions/ExtensionManagerModal';
 import { AndroidTVModal } from './components/Common/AndroidTVModal';
+import { ArrHub } from './components/Arr/ArrHub';
+import { AddArrModal } from './components/Arr/AddArrModal';
 import { tvNavigation } from './services/tvNavigation';
 import { Loader2, X } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    'home' | 'browse' | 'anime' | 'media' | 'audiobooks' | 'sports' | 'rss' | 'library'
+    'home' | 'browse' | 'anime' | 'media' | 'audiobooks' | 'sports' | 'rss' | 'library' | 'arr'
   >('home');
+  const [arrModalMedia, setArrModalMedia] = useState<any | null>(null);
 
   // Comic State
   const [comics, setComics] = useState<Comic[]>([]);
@@ -684,6 +687,9 @@ const AppContent: React.FC = () => {
             }}
           />
         )}
+
+        {/* 8. SONARR & RADARR AUTOMATION */}
+        {activeTab === 'arr' && <ArrHub />}
       </main>
 
       {/* Persistent Floating MiniPlayer */}
@@ -728,6 +734,7 @@ const AppContent: React.FC = () => {
             setActiveTab('browse');
             handleSearch(mangaTitle);
           }}
+          onAddToArr={(media) => setArrModalMedia(media)}
         />
       )}
 
@@ -737,8 +744,16 @@ const AppContent: React.FC = () => {
           item={selectedMedia}
           onClose={() => setSelectedMedia(null)}
           onPlayMedia={handlePlayMedia}
+          onAddToArr={(media) => setArrModalMedia(media)}
         />
       )}
+
+      {/* 1-Click Add to Sonarr / Radarr Modal */}
+      <AddArrModal
+        isOpen={!!arrModalMedia}
+        onClose={() => setArrModalMedia(null)}
+        media={arrModalMedia}
+      />
 
       {/* Flagship Unified Cinema Video Player (Anime, Movies & TV Shows) */}
       {activePlayerSession && (

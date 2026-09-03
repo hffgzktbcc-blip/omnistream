@@ -19,7 +19,8 @@ import {
   Star,
   Radio,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  Zap
 } from 'lucide-react';
 import { statsStorage } from '../services/statsStorage';
 import { useToast } from '../context/ToastContext';
@@ -31,9 +32,9 @@ import { SportsMatch } from '../types/sports';
 import { Audiobook } from '../types/audiobook';
 
 interface HeaderProps {
-  activeTab: 'home' | 'browse' | 'anime' | 'media' | 'audiobooks' | 'sports' | 'rss' | 'library';
+  activeTab: 'home' | 'browse' | 'anime' | 'media' | 'audiobooks' | 'sports' | 'rss' | 'library' | 'arr';
   setActiveTab: (
-    tab: 'home' | 'browse' | 'anime' | 'media' | 'audiobooks' | 'sports' | 'rss' | 'library'
+    tab: 'home' | 'browse' | 'anime' | 'media' | 'audiobooks' | 'sports' | 'rss' | 'library' | 'arr'
   ) => void;
   onSearch: (query: string) => void;
   searchQuery: string;
@@ -581,6 +582,22 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Trophy className="w-3.5 h-3.5" />
             <span>Sports</span>
+          </button>
+
+          {/* Sonarr & Radarr Hub */}
+          <button
+            onClick={() => {
+              setActiveTab('arr');
+              handleClearSearch();
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'arr'
+                ? 'bg-gradient-to-r from-sky-500 to-amber-500 text-slate-950 shadow-md shadow-sky-500/30 ring-1 ring-amber-400'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 fill-current text-amber-400" />
+            <span>Sonarr & Radarr</span>
           </button>
         </div>
 
