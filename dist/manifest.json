@@ -1,7 +1,7 @@
 {
   "name": "OmniStream — All-in-One Entertainment Hub",
   "short_name": "OmniStream",
-  "description": "Ad-free universal streaming and reading suite for Comics, Manga, Anime, Movies, TV, E-Books, Audiobooks & Live Sports.",
+  "description": "Ad-free universal streaming and reading suite for Comics, Manga, Anime, Movies, TV, E-Books & Live Sports.",
   "start_url": "/",
   "id": "/",
   "display": "standalone",
