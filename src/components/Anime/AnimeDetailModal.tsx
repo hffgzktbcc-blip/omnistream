@@ -103,8 +103,20 @@ export const AnimeDetailModal: React.FC<AnimeDetailModalProps> = ({
     setShowStatusDropdown(false);
   };
 
+  const playButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      playButtonRef.current?.focus();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -233,10 +245,21 @@ export const AnimeDetailModal: React.FC<AnimeDetailModalProps> = ({
               {/* Action Buttons: Start Episode 1, Resume, Read Manga */}
               <div className="flex items-center gap-2.5 pt-2 flex-wrap">
                 <button
+                  ref={playButtonRef}
+                  autoFocus
+                  tabIndex={0}
+                  role="button"
+                  data-focusable="true"
                   onClick={() => onPlayEpisode(anime, currentProgress?.episodeNumber || 1)}
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                      e.preventDefault();
+                      onPlayEpisode(anime, currentProgress?.episodeNumber || 1);
+                    }
+                  }}
+                  className="px-6 py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 focus:bg-purple-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-purple-600/40 flex items-center gap-2.5 transition-all hover:scale-105 focus:scale-105 focus:ring-4 focus:ring-amber-400 focus:border-amber-400 cursor-pointer"
                 >
-                  <Play className="w-4 h-4 fill-current" />
+                  <Play className="w-5 h-5 fill-current text-white" />
                   <span>
                     {currentProgress ? `Resume Ep ${currentProgress.episodeNumber}` : 'Start Episode 1'}
                   </span>

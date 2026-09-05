@@ -46,8 +46,20 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
   const totalEpisodes = item.number_of_episodes || (totalSeasons * 10);
   const episodesInCurrentSeason = Math.min(Math.ceil(totalEpisodes / totalSeasons), 24);
 
+  const playButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      playButtonRef.current?.focus();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -60,42 +72,52 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/60 hover:bg-black/90 text-slate-300 hover:text-white transition-all backdrop-blur-md"
+          tabIndex={0}
+          title="Close (Esc)"
+          aria-label="Close details"
+          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/60 hover:bg-black/90 text-slate-300 hover:text-white transition-all backdrop-blur-md focus:ring-2 focus:ring-amber-400"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Backdrop Banner Header */}
-        {backdropUrl && (
-          <div className="relative h-48 sm:h-64 w-full overflow-hidden flex-shrink-0">
+        {/* Backdrop Banner */}
+        <div className="relative h-48 sm:h-64 w-full overflow-hidden bg-slate-950 flex-shrink-0">
+          {backdropUrl ? (
             <img
               src={backdropUrl}
               alt={title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover opacity-40"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
-          </div>
-        )}
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-950" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
+        </div>
 
-        {/* Content Body */}
-        <div className="p-6 sm:p-8 overflow-y-auto space-y-6">
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto p-6 md:p-8 -mt-24 sm:-mt-32 relative z-10 space-y-6">
           <div className="flex flex-col sm:flex-row gap-6 items-start">
-            {/* Poster */}
-            <div className="w-32 sm:w-44 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl bg-slate-800 flex-shrink-0 border border-slate-700 -mt-16 sm:-mt-24 relative z-10">
-              <img
-                src={posterUrl}
-                alt={title}
-                className="w-full h-full object-cover"
-              />
+            {/* Poster Card */}
+            <div className="w-36 sm:w-48 aspect-[2/3] rounded-2xl overflow-hidden bg-slate-800 shadow-2xl flex-shrink-0 border border-slate-700/60 relative">
+              {posterUrl ? (
+                <img
+                  src={posterUrl}
+                  alt={title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-slate-500">
+                  {isMovie ? <Film className="w-12 h-12 mb-2" /> : <Tv className="w-12 h-12 mb-2" />}
+                  <span className="text-xs">{title}</span>
+                </div>
+              )}
             </div>
 
-            {/* Metadata */}
+            {/* Metadata & Title */}
             <div className="flex-1 space-y-3">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                  isMovie ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : 'bg-pink-500/20 text-pink-300 border-pink-500/30'
-                }`}>
-                  {isMovie ? 'Feature Film' : `TV Show • ${totalSeasons} Seasons`}
+                <span className="text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  {isMovie ? 'Feature Film' : 'TV Series'}
                 </span>
                 {releaseYear && (
                   <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -103,7 +125,7 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
                     {releaseYear}
                   </span>
                 )}
-                {item.vote_average && (
+                {item.vote_average !== undefined && item.vote_average > 0 && (
                   <span className="text-xs text-amber-400 font-bold flex items-center gap-1">
                     <Star className="w-3.5 h-3.5 fill-current" />
                     {item.vote_average.toFixed(1)} / 10
@@ -127,13 +149,24 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
                 </p>
               )}
 
-              {/* Action Buttons */}
+              {/* Primary Action Buttons */}
               <div className="flex items-center gap-3 pt-2 flex-wrap">
                 <button
+                  ref={playButtonRef}
+                  autoFocus
+                  tabIndex={0}
+                  role="button"
+                  data-focusable="true"
                   onClick={() => onPlayMedia(item, isMovie ? undefined : selectedSeason, 1)}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                      e.preventDefault();
+                      onPlayMedia(item, isMovie ? undefined : selectedSeason, 1);
+                    }
+                  }}
+                  className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 focus:bg-indigo-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-indigo-600/40 flex items-center gap-2.5 transition-all hover:scale-105 focus:scale-105 focus:ring-4 focus:ring-amber-400 focus:border-amber-400 cursor-pointer"
                 >
-                  <Play className="w-4 h-4 fill-current" />
+                  <Play className="w-5 h-5 fill-current text-white" />
                   <span>{isMovie ? 'Stream Full Movie' : `Stream Season ${selectedSeason} Ep 1`}</span>
                 </button>
 
