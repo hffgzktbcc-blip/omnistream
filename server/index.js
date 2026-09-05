@@ -167,21 +167,10 @@ async function safeFetch(url, options = {}) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Tightened CORS for local development & proxy
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:3000',
-  'http://localhost:3001'
-];
+// Permissive CORS to support Render deployment, Android TV / Capacitor, and local development
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Blocked by CORS'));
-    }
-  }
+  origin: true,
+  credentials: true
 }));
 
 app.use(express.json({ limit: '50mb' }));
@@ -7416,9 +7405,13 @@ if (fs.existsSync(DIST_PATH)) {
 }
 
 const HOST = process.env.HOST || '0.0.0.0';
-app.listen(PORT, HOST, () => {
-  console.log(`🚀 OmniStream All-in-One Server running on http://${HOST}:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 OmniStream All-in-One Server running on http://${HOST}:${PORT}`);
+  });
+}
+
+export default app;
 
 
 
