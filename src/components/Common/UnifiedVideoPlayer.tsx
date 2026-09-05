@@ -16,7 +16,13 @@ import {
   Zap,
   Film,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  Volume2,
+  VolumeX,
+  Play,
+  Pause,
+  Radio,
+  Sparkles
 } from 'lucide-react';
 import { CastModal } from './CastModal';
 
@@ -60,16 +66,34 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   });
   const [serverPings, setServerPings] = useState<Record<string, number>>({});
   const [reloadKey, setReloadKey] = useState<number>(Date.now());
+  const [showUnmutePrompt, setShowUnmutePrompt] = useState<boolean>(true);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const watchdogRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Close on Escape key or Fullscreen on 'F'
+  // Next / Prev Server Switchers
+  const handleNextServer = () => {
+    setSelectedServerIndex((prev) => (prev + 1) % STREAM_SERVERS.length);
+    setExhaustedServers(false);
+    setServersTried(0);
+    setReloadKey(Date.now());
+  };
+
+  const handlePrevServer = () => {
+    setSelectedServerIndex((prev) => (prev - 1 + STREAM_SERVERS.length) % STREAM_SERVERS.length);
+    setExhaustedServers(false);
+    setServersTried(0);
+    setReloadKey(Date.now());
+  };
+
+  // Close on Escape, Fullscreen on 'F', Next Server on 'S', Unmute on 'M'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if ((e.key === 'f' || e.key === 'F') && !['input', 'textarea'].includes((document.activeElement?.tagName || '').toLowerCase())) {
-        toggleFullscreen();
-      }
+      if (['input', 'textarea'].includes((document.activeElement?.tagName || '').toLowerCase())) return;
+      if (e.key === 'Escape' || e.keyCode === 4) onClose();
+      if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+      if (e.key === 's' || e.key === 'S') handleNextServer();
+      if (e.key === 'm' || e.key === 'M') setShowUnmutePrompt(false);
+      if (e.key === 'r' || e.key === 'R') handleForceRefresh();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -385,9 +409,9 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                 <div className="w-12 h-12 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center mb-3">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
-                <h3 className="text-white font-bold text-sm sm:text-base mb-1">No Playable Stream Found</h3>
+                <h3 className="text-white font-bold text-sm sm:text-base mb-1">Stream Blocked or Offline</h3>
                 <p className="text-xs text-slate-400 max-w-sm mb-4">
-                  Tested all {STREAM_SERVERS.length} streaming mirrors. Try launching in a standalone popout tab or switch servers.
+                  Tested all {STREAM_SERVERS.length} streaming mirrors. Try launching the Direct TV Stream (bypasses iframe embed locks) or retry.
                 </p>
                 <div className="flex items-center gap-3">
                   <button
@@ -399,10 +423,10 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                   </button>
                   <button
                     onClick={handlePopout}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-1.5"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Launch Popout Tab</span>
+                    <span>Direct TV Stream</span>
                   </button>
                   <button
                     onClick={onClose}
@@ -413,16 +437,93 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                 </div>
               </div>
             ) : (
-              <iframe
-                key={`stream_${currentServer.id}_${effectiveTmdbId}_${currentSeason}_${currentEpisode}_${audioType}_${reloadKey}`}
-                src={streamUrl}
-                title={`${session.title} Player`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
-                allowFullScreen
-                referrerPolicy="no-referrer"
-                onLoad={handleIframeLoaded}
-                className="w-full h-full border-0 absolute inset-0 z-10"
-              />
+              <>
+                {/* Android TV Unmute & Audio Activation Prompt */}
+                {showUnmutePrompt && !loadingServer && (
+                  <div
+                    onClick={() => setShowUnmutePrompt(false)}
+                    className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 cursor-pointer border-2 border-white/50 animate-bounce transition-all scale-105"
+                  >
+                    <Volume2 className="w-5 h-5 text-slate-950 animate-pulse" />
+                    <span className="text-xs sm:text-sm">🔊 No Sound on Android TV? Click / Press OK here to Unmute</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowUnmutePrompt(false);
+                      }}
+                      className="p-1 rounded-full bg-black/20 hover:bg-black/40 text-slate-950 ml-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <iframe
+                  key={`stream_${currentServer.id}_${effectiveTmdbId}_${currentSeason}_${currentEpisode}_${audioType}_${reloadKey}`}
+                  src={streamUrl}
+                  title={`${session.title} Player`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
+                  allowFullScreen
+                  referrerPolicy="no-referrer"
+                  onLoad={handleIframeLoaded}
+                  className="w-full h-full border-0 absolute inset-0 z-10"
+                />
+
+                {/* Floating TV Remote Control Bar */}
+                <div className="absolute bottom-0 left-0 right-0 z-20 p-2 sm:p-3 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-transparent flex flex-wrap items-center justify-between gap-2 pointer-events-auto">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <button
+                      onClick={handlePrevServer}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 text-[11px] sm:text-xs font-bold flex items-center gap-1 transition-all shadow-md"
+                      title="Previous Server"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Prev Mirror</span>
+                    </button>
+                    <button
+                      onClick={handleNextServer}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-purple-600/90 hover:bg-purple-500 text-white border border-purple-400/50 text-[11px] sm:text-xs font-bold flex items-center gap-1 transition-all shadow-md shadow-purple-600/20"
+                      title="Next Server (S)"
+                    >
+                      <span>Next Mirror (S)</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={handleForceRefresh}
+                      className="p-1.5 sm:p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-colors"
+                      title="Reload Stream (R)"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <button
+                      onClick={handlePopout}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+                      title="Direct TV Stream (Bypasses Embed Block & Autoplay Restrictions)"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Direct TV Stream</span>
+                    </button>
+                    <button
+                      onClick={() => setShowUnmutePrompt((prev) => !prev)}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/40 text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all"
+                      title="Unmute / Audio Help (M)"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Unmute Sound</span>
+                    </button>
+                    <button
+                      onClick={toggleFullscreen}
+                      className="p-1.5 sm:p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-colors"
+                      title="Fullscreen (F)"
+                    >
+                      <Maximize className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
           </div>
 

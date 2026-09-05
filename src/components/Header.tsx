@@ -247,34 +247,37 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Global Instant Search Bar & Live Dropdown */}
-        <div ref={searchContainerRef} className="flex-1 max-w-md relative hidden md:block">
-          <form onSubmit={handleSearchSubmit} className="relative">
-            <input
-              type="text"
-              value={localSearch}
-              onFocus={() => setShowLiveDropdown(true)}
-              onChange={(e) => {
-                setLocalSearch(e.target.value);
-                setShowLiveDropdown(true);
-              }}
-              placeholder={getSearchPlaceholder()}
-              className="w-full bg-slate-900/90 border border-slate-800 focus:border-blue-500 rounded-xl py-2 pl-9 pr-8 text-xs text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner font-sans"
-            />
-            {liveSearching ? (
-              <Loader2 className="w-4 h-4 text-blue-400 absolute left-3 top-2.5 animate-spin" />
-            ) : (
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-            )}
-            {localSearch && (
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+        {/* Global Instant Search Bar & Live Dropdown (TV Remote & Mobile Optimized) */}
+        <div ref={searchContainerRef} className="flex-1 max-w-xl relative mx-2 sm:mx-4">
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+            <div className="relative w-full">
+              <input
+                type="text"
+                value={localSearch}
+                onFocus={() => setShowLiveDropdown(true)}
+                onChange={(e) => {
+                  setLocalSearch(e.target.value);
+                  setShowLiveDropdown(true);
+                }}
+                placeholder={getSearchPlaceholder()}
+                className="w-full bg-slate-900/95 border-2 border-slate-700/80 hover:border-slate-600 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/20 rounded-2xl py-2 sm:py-2.5 pl-10 pr-10 text-xs sm:text-sm font-medium text-white placeholder-slate-400 focus:outline-none transition-all shadow-lg font-sans"
+              />
+              {liveSearching ? (
+                <Loader2 className="w-4 h-4 text-amber-400 absolute left-3.5 top-1/2 -translate-y-1/2 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              )}
+              {localSearch && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </form>
 
           {/* Dynamic Live Floating Quick Search Overlay */}

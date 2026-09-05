@@ -60,78 +60,88 @@ export const ANIME_TMDB_MAP: Record<number, number> = {
 
 export const STREAM_SERVERS: StreamServer[] = [
   {
-    id: 'vidsrc-cc',
-    name: 'Server 1: VidSrc CC (v2 Crystal HD)',
-    quality: '1080p Crystal',
-    badge: 'Fastest ⚡',
+    id: 'vidlink-pro',
+    name: 'Server 1: VidLink 4K Pro (Zero Ads / Crystal Sound)',
+    quality: '4K Ultra HD',
+    badge: '4K HDR ⚡',
     isPrimary: true,
-    pingMs: 25,
-    getMovieUrl: (id: number) => `https://vidsrc.cc/v2/embed/movie/${id}`,
-    getTvUrl: (id: number, s: number, e: number) => `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`,
-    getAnimeUrl: (id: number, ep: number) => `https://vidsrc.cc/v2/embed/tv/${id}/1/${ep}`
+    pingMs: 20,
+    getMovieUrl: (id: number) =>
+      `https://vidlink.pro/movie/${id}?primaryColor=6366f1&autoplay=true&title=true&poster=true`,
+    getTvUrl: (id: number, s: number, e: number) =>
+      `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=6366f1&autoplay=true&title=true&poster=true`,
+    getAnimeUrl: (id: number, ep: number) =>
+      `https://vidlink.pro/tv/${id}/1/${ep}?primaryColor=a855f7&autoplay=true&title=true&poster=true`
   },
   {
     id: 'autoembed',
-    name: 'Server 2: AutoEmbed Global CDN',
+    name: 'Server 2: AutoEmbed Global CDN (Direct Audio)',
     quality: '1080p HD',
-    badge: 'Zero Buffering',
-    pingMs: 32,
-    getMovieUrl: (id: number) => `https://player.autoembed.cc/embed/movie/${id}`,
-    getTvUrl: (id: number, s: number, e: number) => `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`,
-    getAnimeUrl: (id: number, ep: number) => `https://player.autoembed.cc/embed/tv/${id}/1/${ep}`
+    badge: 'Fast CDN',
+    pingMs: 28,
+    getMovieUrl: (id: number) => `https://player.autoembed.cc/embed/movie/${id}?autoplay=1`,
+    getTvUrl: (id: number, s: number, e: number) => `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}?autoplay=1`,
+    getAnimeUrl: (id: number, ep: number) => `https://player.autoembed.cc/embed/tv/${id}/1/${ep}?autoplay=1`
   },
   {
-    id: 'vidsrc-xyz',
-    name: 'Server 3: VidSrc XYZ Direct',
+    id: 'embed-su',
+    name: 'Server 3: Embed.su High-Speed Stream',
     quality: '1080p Ultra',
-    badge: 'Direct Stream',
-    pingMs: 38,
-    getMovieUrl: (id: number) => `https://vidsrc.xyz/embed/movie/${id}`,
-    getTvUrl: (id: number, s: number, e: number) => `https://vidsrc.xyz/embed/tv/${id}/${s}-${e}`,
-    getAnimeUrl: (id: number, ep: number) => `https://vidsrc.xyz/embed/tv/${id}/1-${ep}`
+    badge: 'No Lag',
+    pingMs: 35,
+    getMovieUrl: (id: number) => `https://embed.su/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
+    getAnimeUrl: (id: number, ep: number) => `https://embed.su/embed/tv/${id}/1/${ep}`
   },
   {
-    id: 'vidlink-pro',
-    name: 'Server 4: VidLink Pro 4K',
-    quality: '4K Ultra HD',
-    badge: '4K HDR',
-    pingMs: 45,
-    getMovieUrl: (id: number) =>
-      `https://vidlink.pro/movie/${id}?primaryColor=6366f1&title=true&poster=true`,
-    getTvUrl: (id: number, s: number, e: number) =>
-      `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=6366f1&title=true&poster=true`,
-    getAnimeUrl: (id: number, ep: number) =>
-      `https://vidlink.pro/tv/${id}/1/${ep}?primaryColor=a855f7&title=true&poster=true`
+    id: 'rivestream',
+    name: 'Server 4: RiveStream Universal Mirror',
+    quality: '1080p HD',
+    badge: 'Multi-Audio',
+    pingMs: 40,
+    getMovieUrl: (id: number) => `https://rivestream.live/embed?type=movie&id=${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}`,
+    getAnimeUrl: (id: number, ep: number) => `https://rivestream.live/embed?type=tv&id=${id}&season=1&episode=${ep}`
   },
   {
-    id: 'smashystream',
-    name: 'Server 5: SmashyStream Multi',
-    quality: '1080p Multi',
-    badge: 'Multi-Source',
-    pingMs: 50,
-    getMovieUrl: (id: number) => `https://player.smashystream.com/movie/${id}`,
-    getTvUrl: (id: number, s: number, e: number) => `https://player.smashystream.com/tv/${id}?s=${s}&e=${e}`,
-    getAnimeUrl: (id: number, ep: number) => `https://player.smashystream.com/tv/${id}?s=1&e=${ep}`
+    id: 'vidsrc-su',
+    name: 'Server 5: VidSrc SU (v3 Stream)',
+    quality: '1080p Crystal',
+    badge: 'Crystal HD',
+    pingMs: 42,
+    getMovieUrl: (id: number) => `https://vidsrc.su/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidsrc.su/embed/tv/${id}/${s}/${e}`,
+    getAnimeUrl: (id: number, ep: number) => `https://vidsrc.su/embed/tv/${id}/1/${ep}`
   },
   {
     id: 'superembed',
-    name: 'Server 6: MultiEmbed Universal',
+    name: 'Server 6: MultiEmbed 4K Stream',
     quality: 'High Speed 4K',
     badge: 'Universal',
-    pingMs: 55,
+    pingMs: 50,
     getMovieUrl: (id: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
     getTvUrl: (id: number, s: number, e: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
     getAnimeUrl: (id: number, ep: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=1&e=${ep}`
   },
   {
-    id: '2embed-cc',
-    name: 'Server 7: 2Embed VIP Stream',
-    quality: 'Standard HD',
-    badge: 'Backup VIP',
-    pingMs: 65,
-    getMovieUrl: (id: number) => `https://www.2embed.cc/embed/${id}`,
-    getTvUrl: (id: number, s: number, e: number) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
-    getAnimeUrl: (id: number, ep: number) => `https://www.2embed.cc/embedtv/${id}&s=1&e=${ep}`
+    id: 'vidsrc-cc',
+    name: 'Server 7: VidSrc CC Direct',
+    quality: '1080p HD',
+    badge: 'Backup HD',
+    pingMs: 55,
+    getMovieUrl: (id: number) => `https://vidsrc.cc/v2/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`,
+    getAnimeUrl: (id: number, ep: number) => `https://vidsrc.cc/v2/embed/tv/${id}/1/${ep}`
+  },
+  {
+    id: 'smashystream',
+    name: 'Server 8: SmashyStream VIP',
+    quality: '1080p Multi',
+    badge: 'Multi-Source',
+    pingMs: 60,
+    getMovieUrl: (id: number) => `https://player.smashystream.com/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://player.smashystream.com/tv/${id}?s=${s}&e=${e}`,
+    getAnimeUrl: (id: number, ep: number) => `https://player.smashystream.com/tv/${id}?s=1&e=${ep}`
   }
 ];
 
