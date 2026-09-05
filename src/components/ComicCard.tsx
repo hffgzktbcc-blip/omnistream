@@ -17,8 +17,18 @@ export const ComicCard: React.FC<ComicCardProps> = ({ comic, onClick, progress }
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      data-focusable="true"
+      aria-label={comic.title}
       onClick={() => onClick(comic)}
-      className="group relative flex flex-col rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-blue-500/50 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+          e.preventDefault();
+          onClick(comic);
+        }
+      }}
+      className="group relative flex flex-col rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-blue-500/50 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1"
     >
       {/* Cover Image Container */}
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-slate-800">

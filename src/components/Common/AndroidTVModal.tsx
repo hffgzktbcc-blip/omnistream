@@ -25,8 +25,7 @@ export const AndroidTVModal: React.FC<AndroidTVModalProps> = ({ isOpen, onClose 
   const [copied, setCopied] = useState(false);
   const [tvModeEnabled, setTvModeEnabled] = useState(tvNavigation.getTVMode());
 
-  const localIp = '192.168.1.242';
-  const tvUrl = `http://${localIp}:5200`;
+  const tvUrl = typeof window !== 'undefined' ? window.location.origin : 'https://omnistream-mivy.onrender.com';
 
   useEffect(() => {
     setTvModeEnabled(tvNavigation.getTVMode());

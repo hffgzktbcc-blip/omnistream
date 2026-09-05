@@ -32,6 +32,7 @@ import { HomeDashboard } from './components/Home/HomeDashboard';
 import { offlineStorage } from './services/offlineStorage';
 import { ExtensionManagerModal } from './components/Extensions/ExtensionManagerModal';
 import { AndroidTVModal } from './components/Common/AndroidTVModal';
+import { TVRemoteHelper } from './components/Common/TVRemoteHelper';
 import { ArrHub } from './components/Arr/ArrHub';
 import { AddArrModal } from './components/Arr/AddArrModal';
 import { tvNavigation } from './services/tvNavigation';
@@ -831,6 +832,19 @@ const AppContent: React.FC = () => {
           sleepSecondsLeft={sleepSecondsLeft}
         />
       )}
+
+      {/* On-Screen TV Remote Navigation Dock */}
+      <TVRemoteHelper
+        onJumpToHome={() => setActiveTab('home')}
+        onJumpToSearch={() => {
+          const searchInput = document.querySelector<HTMLInputElement>('header input[type="text"]');
+          if (searchInput) {
+            searchInput.focus();
+            searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }}
+        isVideoPlaying={!!activePlayerSession}
+      />
 
       {/* App-Wide Universal Drag and Drop Ingestion */}
       <GlobalDropzone onFilesDropped={handleUniversalFilesDrop} />

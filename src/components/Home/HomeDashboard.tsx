@@ -333,11 +333,22 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               return (
                 <div
                   key={`anime_${idx}`}
+                  role="button"
+                  tabIndex={0}
+                  data-focusable="true"
+                  aria-label={`${title} Episode ${ep}`}
                   onClick={() => {
                     onNavigateTab('anime');
                     if (item.anime) onSelectAnime(item.anime);
                   }}
-                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 shadow-lg cursor-pointer transition-all hover:scale-105"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                      e.preventDefault();
+                      onNavigateTab('anime');
+                      if (item.anime) onSelectAnime(item.anime);
+                    }
+                  }}
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 shadow-lg cursor-pointer transition-all hover:scale-105"
                 >
                   <div className="aspect-[16/9] relative">
                     <img
@@ -369,11 +380,22 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               return (
                 <div
                   key={`comic_${idx}`}
+                  role="button"
+                  tabIndex={0}
+                  data-focusable="true"
+                  aria-label={`${title} ${ch}`}
                   onClick={() => {
                     onNavigateTab('browse');
                     if (item.comic) onSelectComic(item.comic);
                   }}
-                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-sky-500/60 shadow-lg cursor-pointer transition-all hover:scale-105"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                      e.preventDefault();
+                      onNavigateTab('browse');
+                      if (item.comic) onSelectComic(item.comic);
+                    }
+                  }}
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-sky-500/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 shadow-lg cursor-pointer transition-all hover:scale-105"
                 >
                   <div className="aspect-[16/9] relative">
                     <img
@@ -429,8 +451,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               return (
                 <div
                   key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  data-focusable="true"
+                  aria-label={`${title} (${item.type || 'Movie'})`}
                   onClick={() => onSelectMedia(item)}
-                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-rose-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                      e.preventDefault();
+                      onSelectMedia(item);
+                    }
+                  }}
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-rose-500/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
                 >
                   <div className="aspect-[2/3] relative">
                     <img
@@ -487,8 +519,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               return (
                 <div
                   key={anime.id}
+                  role="button"
+                  tabIndex={0}
+                  data-focusable="true"
+                  aria-label={title}
                   onClick={() => onSelectAnime(anime)}
-                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                      e.preventDefault();
+                      onSelectAnime(anime);
+                    }
+                  }}
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
                 >
                   <div className="aspect-[2/3] relative">
                     <img
@@ -555,8 +597,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               return (
                 <div
                   key={match.id}
+                  role="button"
+                  tabIndex={0}
+                  data-focusable="true"
+                  aria-label={`${homeName} vs ${awayName}, ${match.league}`}
                   onClick={() => onSelectSportsMatch(match)}
-                  className="p-4 rounded-2xl bg-[#00173d] border border-blue-900/60 hover:border-amber-400 cursor-pointer transition-all hover:scale-[1.02] shadow-xl flex flex-col justify-between space-y-3"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                      e.preventDefault();
+                      onSelectSportsMatch(match);
+                    }
+                  }}
+                  className="p-4 rounded-2xl bg-[#00173d] border border-blue-900/60 hover:border-amber-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 cursor-pointer transition-all hover:scale-[1.02] shadow-xl flex flex-col justify-between space-y-3"
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider">

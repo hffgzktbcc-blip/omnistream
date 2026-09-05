@@ -19,8 +19,18 @@ export const SportsCard: React.FC<SportsCardProps> = ({ match, onWatch }) => {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      data-focusable="true"
+      aria-label={`${homeName} vs ${awayName}, ${match.league || 'Sports Match'}`}
       onClick={() => onWatch(match)}
-      className="group relative flex flex-col rounded-2xl bg-[#00173d]/90 border border-blue-900/60 hover:border-amber-400/80 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/40 hover:-translate-y-1 p-4 justify-between"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+          e.preventDefault();
+          onWatch(match);
+        }
+      }}
+      className="group relative flex flex-col rounded-2xl bg-[#00173d]/90 border border-blue-900/60 hover:border-amber-400/80 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/40 hover:-translate-y-1 p-4 justify-between"
     >
       {/* Top Header: League & Status */}
       <div className="flex items-center justify-between border-b border-blue-900/50 pb-2.5">
