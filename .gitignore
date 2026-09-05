@@ -14,3 +14,14 @@ node_modules
 .vscode
 .idea
 *.swp
+
+# Large Media & Torrents
+server/data/audiobook_torrents/
+server/data/ebooks/
+SHELF HELP/
+*.mp3
+*.m4b
+*.zip
+*.cbz
+*.cbr
+

@@ -9,6 +9,9 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -56,3 +59,12 @@ jobs:
           name: OmniStream-AndroidTV-APK
           path: output/OmniStream-AndroidTV.apk
           retention-days: 30
+
+      - name: Release Android TV APK
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0
+          name: "OmniStream Android TV Release v1.0.0"
+          body: "Official Android TV APK build for OmniStream. Direct download for Downloader app on Android TV and Fire TV."
+          files: output/OmniStream-AndroidTV.apk
