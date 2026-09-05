@@ -64,7 +64,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.0
-          name: "OmniStream Android TV Release v1.0.0"
-          body: "Official Android TV APK build for OmniStream. Direct download for Downloader app on Android TV and Fire TV."
+          tag_name: v1.0.1
+          name: "OmniStream Android TV Release v1.0.1 (Cloud Connected)"
+          body: "Official Android TV APK build for OmniStream connected to 24/7 Cloud Server (https://omnistream-mivy.onrender.com). Direct download for Downloader app on Android TV and Fire TV."
           files: output/OmniStream-AndroidTV.apk
