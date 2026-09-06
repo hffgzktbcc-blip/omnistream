@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Anime, AnimeEpisode, AnimeWatchStatus } from '../../types/anime';
 import { animeStorage } from '../../services/animeStorage';
 import { api } from '../../services/api';
+import { tvNavigation } from '../../services/tvNavigation';
 import {
   X,
   Play,
@@ -107,10 +108,12 @@ export const AnimeDetailModal: React.FC<AnimeDetailModalProps> = ({
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      playButtonRef.current?.focus();
-    }, 150);
+      if (playButtonRef.current) {
+        tvNavigation.focusElement(playButtonRef.current);
+      }
+    }, 120);
     return () => clearTimeout(timer);
-  }, []);
+  }, [anime]);
 
   return (
     <div

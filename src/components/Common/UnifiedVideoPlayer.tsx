@@ -3,6 +3,7 @@ import { Anime } from '../../types/anime';
 import { MediaItem } from '../../types/media';
 import { STREAM_SERVERS, StreamServer, measureServerPing, ANIME_TMDB_MAP } from '../../services/streamingService';
 import { animeStorage } from '../../services/animeStorage';
+import { watchHistoryService } from '../../services/watchHistoryService';
 import {
   X,
   ChevronLeft,
@@ -143,7 +144,32 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     } else if (session.tmdbId) {
       setResolvedTmdbId(session.tmdbId);
     }
-  }, [session]);
+
+    // Persist to unified cross-media watch history
+    try {
+      if (session.type === 'movie') {
+        const item: MediaItem = session.mediaData || {
+          id: session.tmdbId || 0,
+          title: session.title,
+          media_type: 'movie'
+        };
+        watchHistoryService.saveMovie(item);
+      } else if (session.type === 'tv') {
+        const item: MediaItem = session.mediaData || {
+          id: session.tmdbId || 0,
+          name: session.title,
+          title: session.title,
+          media_type: 'tv'
+        };
+        watchHistoryService.saveTv(item, session.season || 1, session.episode || 1);
+      } else if (session.type === 'anime' && session.animeData) {
+        watchHistoryService.saveAnime(session.animeData, session.episode || 1, audioType);
+        animeStorage.updateProgress(session.animeData, session.episode || 1, session.totalEpisodes || 12, audioType);
+      }
+    } catch (e) {
+      console.warn('Failed to save to unified watch history:', e);
+    }
+  }, [session, audioType]);
 
   if (!session) return null;
 

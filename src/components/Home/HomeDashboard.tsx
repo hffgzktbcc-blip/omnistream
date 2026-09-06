@@ -5,6 +5,7 @@ import { MediaItem } from '../../types/media';
 import { SportsMatch } from '../../types/sports';
 import { animeStorage } from '../../services/animeStorage';
 import { storage } from '../../services/storage';
+import { watchHistoryService, UnifiedHistoryItem } from '../../services/watchHistoryService';
 import {
   BookOpen,
   Tv,
@@ -24,12 +25,13 @@ import {
   ShieldCheck,
   Zap,
   Activity,
-  CheckCircle2
+  CheckCircle2,
+  Headphones
 } from 'lucide-react';
 
 interface HomeDashboardProps {
   onNavigateTab: (
-    tab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library'
+    tab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr' | 'audiobooks'
   ) => void;
   onSelectComic: (comic: Comic) => void;
   onSelectAnime: (anime: Anime) => void;
@@ -142,8 +144,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [progressPercent, setProgressPercent] = useState(0);
   const [continueWatchingAnime, setContinueWatchingAnime] = useState<any[]>([]);
   const [recentComics, setRecentComics] = useState<any[]>([]);
+  const [historyItems, setHistoryItems] = useState<UnifiedHistoryItem[]>([]);
 
   useEffect(() => {
+    try {
+      const recent = watchHistoryService.getRecent(10);
+      setHistoryItems(recent);
+    } catch {
+      setHistoryItems([]);
+    }
+
     try {
       const watchlist = animeStorage.getWatchlist();
       setContinueWatchingAnime(Array.isArray(watchlist) ? watchlist.slice(0, 5) : []);
@@ -313,7 +323,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* -------------------------------------------------------------
           3. DYNAMIC CONTINUE STREAMING & READING SHELF
          ------------------------------------------------------------- */}
-      {(continueWatchingAnime.length > 0 || recentComics.length > 0) && (
+      {(historyItems.length > 0 || continueWatchingAnime.length > 0 || recentComics.length > 0) && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -322,102 +332,144 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 Pick Up Where You Left Off
               </h2>
             </div>
+            {historyItems.length > 0 && (
+              <span className="text-xs text-slate-400 font-medium">
+                {historyItems.length} active in history
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
-            {continueWatchingAnime.map((item, idx) => {
-              const title = formatTitle(item.anime?.title || item.title || 'Anime Series');
-              const cover = formatCover(item.anime?.coverImage || item.cover);
-              const ep = item.episodeNumber || item.currentEpisode || 1;
-
-              return (
-                <div
-                  key={`anime_${idx}`}
-                  role="button"
-                  tabIndex={0}
-                  data-focusable="true"
-                  aria-label={`${title} Episode ${ep}`}
-                  onClick={() => {
-                    onNavigateTab('anime');
-                    if (item.anime) onSelectAnime(item.anime);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
-                      e.preventDefault();
-                      onNavigateTab('anime');
-                      if (item.anime) onSelectAnime(item.anime);
+            {historyItems.length > 0
+              ? historyItems.slice(0, 5).map((item) => {
+                  const getBadgeConfig = () => {
+                    switch (item.mediaType) {
+                      case 'movie':
+                        return { label: '4K MOVIE', color: 'bg-rose-600/90 text-white', icon: Film };
+                      case 'tv':
+                        return { label: item.subtitle || 'TV SHOW', color: 'bg-indigo-600/90 text-white', icon: Tv };
+                      case 'anime':
+                        return { label: item.subtitle || 'ANIME', color: 'bg-purple-600/90 text-white', icon: Play };
+                      case 'comic':
+                        return { label: item.subtitle || 'MANGA', color: 'bg-sky-600/90 text-white', icon: BookOpen };
+                      case 'audiobook':
+                        return { label: 'AUDIOBOOK', color: 'bg-amber-600/90 text-white', icon: Headphones };
+                      default:
+                        return { label: 'RESUME', color: 'bg-blue-600/90 text-white', icon: Play };
                     }
-                  }}
-                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 shadow-lg cursor-pointer transition-all hover:scale-105"
-                >
-                  <div className="aspect-[16/9] relative">
-                    <img
-                      src={cover}
-                      alt={title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
-                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] font-bold text-white">
-                      <span className="px-1.5 py-0.5 rounded bg-purple-600/90 font-mono">
-                        EP {ep}
-                      </span>
-                      <span className="uppercase text-slate-300">{item.audioType || 'SUB'}</span>
-                    </div>
-                  </div>
-                  <div className="p-2.5 flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-white truncate">{title}</h4>
-                    <Play className="w-3 h-3 text-purple-400 fill-current flex-shrink-0" />
-                  </div>
-                </div>
-              );
-            })}
+                  };
 
-            {recentComics.map((item, idx) => {
-              const title = formatTitle(item.comicTitle || item.title || 'Manga Title');
-              const cover = formatCover(item.cover || item.coverImage);
-              const ch = item.chapterTitle || `CH ${item.pageNumber || 1}`;
+                  const badge = getBadgeConfig();
+                  const BadgeIcon = badge.icon;
 
-              return (
-                <div
-                  key={`comic_${idx}`}
-                  role="button"
-                  tabIndex={0}
-                  data-focusable="true"
-                  aria-label={`${title} ${ch}`}
-                  onClick={() => {
-                    onNavigateTab('browse');
-                    if (item.comic) onSelectComic(item.comic);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
-                      e.preventDefault();
-                      onNavigateTab('browse');
-                      if (item.comic) onSelectComic(item.comic);
+                  const handleItemClick = () => {
+                    if (item.mediaType === 'movie' || item.mediaType === 'tv') {
+                      if (item.rawItem) onSelectMedia(item.rawItem);
+                      else onNavigateTab('media');
+                    } else if (item.mediaType === 'anime') {
+                      if (item.rawItem) onSelectAnime(item.rawItem);
+                      else onNavigateTab('anime');
+                    } else if (item.mediaType === 'comic') {
+                      if (item.rawItem) onSelectComic(item.rawItem);
+                      else onNavigateTab('browse');
+                    } else if (item.mediaType === 'audiobook') {
+                      onNavigateTab('audiobooks');
                     }
-                  }}
-                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-sky-500/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 shadow-lg cursor-pointer transition-all hover:scale-105"
-                >
-                  <div className="aspect-[16/9] relative">
-                    <img
-                      src={cover}
-                      alt={title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
-                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] font-bold text-white">
-                      <span className="px-1.5 py-0.5 rounded bg-sky-600/90 font-mono">
-                        {ch}
-                      </span>
-                      <span className="text-slate-300">MANGA</span>
+                  };
+
+                  return (
+                    <div
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      data-focusable="true"
+                      aria-label={`Resume ${item.title}`}
+                      onClick={handleItemClick}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                          e.preventDefault();
+                          handleItemClick();
+                        }
+                      }}
+                      className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-amber-400/80 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 shadow-lg cursor-pointer transition-all hover:scale-105 flex flex-col justify-between"
+                    >
+                      <div className="aspect-[16/9] relative bg-slate-950 overflow-hidden">
+                        <img
+                          src={item.cover || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=400'}
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=400';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+                        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] font-bold">
+                          <span className={`px-1.5 py-0.5 rounded font-mono ${badge.color}`}>
+                            {badge.label}
+                          </span>
+                          {item.year && <span className="text-slate-300 font-mono">{item.year}</span>}
+                        </div>
+                        {item.progressPercent !== undefined && item.progressPercent > 0 && (
+                          <div className="absolute bottom-0 inset-x-0 h-1 bg-slate-800">
+                            <div className="h-full bg-amber-400" style={{ width: `${item.progressPercent}%` }} />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2.5 flex items-center justify-between gap-2">
+                        <h4 className="text-xs font-bold text-white truncate group-hover:text-amber-300 transition-colors">
+                          {item.title}
+                        </h4>
+                        <BadgeIcon className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-2.5 flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-white truncate">{title}</h4>
-                    <BookOpen className="w-3 h-3 text-sky-400 flex-shrink-0" />
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })
+              : continueWatchingAnime.map((item, idx) => {
+                  const title = formatTitle(item.anime?.title || item.title || 'Anime Series');
+                  const cover = formatCover(item.anime?.coverImage || item.cover);
+                  const ep = item.episodeNumber || item.currentEpisode || 1;
+
+                  return (
+                    <div
+                      key={`anime_${idx}`}
+                      role="button"
+                      tabIndex={0}
+                      data-focusable="true"
+                      aria-label={`${title} Episode ${ep}`}
+                      onClick={() => {
+                        onNavigateTab('anime');
+                        if (item.anime) onSelectAnime(item.anime);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                          e.preventDefault();
+                          onNavigateTab('anime');
+                          if (item.anime) onSelectAnime(item.anime);
+                        }
+                      }}
+                      className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 shadow-lg cursor-pointer transition-all hover:scale-105"
+                    >
+                      <div className="aspect-[16/9] relative">
+                        <img
+                          src={cover}
+                          alt={title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+                        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] font-bold text-white">
+                          <span className="px-1.5 py-0.5 rounded bg-purple-600/90 font-mono">
+                            EP {ep}
+                          </span>
+                          <span className="uppercase text-slate-300">{item.audioType || 'SUB'}</span>
+                        </div>
+                      </div>
+                      <div className="p-2.5 flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-white truncate">{title}</h4>
+                        <Play className="w-3 h-3 text-purple-400 fill-current flex-shrink-0" />
+                      </div>
+                    </div>
+                  );
+                })}
           </div>
         </div>
       )}

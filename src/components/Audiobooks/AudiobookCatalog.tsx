@@ -11,7 +11,8 @@ import {
   Loader2,
   Trash2,
   Zap,
-  BookOpen
+  BookOpen,
+  Bookmark
 } from 'lucide-react';
 import { Audiobook, AudioTrack, AudiobookListeningProgress } from '../../types/audiobook';
 import { audiobookStorage } from '../../services/audiobookStorage';
@@ -31,6 +32,9 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [savedIds, setSavedIds] = useState<Set<string>>(() => {
+    return new Set(audiobookStorage.getShelf().map((i) => i.book.id));
+  });
   const [continueList, setContinueList] = useState<AudiobookListeningProgress[]>(() => {
     return audiobookStorage.getRecentHistory();
   });
@@ -38,6 +42,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
 
   const genres = [
     { label: 'All Releases', id: '' },
+    { label: '📚 My Bookshelf', id: 'my_bookshelf' },
     { label: 'Fantasy', id: 'fantasy' },
     { label: 'Sci-Fi', id: 'sci-fi' },
     { label: 'Mystery', id: 'mystery' },
@@ -59,6 +64,20 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
     setLoading(true);
     setErrorMsg(null);
     setCurrentPage(page);
+
+    // Shelf Suite: Personal Bookshelf
+    if (activeGenre === 'my_bookshelf') {
+      try {
+        const shelf = audiobookStorage.getShelf();
+        setBooks(shelf.map((s) => s.book));
+        setTotalPages(1);
+      } catch (err: any) {
+        setErrorMsg('Failed to load your personal bookshelf.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     try {
       const endpoint = activeGenre
@@ -303,11 +322,41 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                   : book.cover
                 : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
 
+              const isSaved = savedIds.has(book.id);
+
+              const handleToggleShelf = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (isSaved) {
+                  audiobookStorage.removeFromShelf(book.id);
+                  setSavedIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(book.id);
+                    return next;
+                  });
+                  if (activeGenre === 'my_bookshelf') {
+                    setBooks((prev) => prev.filter((b) => b.id !== book.id));
+                  }
+                } else {
+                  audiobookStorage.saveToShelf(book, 'want_to_listen');
+                  setSavedIds((prev) => new Set(prev).add(book.id));
+                }
+              };
+
               return (
                 <div
                   key={book.id}
+                  role="button"
+                  tabIndex={0}
+                  data-focusable="true"
+                  aria-label={book.title}
                   onClick={() => onSelectBook(book)}
-                  className="group bg-slate-900/70 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/50 rounded-2xl p-2.5 flex flex-col transition cursor-pointer shadow-md hover:shadow-xl hover:shadow-amber-500/5"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                      e.preventDefault();
+                      onSelectBook(book);
+                    }
+                  }}
+                  className="group bg-slate-900/70 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/50 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 rounded-2xl p-2.5 flex flex-col transition cursor-pointer shadow-md hover:shadow-xl hover:shadow-amber-500/5 hover:scale-105"
                 >
                   <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-slate-950 mb-2.5 shadow">
                     <img
@@ -323,11 +372,22 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                     <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur text-[9px] font-black uppercase text-amber-400 border border-white/10">
                       {book.format || 'AUDIO'}
                     </div>
-                    {book.size && (
-                      <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur text-[9px] font-bold text-slate-300">
-                        {book.size}
-                      </div>
-                    )}
+
+                    {/* Shelf Bookmark Button */}
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      onClick={handleToggleShelf}
+                      title={isSaved ? 'In your Bookshelf (Click to remove)' : 'Save to Bookshelf'}
+                      className={`absolute top-1.5 right-1.5 p-1.5 rounded-lg backdrop-blur transition-all z-10 ${
+                        isSaved
+                          ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30 font-bold'
+                          : 'bg-black/60 text-slate-300 hover:text-white hover:bg-black/90'
+                      }`}
+                    >
+                      <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
+                    </button>
+
                     {/* Hover Play Glow Button */}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                       <div className="w-10 h-10 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/50">

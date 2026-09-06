@@ -486,8 +486,8 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Primary Navigation Hubs */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1">
+        {/* Primary Navigation Hubs (Desktop/Tablet & TV Mode) */}
+        <div className="hidden md:flex items-center gap-1 overflow-x-auto scrollbar-none py-1">
           {/* Home */}
           <button
             onClick={() => {

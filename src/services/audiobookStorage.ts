@@ -3,6 +3,14 @@ import { Audiobook, AudiobookBookmark, AudiobookListeningProgress } from '../typ
 const PROGRESS_STORAGE_KEY = 'omnistream_audiobook_progress_v2';
 const BOOKMARKS_STORAGE_KEY = 'omnistream_audiobook_bookmarks_v2';
 const RECENT_BOOKS_KEY = 'omnistream_recent_audiobooks_v2';
+const BOOKSHELF_STORAGE_KEY = 'omnistream_audiobook_bookshelf_v2';
+const SPEED_PREF_KEY = 'omnistream_audiobook_speed_v2';
+
+export interface ShelfAudiobookItem {
+  book: Audiobook;
+  status: 'listening' | 'want_to_listen' | 'finished';
+  savedAt: number;
+}
 
 export const audiobookStorage = {
   saveProgress(progress: AudiobookListeningProgress): void {
@@ -42,6 +50,76 @@ export const audiobookStorage = {
     return (Object.values(all) as AudiobookListeningProgress[]).sort(
       (a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0)
     );
+  },
+
+  // -------------------------------------------------------------
+  // SHELF SUITE: MY BOOKSHELF (PERSONAL LIBRARY)
+  // -------------------------------------------------------------
+  getShelf(): ShelfAudiobookItem[] {
+    try {
+      const raw = localStorage.getItem(BOOKSHELF_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveToShelf(book: Audiobook, status: 'listening' | 'want_to_listen' | 'finished' = 'want_to_listen'): ShelfAudiobookItem[] {
+    try {
+      const list = this.getShelf();
+      const existingIdx = list.findIndex((item) => item.book.id === book.id);
+      const item: ShelfAudiobookItem = {
+        book,
+        status,
+        savedAt: Date.now()
+      };
+
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...item };
+      } else {
+        list.unshift(item);
+      }
+
+      localStorage.setItem(BOOKSHELF_STORAGE_KEY, JSON.stringify(list));
+      return list;
+    } catch (e) {
+      console.warn('Failed to save to audiobook bookshelf:', e);
+      return [];
+    }
+  },
+
+  removeFromShelf(bookId: string): ShelfAudiobookItem[] {
+    try {
+      const list = this.getShelf().filter((item) => item.book.id !== bookId);
+      localStorage.setItem(BOOKSHELF_STORAGE_KEY, JSON.stringify(list));
+      return list;
+    } catch {
+      return [];
+    }
+  },
+
+  isInShelf(bookId: string): boolean {
+    return this.getShelf().some((item) => item.book.id === bookId);
+  },
+
+  // -------------------------------------------------------------
+  // SHELF SUITE: PLAYBACK SPEED PREFERENCE
+  // -------------------------------------------------------------
+  getPreferredSpeed(): number {
+    try {
+      const val = localStorage.getItem(SPEED_PREF_KEY);
+      return val ? parseFloat(val) : 1.0;
+    } catch {
+      return 1.0;
+    }
+  },
+
+  setPreferredSpeed(speed: number): void {
+    try {
+      localStorage.setItem(SPEED_PREF_KEY, String(speed));
+    } catch {}
   },
 
   saveBookmark(bookId: string, bookmark: AudiobookBookmark): AudiobookBookmark[] {

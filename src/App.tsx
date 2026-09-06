@@ -33,6 +33,7 @@ import { offlineStorage } from './services/offlineStorage';
 import { ExtensionManagerModal } from './components/Extensions/ExtensionManagerModal';
 import { AndroidTVModal } from './components/Common/AndroidTVModal';
 import { TVRemoteHelper } from './components/Common/TVRemoteHelper';
+import { MobileBottomNav } from './components/Common/MobileBottomNav';
 import { ArrHub } from './components/Arr/ArrHub';
 import { AddArrModal } from './components/Arr/AddArrModal';
 import { tvNavigation } from './services/tvNavigation';
@@ -510,7 +511,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1">
+      <main className="flex-1 pb-20 md:pb-6">
         {/* 0. UNIFIED HOME DASHBOARD */}
         {activeTab === 'home' && (
           <HomeDashboard
@@ -832,6 +833,14 @@ const AppContent: React.FC = () => {
           sleepSecondsLeft={sleepSecondsLeft}
         />
       )}
+
+      {/* Mobile Bottom Navigation Bar (Screens < 768px) */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenStats={() => setShowStatsModal(true)}
+        onOpenAndroidTV={() => setShowAndroidTVModal(true)}
+      />
 
       {/* On-Screen TV Remote Navigation Dock */}
       <TVRemoteHelper

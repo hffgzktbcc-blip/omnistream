@@ -80,12 +80,14 @@ class TVNavigationService {
       :focus-visible,
       .tv-mode :focus,
       .tv-focused {
-        outline: none !important;
-        box-shadow: 0 0 0 3.5px #f59e0b, 0 0 28px rgba(245, 158, 11, 0.75) !important;
+        outline: 3.5px solid #f59e0b !important;
+        outline-offset: 2px !important;
+        box-shadow: 0 0 0 4px #f59e0b, 0 0 35px rgba(245, 158, 11, 0.95), inset 0 0 12px rgba(245, 158, 11, 0.25) !important;
         border-color: #fbbf24 !important;
-        transform: scale(1.04) !important;
+        transform: scale(1.05) !important;
         transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease, border-color 0.15s ease !important;
-        z-index: 40 !important;
+        z-index: 50 !important;
+        position: relative !important;
         scroll-margin: 80px !important;
       }
 
@@ -125,6 +127,12 @@ class TVNavigationService {
   private handleFocusIn = (e: FocusEvent) => {
     if (e.target instanceof HTMLElement) {
       this.activeElement = e.target;
+      if (this.isTVMode) {
+        document.querySelectorAll('.tv-focused').forEach((node) => {
+          if (node !== e.target) node.classList.remove('tv-focused');
+        });
+        e.target.classList.add('tv-focused');
+      }
     }
   };
 
@@ -376,8 +384,20 @@ class TVNavigationService {
     }
   }
 
-  private applyFocus(el: HTMLElement) {
-    el.focus();
+  public applyFocus(el: HTMLElement) {
+    if (!el) return;
+
+    document.querySelectorAll('.tv-focused').forEach((node) => {
+      if (node !== el) node.classList.remove('tv-focused');
+    });
+    el.classList.add('tv-focused');
+
+    try {
+      el.focus({ preventScroll: true });
+    } catch {
+      el.focus();
+    }
+
     el.scrollIntoView({
       behavior: 'smooth',
       block: 'center',
@@ -391,10 +411,16 @@ class TVNavigationService {
       const parentRect = scrollParent.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
       if (elRect.right > parentRect.right) {
-        scrollParent.scrollBy({ left: elRect.right - parentRect.right + 100, behavior: 'smooth' });
+        scrollParent.scrollBy({ left: elRect.right - parentRect.right + 120, behavior: 'smooth' });
       } else if (elRect.left < parentRect.left) {
-        scrollParent.scrollBy({ left: elRect.left - parentRect.left - 100, behavior: 'smooth' });
+        scrollParent.scrollBy({ left: elRect.left - parentRect.left - 120, behavior: 'smooth' });
       }
+    }
+  }
+
+  public focusElement(el: HTMLElement | null) {
+    if (el) {
+      this.applyFocus(el);
     }
   }
 

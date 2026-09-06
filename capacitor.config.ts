@@ -5,7 +5,6 @@ const config: CapacitorConfig = {
   appName: 'OmniStream',
   webDir: 'dist',
   server: {
-    url: 'https://omnistream-mivy.onrender.com',
     androidScheme: 'https',
     cleartext: true
   },

@@ -3,6 +3,30 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import './index.css';
 
+// Detect Capacitor native platform or local WebView asset runtime
+const isNativeApp =
+  typeof window !== 'undefined' &&
+  (!!(window as any).Capacitor ||
+    window.location.protocol === 'capacitor:' ||
+    (window.location.hostname === 'localhost' && !window.location.port) ||
+    window.location.protocol === 'file:');
+
+const REMOTE_API_ORIGIN = 'https://omnistream-mivy.onrender.com';
+
+if (isNativeApp && typeof window !== 'undefined') {
+  const originalFetch = window.fetch;
+  window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+    if (typeof input === 'string' && input.startsWith('/api')) {
+      return originalFetch(REMOTE_API_ORIGIN + input, init);
+    }
+    if (input instanceof Request && input.url.startsWith('/api')) {
+      return originalFetch(new Request(REMOTE_API_ORIGIN + input.url, input));
+    }
+    return originalFetch(input, init);
+  };
+  console.log('[OmniStream Native] Fast local asset mode activated. Routing /api to', REMOTE_API_ORIGIN);
+}
+
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: any }

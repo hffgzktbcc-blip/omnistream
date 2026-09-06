@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Audiobook, AudioTrack } from '../../types/audiobook';
 import { audiobookStorage } from '../../services/audiobookStorage';
+import { watchHistoryService } from '../../services/watchHistoryService';
 
 interface AudioPlayerBarProps {
   book: Audiobook;
@@ -126,6 +127,8 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
           completed: duration > 0 && currentTime >= duration - 10,
           percent: duration > 0 ? Math.round((currentTime / duration) * 100) : 0
         });
+
+        watchHistoryService.saveAudiobook(book, currentTrackIndex, currentTime, duration);
       }
     }, 4000);
 
@@ -271,7 +274,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
 
       {/* Chapters & Tracks Drawer */}
       {showDrawer && (
-        <div className="fixed inset-x-0 bottom-24 z-40 max-w-2xl mx-auto px-4 animate-slide-up">
+        <div className="fixed inset-x-0 bottom-[120px] md:bottom-24 z-40 max-w-2xl mx-auto px-4 animate-slide-up">
           <div className="bg-[#0f1422]/98 backdrop-blur-2xl border border-blue-900/60 rounded-3xl p-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <span className="text-xs font-black text-white uppercase tracking-wider">
@@ -311,7 +314,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
       )}
 
       {/* Persistent Bottom Bar */}
-      <footer className="fixed bottom-0 inset-x-0 z-40 bg-[#090b14]/95 backdrop-blur-2xl border-t border-blue-900/40 px-3 sm:px-6 py-2 shadow-2xl transition-all">
+      <footer className="fixed bottom-[52px] md:bottom-0 inset-x-0 z-40 bg-[#090b14]/95 backdrop-blur-2xl border-t border-blue-900/40 px-3 sm:px-6 py-2 shadow-2xl transition-all">
         {/* Scrub Bar */}
         <div className="relative w-full h-1 group cursor-pointer mb-2 flex items-center">
           {/* Buffer Bar */}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MediaItem, TVSeason } from '../../types/media';
 import { X, Play, Star, Calendar, Clock, Film, Tv, Clapperboard, Download } from 'lucide-react';
+import { tvNavigation } from '../../services/tvNavigation';
 
 interface MediaDetailModalProps {
   item: MediaItem | null;
@@ -50,10 +51,12 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      playButtonRef.current?.focus();
-    }, 150);
+      if (playButtonRef.current) {
+        tvNavigation.focusElement(playButtonRef.current);
+      }
+    }, 120);
     return () => clearTimeout(timer);
-  }, []);
+  }, [item]);
 
   return (
     <div

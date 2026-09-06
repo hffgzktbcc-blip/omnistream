@@ -7392,7 +7392,7 @@ app.post('/api/radarr/search', express.json(), async (req, res) => {
   }
 });
 
-const APK_DOWNLOAD_URL = 'https://github.com/hffgzktbcc-blip/omnistream/releases/download/v1.0.2/OmniStream-AndroidTV.apk';
+const APK_DOWNLOAD_URL = 'https://github.com/hffgzktbcc-blip/omnistream/releases/latest/download/OmniStream-AndroidTV.apk';
 app.get('/apk', (req, res) => {
   res.redirect(APK_DOWNLOAD_URL);
 });

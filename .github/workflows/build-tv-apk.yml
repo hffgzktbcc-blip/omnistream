@@ -64,9 +64,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.2
-          name: "OmniStream Android TV Release v1.0.2 (Cloud Connected & Remote Overhaul)"
-          body: "Official Android TV APK build for OmniStream connected to 24/7 Cloud Server (https://omnistream-mivy.onrender.com). Direct download for Downloader app on Android TV and Fire TV."
+          tag_name: v1.0.3
+          name: "OmniStream Android TV & Mobile Release v1.0.3 (0ms Native Bundling, Focus Overhaul, 2026 Mirrors & Shelf Suite)"
+          body: "Official Android TV & Mobile APK for OmniStream with 0ms local asset performance, high-visibility D-pad remote focus, verified 2026 streaming mirrors, unified cross-media watch history, mobile bottom navigation, and full Audiobook Shelf Suite."
           files: output/OmniStream-AndroidTV.apk
           make_latest: true
           overwrite: true
