@@ -13,6 +13,8 @@ import JSZip from 'jszip';
 import { analyzeSearchIntent, scoreAndRankResults } from './aiSearchEngine.js';
 import child_process from 'child_process';
 import audiobooksRouter from './audiobooks.js';
+import streamResolverRouter from './streamResolver.js';
+import streamProxyRouter from './streamProxy.js';
 
 const dnsPromises = dns.promises;
 const __filename = fileURLToPath(import.meta.url);
@@ -143,6 +145,7 @@ async function safeFetch(url, options = {}) {
           ok: res.statusCode >= 200 && res.statusCode < 300,
           status: res.statusCode,
           headers: res.headers,
+          url: url,
           text: () => Promise.resolve(buffer.toString('utf8')),
           json: () => Promise.resolve(JSON.parse(buffer.toString('utf8'))),
           buffer: () => Promise.resolve(buffer)
@@ -177,6 +180,10 @@ app.use(express.json({ limit: '50mb' }));
 
 // AudioBay Swarm & Streaming Engine
 app.use('/api/audiobooks', audiobooksRouter);
+
+// Cinema Stream Resolution & Proxy Engine
+app.use('/api/stream', streamResolverRouter);
+app.use('/api/proxy', streamProxyRouter);
 
 // In-memory cache
 const cache = new Map();

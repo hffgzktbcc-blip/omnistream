@@ -176,3 +176,75 @@ export async function measureServerPing(server: StreamServer): Promise<number> {
     return server.pingMs || Math.floor(Math.random() * 30 + 35);
   }
 }
+
+// -------------------------------------------------------------
+// Direct HLS Cinema Stream Resolution Client
+// -------------------------------------------------------------
+export interface DirectStreamQuality {
+  label: string;
+  url: string;
+}
+
+export interface DirectStreamSubtitle {
+  label: string;
+  language: string;
+  url: string;
+}
+
+export interface DirectStreamAudioTrack {
+  label: string;
+  language: string;
+  id: number | string;
+}
+
+export interface DirectStreamResponse {
+  success: boolean;
+  streamUrl: string | null;
+  qualities: DirectStreamQuality[];
+  subtitles: DirectStreamSubtitle[];
+  audioTracks: DirectStreamAudioTrack[];
+  format: 'hls' | null;
+  error?: string;
+}
+
+export async function resolveDirectStream(params: {
+  type: 'movie' | 'tv' | 'anime';
+  id: number | string;
+  season?: number;
+  episode?: number;
+  audioType?: 'sub' | 'dub';
+}): Promise<DirectStreamResponse> {
+  const query = new URLSearchParams({
+    type: params.type,
+    id: String(params.id),
+    season: String(params.season || 1),
+    episode: String(params.episode || 1),
+    audioType: params.audioType || 'sub'
+  });
+
+  try {
+    const res = await fetch(`/api/stream/resolve?${query.toString()}`);
+    if (!res.ok) {
+      return {
+        success: false,
+        error: `HTTP ${res.status}: Resolver returned error`,
+        streamUrl: null,
+        qualities: [],
+        subtitles: [],
+        audioTracks: [],
+        format: null
+      };
+    }
+    return await res.json();
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || 'Network error fetching stream resolution',
+      streamUrl: null,
+      qualities: [],
+      subtitles: [],
+      audioTracks: [],
+      format: null
+    };
+  }
+}

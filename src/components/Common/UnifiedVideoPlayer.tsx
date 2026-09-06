@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Anime } from '../../types/anime';
 import { MediaItem } from '../../types/media';
-import { STREAM_SERVERS, StreamServer, measureServerPing, ANIME_TMDB_MAP } from '../../services/streamingService';
+import { STREAM_SERVERS, StreamServer, measureServerPing, ANIME_TMDB_MAP, resolveDirectStream, DirectStreamResponse } from '../../services/streamingService';
 import { animeStorage } from '../../services/animeStorage';
 import { watchHistoryService } from '../../services/watchHistoryService';
+import { CinemaPlayer } from './CinemaPlayer';
 import {
   X,
   ChevronLeft,
@@ -68,6 +69,10 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   const [serverPings, setServerPings] = useState<Record<string, number>>({});
   const [reloadKey, setReloadKey] = useState<number>(Date.now());
   const [showUnmutePrompt, setShowUnmutePrompt] = useState<boolean>(true);
+  // ─── Cinema Player Direct HLS Mode ───────────────────────────
+  const [cinemaMode, setCinemaMode] = useState<'resolving' | 'cinema' | 'iframe'>('resolving');
+  const [directStream, setDirectStream] = useState<DirectStreamResponse | null>(null);
+  const [cinemaFailed, setCinemaFailed] = useState(false);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const watchdogRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -170,6 +175,47 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
       console.warn('Failed to save to unified watch history:', e);
     }
   }, [session, audioType]);
+
+  // ─── Direct Stream Resolution (Cinema Mode) ────────────────
+  useEffect(() => {
+    if (!session || cinemaFailed) {
+      setCinemaMode('iframe');
+      return;
+    }
+
+    setCinemaMode('resolving');
+    const effectiveTmdb = resolvedTmdbId || session.tmdbId || (session.type === 'anime' ? session.animeData?.id : session.mediaData?.id);
+    if (!effectiveTmdb) {
+      setCinemaMode('iframe');
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      // If resolution takes > 5s, fall back to iframe
+      setCinemaMode('iframe');
+    }, 5000);
+
+    resolveDirectStream({
+      type: session.type,
+      id: effectiveTmdb,
+      season: session.season,
+      episode: session.episode,
+      audioType: session.type === 'anime' ? audioType : undefined,
+    }).then((result) => {
+      clearTimeout(timeoutId);
+      if (result.success && result.streamUrl) {
+        setDirectStream(result);
+        setCinemaMode('cinema');
+      } else {
+        setCinemaMode('iframe');
+      }
+    }).catch(() => {
+      clearTimeout(timeoutId);
+      setCinemaMode('iframe');
+    });
+
+    return () => clearTimeout(timeoutId);
+  }, [session, resolvedTmdbId, audioType, cinemaFailed, reloadKey]);
 
   if (!session) return null;
 
@@ -462,8 +508,39 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                   </button>
                 </div>
               </div>
+            ) : cinemaMode === 'resolving' ? (
+              /* ─── Resolving Direct Stream ──────────────── */
+              <div className="absolute inset-0 z-30 bg-black/95 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-10 h-10 text-purple-400 animate-spin" />
+                <p className="text-xs font-bold text-white/70">Resolving Cinema Stream...</p>
+                <p className="text-[10px] text-slate-500">Direct HLS • No iframes • Full remote control</p>
+              </div>
+            ) : cinemaMode === 'cinema' && directStream?.streamUrl ? (
+              /* ─── Cinema Player (Direct HLS) ──────────── */
+              <CinemaPlayer
+                streamUrl={directStream.streamUrl}
+                qualities={directStream.qualities}
+                subtitles={directStream.subtitles}
+                audioTracks={directStream.audioTracks}
+                title={`${session.title}${session.type !== 'movie' ? ` S${currentSeason} E${currentEpisode}` : ''}`}
+                mediaType={session.type}
+                mediaId={effectiveTmdbId}
+                season={currentSeason}
+                episode={currentEpisode}
+                resumeTime={watchHistoryService.getItem(
+                  session.type === 'movie' ? `movie_${effectiveTmdbId}` :
+                  session.type === 'tv' ? `tv_${effectiveTmdbId}` :
+                  `anime_${effectiveTmdbId}`
+                )?.currentTime}
+                onError={() => {
+                  setCinemaFailed(true);
+                  setCinemaMode('iframe');
+                }}
+                onClose={onClose}
+              />
             ) : (
               <>
+                {/* ─── Iframe Fallback Mode ──────────────── */}
                 {/* Android TV Unmute & Audio Activation Prompt */}
                 {showUnmutePrompt && !loadingServer && (
                   <div
