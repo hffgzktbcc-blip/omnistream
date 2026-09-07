@@ -153,7 +153,7 @@ async function safeFetch(url, options = {}) {
       });
     });
 
-    const timeoutMs = options.timeout || 5000;
+    const timeoutMs = options.timeout || 12000;
     req.on('error', reject);
     req.setTimeout(timeoutMs, () => {
       req.destroy();
