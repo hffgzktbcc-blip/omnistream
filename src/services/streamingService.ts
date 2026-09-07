@@ -67,11 +67,11 @@ export const STREAM_SERVERS: StreamServer[] = [
     isPrimary: true,
     pingMs: 15,
     getMovieUrl: (id: number) =>
-      `https://vidlink.pro/movie/${id}?primaryColor=6366f1&autoplay=true&title=true&poster=true`,
+      `https://vidlink.pro/movie/${id}?primaryColor=6366f1&autoplay=true&autoplay=1&title=true&poster=true`,
     getTvUrl: (id: number, s: number, e: number) =>
-      `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=6366f1&autoplay=true&title=true&poster=true`,
+      `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=6366f1&autoplay=true&autoplay=1&title=true&poster=true`,
     getAnimeUrl: (id: number, ep: number) =>
-      `https://vidlink.pro/tv/${id}/1/${ep}?primaryColor=a855f7&autoplay=true&title=true&poster=true`
+      `https://vidlink.pro/tv/${id}/1/${ep}?primaryColor=a855f7&autoplay=true&autoplay=1&title=true&poster=true`
   },
   {
     id: 'vidsrc-to',
