@@ -12,7 +12,9 @@ import {
   Bookmark,
   Library,
   Video,
-  Globe
+  Globe,
+  Radio,
+  Activity
 } from 'lucide-react';
 import { Audiobook, AudioTrack, AudiobookListeningProgress } from '../../types/audiobook';
 import { audiobookStorage } from '../../services/audiobookStorage';
@@ -22,7 +24,8 @@ interface AudiobookCatalogProps {
   onResumeListening: (progress: AudiobookListeningProgress) => void;
 }
 
-type AudioSourceType = 'all' | 'archive' | 'youtube' | 'audiobay';
+type AudioSourceType = 'all' | 'webtorrent' | 'archive' | 'youtube' | 'audiobay';
+
 
 export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
   onSelectBook,
@@ -78,7 +81,14 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
     }
 
     try {
-      if (sourceType === 'archive') {
+      if (sourceType === 'webtorrent') {
+        const q = searchQuery || (activeGenre ? `${activeGenre} audiobook` : 'audiobook bestsellers');
+        const res = await fetch(`/api/audiobooks/torrent/search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error('Failed to search WebTorrent swarms');
+        const data = await res.json();
+        setBooks(data.items || []);
+        setTotalPages(1);
+      } else if (sourceType === 'archive') {
         const res = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery || 'classic')}&page=${page}`);
         if (!res.ok) throw new Error('Failed to load archive audiobooks');
         const data = await res.json();
@@ -133,7 +143,12 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
     setCurrentPage(1);
 
     try {
-      if (sourceType === 'archive') {
+      if (sourceType === 'webtorrent') {
+        const res = await fetch(`/api/audiobooks/torrent/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        const data = await res.json();
+        setBooks(data.items || []);
+        setTotalPages(1);
+      } else if (sourceType === 'archive') {
         const res = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
         const data = await res.json();
         setBooks(data.items || []);
@@ -144,7 +159,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
         setBooks(data.items || []);
         setTotalPages(1);
       } else {
-        // Universal search
+        // Universal search: AudiobookBay with auto WebTorrent Swarm fallback
         const res = await fetch(`/api/audiobooks/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
         const data = await res.json();
         if (data.items && data.items.length > 0) {
@@ -190,7 +205,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
               SHELF AUDIO SUITE
             </span>
-            <span className="text-xs text-slate-400">Direct CDN • LibriVox • Swarm</span>
+            <span className="text-xs text-slate-400">WebTorrent P2P • Direct CDN • LibriVox</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
             <Headphones className="w-7 h-7 text-amber-400" />
@@ -211,7 +226,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
         </form>
       </div>
 
-      {/* Source Switcher: All, Archive/LibriVox, YouTube Audio, AudioBay Swarm */}
+      {/* Source Switcher: All, WebTorrent P2P Swarms, Archive/LibriVox, YouTube Audio */}
       <div className="flex items-center gap-2 border-b border-slate-800/80 pb-3 overflow-x-auto scrollbar-none">
         <button
           onClick={() => {
@@ -226,6 +241,21 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
         >
           <Globe className="w-3.5 h-3.5" />
           <span>All Audiobooks</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setSourceType('webtorrent');
+            setSearchQuery('');
+          }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            sourceType === 'webtorrent'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Radio className="w-3.5 h-3.5" />
+          <span>WebTorrent Swarms (P2P)</span>
         </button>
 
         <button
@@ -356,6 +386,8 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             <span>
               {searchQuery
                 ? `Search results for "${searchQuery}"`
+                : sourceType === 'webtorrent'
+                ? 'WebTorrent P2P Audio Swarms'
                 : sourceType === 'archive'
                 ? 'Classic LibriVox Audiobooks'
                 : sourceType === 'youtube'
@@ -463,8 +495,11 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                           'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
                       }}
                     />
-                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur text-[9px] font-black uppercase text-amber-400 border border-white/10">
-                      {book.format || (book.source === 'archive' ? 'LIBRI' : book.source === 'youtube' ? 'YT' : 'AUDIO')}
+                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur text-[9px] font-black uppercase text-amber-400 border border-white/10 flex items-center gap-1">
+                      {book.format || (book.source === 'archive' ? 'LIBRI' : book.source === 'youtube' ? 'YT' : book.infoHash ? 'SWARM' : 'AUDIO')}
+                      {book.seeders !== undefined && (
+                        <span className="text-emerald-400 font-bold">🟢 {book.seeders}</span>
+                      )}
                     </div>
 
                     {/* Shelf Bookmark Button */}
@@ -502,7 +537,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-800/60 font-mono">
-                      <span>{book.duration || book.bitrate || 'Unabridged'}</span>
+                      <span>{book.size || book.duration || book.bitrate || 'Unabridged'}</span>
                       <span className="text-amber-400 font-bold flex items-center gap-1">
                         <Zap className="w-3 h-3" /> Stream
                       </span>

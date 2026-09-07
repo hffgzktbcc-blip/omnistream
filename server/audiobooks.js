@@ -3,6 +3,7 @@ import WebTorrent from 'webtorrent';
 import * as cheerio from 'cheerio';
 import fs from 'fs';
 import path from 'path';
+import pump from 'pump';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -154,15 +155,14 @@ function setCache(key, data) {
   memoryCache.set(key, { time: Date.now(), data });
 }
 
-// Fetch with mirror fallback
+// Fetch with parallel mirror racing for maximum speed & resilience
 async function fetchABB(urlPath) {
-  let lastError = null;
-  for (const mirror of ABB_MIRRORS) {
-    try {
-      const fullUrl = urlPath.startsWith('http') ? urlPath : `${mirror}${urlPath.startsWith('/') ? '' : '/'}${urlPath}`;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 9000);
+  const fetchSingleMirror = async (mirror) => {
+    const fullUrl = urlPath.startsWith('http') ? urlPath : `${mirror}${urlPath.startsWith('/') ? '' : '/'}${urlPath}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
 
+    try {
       const res = await fetch(fullUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -177,11 +177,18 @@ async function fetchABB(urlPath) {
         const text = await res.text();
         return { text, mirror, url: fullUrl };
       }
+      throw new Error(`Mirror ${mirror} HTTP ${res.status}`);
     } catch (err) {
-      lastError = err;
+      clearTimeout(timeout);
+      throw err;
     }
+  };
+
+  try {
+    return await Promise.any(ABB_MIRRORS.map(m => fetchSingleMirror(m)));
+  } catch (aggregateError) {
+    throw new Error('All AudiobookBay mirrors unreachable/timed out');
   }
-  throw lastError || new Error('All AudiobookBay mirrors unreachable');
 }
 
 function parseAudiobookTitle(rawTitle) {
@@ -189,7 +196,7 @@ function parseAudiobookTitle(rawTitle) {
 
   let t = rawTitle
     .replace(/\b(unabridged|abridged)\b/gi, '')
-    .replace(/\b(retail|audiobook|webrip|mp3|m4b|flac|aac|vbr|cbr|kbps|ghz|hz)\b/gi, '')
+    .replace(/\b(retail|audiobooks|audiobook|webrip|mp3|m4b|flac|aac|vbr|cbr|kbps|ghz|hz)\b/gi, '')
     .replace(/\[[^\]]*\]/g, ' ')
     .replace(/\([^)]*(?:kbps|audiobook|narrated|m4b|mp3)[^)]*\)/gi, ' ')
     .replace(/\s+/g, ' ')
@@ -206,6 +213,10 @@ function parseAudiobookTitle(rawTitle) {
     const parts = t.split(/ by /i);
     cleanTitle = parts[0].trim();
     cleanAuthor = parts.slice(1).join(' by ').trim();
+  } else if (t.includes('; Read by ')) {
+    const parts = t.split(/; Read by /i);
+    cleanTitle = parts[0].trim();
+    cleanAuthor = parts.slice(1).join('; Read by ').trim();
   }
 
   cleanTitle = cleanTitle.replace(/^[–—\s]+|[–—\s]+$/g, '').trim();
@@ -213,9 +224,98 @@ function parseAudiobookTitle(rawTitle) {
 
   return {
     cleanTitle: cleanTitle || rawTitle,
-    cleanAuthor: cleanAuthor || 'AudiobookBay Author'
+    cleanAuthor: cleanAuthor || 'Audiobook Bay'
   };
 }
+
+// Search TPB / Apibay Category 100 (Audiobooks & Spoken Word)
+async function searchApibayAudiobooks(query) {
+  const cleanQ = (query || '').trim();
+  if (!cleanQ) return [];
+
+  const cacheKey = `apibay:audio:${cleanQ.toLowerCase()}`;
+  const cached = getCache(cacheKey, 600);
+  if (cached) return cached;
+
+  const url = `https://apibay.org/q.php?q=${encodeURIComponent(cleanQ)}&cat=100`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'OmniStream/1.0' },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    if (!Array.isArray(data)) return [];
+
+    const valid = data.filter(
+      item => item.id !== '0' && item.info_hash && !item.info_hash.startsWith('00000000')
+    );
+
+    const trackersParam = DEFAULT_TRACKERS.map(t => `&tr=${encodeURIComponent(t)}`).join('');
+
+    const items = valid.map(item => {
+      const parsed = parseAudiobookTitle(item.name);
+      const hash = item.info_hash.toLowerCase();
+      const magnet = `magnet:?xt=urn:btih:${hash}&dn=${encodeURIComponent(item.name)}${trackersParam}`;
+      const sizeBytes = parseInt(item.size, 10) || 0;
+      const seeders = parseInt(item.seeders, 10) || 0;
+
+      return {
+        id: `wt_${hash}`,
+        infoHash: hash,
+        name: item.name,
+        rawTitle: item.name,
+        title: parsed.cleanTitle,
+        author: parsed.cleanAuthor,
+        cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300',
+        categories: ['Audiobook', 'WebTorrent Swarm'],
+        format: 'SWARM',
+        bitrate: 'P2P Audio',
+        size: formatBytes(sizeBytes),
+        sizeBytes,
+        seeders,
+        leechers: parseInt(item.leechers, 10) || 0,
+        magnet,
+        source: 'torrent',
+        platform: 'torrent'
+      };
+    });
+
+    items.sort((a, b) => b.seeders - a.seeders);
+
+    // Enrich top 6 items with Apple Books high-res cover art in background
+    Promise.all(
+      items.slice(0, 6).map(async book => {
+        try {
+          const itunesTerm = encodeURIComponent(`${book.title} ${book.author}`.trim());
+          const iRes = await fetch(`https://itunes.apple.com/search?term=${itunesTerm}&media=audiobook&limit=1`, {
+            headers: { 'User-Agent': 'OmniStream/1.0' }
+          });
+          if (iRes.ok) {
+            const iData = await iRes.json();
+            if (iData.results?.[0]?.artworkUrl100) {
+              book.cover = iData.results[0].artworkUrl100.replace('100x100bb.jpg', '600x600bb.jpg');
+            }
+          }
+        } catch (e) {}
+      })
+    ).catch(() => {});
+
+    setCache(cacheKey, items);
+    return items;
+  } catch (err) {
+    clearTimeout(timeout);
+    console.warn('[Apibay Audio Search Error]:', err.message);
+    return [];
+  }
+}
+
 
 function parseBookList(html, mirrorUrl) {
   const $ = cheerio.load(html);
@@ -446,7 +546,7 @@ function getOrAddTorrent(hash, magnetUri) {
           if (torrent.files && torrent.files.length > 0) resolve(torrent);
           else reject(new Error('Timeout establishing peer connections with swarm'));
         }
-      }, 6000);
+      }, 12000);
 
       torrent.once('metadata', () => {
         clearTimeout(timeout);
@@ -524,7 +624,23 @@ router.get('/category/:cat', async (req, res) => {
   }
 });
 
-// Search
+// Dedicated WebTorrent Audio Swarm Search
+router.get('/torrent/search', async (req, res) => {
+  try {
+    const query = (req.query.q || '').trim();
+    if (!query) {
+      return res.status(400).json({ error: 'Missing search query (q)' });
+    }
+
+    const items = await searchApibayAudiobooks(query);
+    res.json({ items, totalPages: 1, source: 'torrent' });
+  } catch (err) {
+    console.error('[WebTorrent Audiobook Search Error]:', err.message);
+    res.status(500).json({ error: 'Failed to search torrent audiobooks', details: err.message });
+  }
+});
+
+// Search (AudiobookBay + Auto WebTorrent Swarm Fallback)
 router.get('/search', async (req, res) => {
   try {
     const query = (req.query.q || '').trim();
@@ -537,18 +653,39 @@ router.get('/search', async (req, res) => {
     const cached = getCache(cacheKey, 600);
     if (cached) return res.json(cached);
 
-    const pathUrl = page > 1 ? `/page/${page}/?s=${encodeURIComponent(query)}` : `/?s=${encodeURIComponent(query)}`;
-    const { text, mirror } = await fetchABB(pathUrl);
-    const parsed = parseBookList(text, mirror);
+    let parsed = { items: [], totalPages: 1 };
+    try {
+      const pathUrl = page > 1 ? `/page/${page}/?s=${encodeURIComponent(query)}` : `/?s=${encodeURIComponent(query)}`;
+      const { text, mirror } = await fetchABB(pathUrl);
+      parsed = parseBookList(text, mirror);
+    } catch (abbErr) {
+      console.warn('AudiobookBay search failed/blocked, falling back to WebTorrent swarm & archive:', abbErr.message);
+    }
 
     if (parsed.items && parsed.items.length > 0) {
       setCache(cacheKey, parsed);
-      res.json(parsed);
-    } else {
-      res.json({ items: CURATED_FALLBACK_AUDIOBOOKS, totalPages: 1, isFallback: true });
+      return res.json(parsed);
     }
+
+    // Step 2: Fall back to live WebTorrent Category 100 search
+    console.log(`[AudiobookBay Fallback] Querying WebTorrent swarm for "${query}"...`);
+    const torrentBooks = await searchApibayAudiobooks(query);
+
+    if (torrentBooks && torrentBooks.length > 0) {
+      const result = { items: torrentBooks, totalPages: 1, isTorrent: true };
+      setCache(cacheKey, result);
+      return res.json(result);
+    }
+
+    // Step 3: Match Curated Fallback
+    const q = query.toLowerCase();
+    const filtered = CURATED_FALLBACK_AUDIOBOOKS.filter(b => 
+      b.title.toLowerCase().includes(q) || 
+      b.author.toLowerCase().includes(q)
+    );
+    res.json({ items: filtered.length > 0 ? filtered : CURATED_FALLBACK_AUDIOBOOKS, totalPages: 1, isFallback: true });
   } catch (err) {
-    console.warn('AudioBay search fallback:', err.message);
+    console.warn('AudioBay search fatal fallback:', err.message);
     const q = (req.query.q || '').toLowerCase();
     const filtered = CURATED_FALLBACK_AUDIOBOOKS.filter(b => 
       b.title.toLowerCase().includes(q) || 
@@ -557,6 +694,7 @@ router.get('/search', async (req, res) => {
     res.json({ items: filtered.length > 0 ? filtered : CURATED_FALLBACK_AUDIOBOOKS, totalPages: 1, isFallback: true });
   }
 });
+
 
 // Book details
 router.get('/book', async (req, res) => {
@@ -731,11 +869,12 @@ router.get('/stream/:hash/:fileIndex', async (req, res) => {
       });
 
       const stream = file.createReadStream({ start, end });
-      stream.pipe(res);
-
-      req.on('close', () => {
-        if (stream && typeof stream.destroy === 'function') {
-          stream.destroy();
+      stream.on('error', (err) => {
+        console.warn(`[Audio Stream Range Error]:`, err.message);
+      });
+      pump(stream, res, (err) => {
+        if (err && err.code !== 'PREMATURE_CLOSE') {
+          console.warn('[Audio Stream Pump Finished with warning]:', err.message);
         }
       });
     } else {
@@ -746,11 +885,12 @@ router.get('/stream/:hash/:fileIndex', async (req, res) => {
         'Access-Control-Allow-Origin': '*'
       });
       const stream = file.createReadStream();
-      stream.pipe(res);
-
-      req.on('close', () => {
-        if (stream && typeof stream.destroy === 'function') {
-          stream.destroy();
+      stream.on('error', (err) => {
+        console.warn(`[Audio Stream Full Error]:`, err.message);
+      });
+      pump(stream, res, (err) => {
+        if (err && err.code !== 'PREMATURE_CLOSE') {
+          console.warn('[Audio Stream Pump Finished with warning]:', err.message);
         }
       });
     }

@@ -73,7 +73,15 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
       return;
     }
 
-    // 3. AudioBay / Torrent Swarm
+    // 3. WebTorrent Swarm Book (direct infoHash already present)
+    if (targetBook.infoHash || targetBook.id.startsWith('wt_') || targetBook.source === 'torrent') {
+      setLoadingMetadata(false);
+      const hash = targetBook.infoHash || targetBook.id.replace(/^wt_/, '');
+      loadTorrentTracks(hash, targetBook.magnet);
+      return;
+    }
+
+    // 4. AudioBay / Torrent Swarm (Lookup by page URL/ID)
     setLoadingMetadata(true);
     try {
       const res = await fetch(`/api/audiobooks/book?url=${encodeURIComponent(targetBook.url || targetBook.id)}`);
@@ -143,7 +151,11 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-800/80 bg-slate-900/50">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-500/30">
-              {details.id.startsWith('ia_') || (details as any).source === 'archive' ? 'LibriVox Direct CDN' : 'AudioBay Swarm'}
+              {details.id.startsWith('ia_') || (details as any).source === 'archive'
+                ? 'LibriVox Direct CDN'
+                : details.id.startsWith('yt_') || (details as any).source === 'youtube'
+                ? 'YouTube Audiobook'
+                : 'WebTorrent P2P Swarm'}
             </span>
             {numPeers > 0 && (
               <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">

@@ -100,5 +100,7 @@ export interface Audiobook {
   categories?: string[];
   trackers?: string[];
   tracks?: AudioTrack[];
+  seeders?: number;
+  leechers?: number;
 }
 
