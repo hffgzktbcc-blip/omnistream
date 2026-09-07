@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Anime } from '../../types/anime';
 import { MediaItem } from '../../types/media';
 import { STREAM_SERVERS, StreamServer, measureServerPing, ANIME_TMDB_MAP, resolveDirectStream, DirectStreamResponse } from '../../services/streamingService';
