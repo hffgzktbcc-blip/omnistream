@@ -79,7 +79,6 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   const [loadingServer, setLoadingServer] = useState<boolean>(true);
   const [exhaustedServers, setExhaustedServers] = useState<boolean>(false);
   const [serversTried, setServersTried] = useState<number>(0);
-  const [videoStarted, setVideoStarted] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(true);
   const [resolvedTmdbId, setResolvedTmdbId] = useState<number | undefined>(() => {
     if (session?.tmdbId) return session.tmdbId;
@@ -98,7 +97,6 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const watchdogRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const tvPlayBtnRef = useRef<HTMLButtonElement>(null);
   const allowPopupRef = useRef<boolean>(false);
 
   // Auto-hide HUD on inactivity
@@ -126,49 +124,11 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     };
   }, [resetControlsTimer]);
 
-  // Start Playback Assist (triggers Android TV WebView MotionEvent and Synthetic click)
-  const handleStartPlayback = useCallback(() => {
-    setVideoStarted(true);
-    setShowUnmutePrompt(false);
-    resetControlsTimer();
-
-    // 1. Android TV Native Bridge touch dispatch
-    if ((window as any).AndroidTVBridge?.clickCenter) {
-      try {
-        (window as any).AndroidTVBridge.clickCenter();
-      } catch (e) {
-        console.warn('Bridge clickCenter error:', e);
-      }
-    }
-
-    // 2. Synthetic DOM click on center of screen / iframe
-    try {
-      const iframeEl = document.querySelector('iframe');
-      if (iframeEl) {
-        iframeEl.focus();
-        const rect = iframeEl.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const evt = new MouseEvent('click', {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-          clientX: cx,
-          clientY: cy
-        });
-        iframeEl.dispatchEvent(evt);
-      }
-    } catch (e) {
-      console.warn('Playback click trigger error:', e);
-    }
-  }, [resetControlsTimer]);
-
   // Next / Prev Server Switchers
   const handleNextServer = () => {
     setSelectedServerIndex((prev) => (prev + 1) % STREAM_SERVERS.length);
     setExhaustedServers(false);
     setServersTried(0);
-    setVideoStarted(false);
     setReloadKey(Date.now());
   };
 
@@ -176,36 +136,14 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     setSelectedServerIndex((prev) => (prev - 1 + STREAM_SERVERS.length) % STREAM_SERVERS.length);
     setExhaustedServers(false);
     setServersTried(0);
-    setVideoStarted(false);
     setReloadKey(Date.now());
   };
 
-  // Close on Escape, Fullscreen on 'F', Next Server on 'S', Unmute on 'M', Remote DPAD Center/OK
+  // Close on Escape, Fullscreen on 'F', Next Server on 'S', Unmute on 'M', Theater on 'T'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['input', 'textarea'].includes((document.activeElement?.tagName || '').toLowerCase())) return;
       resetControlsTimer();
-
-      // Android TV Remote Center / OK / Play keys
-      if (
-        e.key === 'Enter' ||
-        e.keyCode === 13 ||
-        e.keyCode === 23 || // KEYCODE_DPAD_CENTER
-        e.keyCode === 66 || // KEYCODE_ENTER
-        e.keyCode === 85 || // KEYCODE_MEDIA_PLAY_PAUSE
-        e.keyCode === 126 || // KEYCODE_MEDIA_PLAY
-        e.key === 'MediaPlay' ||
-        e.key === 'MediaPlayPause'
-      ) {
-        if (!videoStarted) {
-          e.preventDefault();
-          handleStartPlayback();
-          return;
-        } else if (!showControls) {
-          setShowControls(true);
-          resetControlsTimer();
-        }
-      }
 
       if (e.key === 'Escape' || e.keyCode === 4) onClose();
       if (e.key === 'f' || e.key === 'F') toggleFullscreen();
@@ -216,7 +154,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, videoStarted, showControls, handleStartPlayback, resetControlsTimer]);
+  }, [onClose, resetControlsTimer]);
 
   // Anti-Popup Armor (Silently swallow popups, but allow user popouts)
   useEffect(() => {
@@ -314,6 +252,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     resolveDirectStream({
       type: session.type,
       id: effectiveTmdb,
+      title: session.title,
       season: session.season,
       episode: session.episode,
       audioType: session.type === 'anime' ? audioType : undefined,
@@ -384,9 +323,6 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   const handleIframeLoaded = () => {
     if (watchdogRef.current) clearTimeout(watchdogRef.current);
     setLoadingServer(false);
-    setTimeout(() => {
-      tvPlayBtnRef.current?.focus();
-    }, 350);
   };
 
   const handleForceRefresh = () => {
@@ -704,37 +640,11 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                   </div>
                 )}
 
-                {/* TV Remote Play Assist Overlay (Solves unclickable play button in iframe on Android TV) */}
-                {!videoStarted && !loadingServer && !exhaustedServers && (
-                  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px] pointer-events-auto">
-                    <button
-                      ref={tvPlayBtnRef}
-                      tabIndex={0}
-                      onClick={handleStartPlayback}
-                      className="group flex items-center gap-4 px-8 py-4 sm:px-10 sm:py-5 rounded-3xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-black shadow-2xl shadow-purple-950 border-2 border-white/80 ring-4 ring-purple-500/50 focus:ring-4 focus:ring-yellow-400 focus:border-yellow-300 focus:scale-110 active:scale-95 transition-all cursor-pointer animate-pulse"
-                      title="Press OK on Remote or Click to Play Video"
-                      autoFocus
-                    >
-                      <div className="w-12 h-12 rounded-full bg-white text-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                        <Play className="w-6 h-6 fill-current ml-1" />
-                      </div>
-                      <div className="text-left">
-                        <div className="text-base sm:text-lg font-black tracking-wide flex items-center gap-2">
-                          <span>PRESS OK TO PLAY</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 uppercase tracking-wider font-bold">Android TV Remote Ready</span>
-                        </div>
-                        <div className="text-xs text-purple-200 font-medium">
-                          Click or press Enter/OK on remote to start video playback
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                )}
-
                 <iframe
                   key={`stream_${currentServer.id}_${effectiveTmdbId}_${currentSeason}_${currentEpisode}_${audioType}_${reloadKey}`}
                   src={streamUrl}
                   title={`${session.title} Player`}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
                   allowFullScreen
                   referrerPolicy="no-referrer"
@@ -775,6 +685,18 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1.5 sm:gap-2">
+                    <button
+                      onClick={() => {
+                        setCinemaFailed(false);
+                        setCinemaMode('resolving');
+                        setReloadKey(Date.now());
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 border border-purple-400/40"
+                      title="Switch to Direct Ad-Free Cinema Stream (High Quality Swarm)"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Direct Cinema Stream</span>
+                    </button>
                     {onOpenTorrent && (
                       <button
                         onClick={() => onOpenTorrent(session?.title || '')}

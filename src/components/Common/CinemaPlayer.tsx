@@ -105,7 +105,9 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
       hlsRef.current = null;
     }
 
-    if (Hls.isSupported()) {
+    const isHls = streamUrl.includes('.m3u8') || streamUrl.includes('/hls') || streamUrl.includes('mux.dev');
+
+    if (isHls && Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
@@ -153,7 +155,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
           }
         }
       });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    } else if (isHls && video.canPlayType('application/vnd.apple.mpegurl')) {
       // Native Safari HLS
       video.src = streamUrl;
       video.addEventListener('loadedmetadata', () => {
@@ -169,8 +171,36 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         setTimeout(() => onError?.(), 2000);
       });
     } else {
-      setError('HLS streaming is not supported in this browser.');
-      setLoading(false);
+      // Direct MP4 / WebM / Torrent Video Stream (Ad-Free High Performance)
+      video.src = streamUrl;
+      const onLoadedMetadata = () => {
+        setLoading(false);
+        if (resumeTime && resumeTime > 5) {
+          video.currentTime = resumeTime;
+        }
+        video.play().catch(() => {
+          video.muted = true;
+          setMuted(true);
+          video.play().catch(() => {});
+        });
+      };
+      const onCanPlay = () => setLoading(false);
+      const onDirectError = (err: any) => {
+        console.warn('[CinemaPlayer] Direct video error:', err);
+        setError('Direct stream failed. Switching to mirror...');
+        setLoading(false);
+        setTimeout(() => onError?.(), 2000);
+      };
+
+      video.addEventListener('loadedmetadata', onLoadedMetadata);
+      video.addEventListener('canplay', onCanPlay);
+      video.addEventListener('error', onDirectError);
+
+      return () => {
+        video.removeEventListener('loadedmetadata', onLoadedMetadata);
+        video.removeEventListener('canplay', onCanPlay);
+        video.removeEventListener('error', onDirectError);
+      };
     }
 
     return () => {

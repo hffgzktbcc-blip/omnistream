@@ -60,12 +60,22 @@ export const ANIME_TMDB_MAP: Record<number, number> = {
 
 export const STREAM_SERVERS: StreamServer[] = [
   {
-    id: 'vidlink-pro',
-    name: 'Server 1: VidLink 4K Pro (Zero Ads / Crystal Sound)',
-    quality: '4K Ultra HD',
-    badge: '4K HDR ⚡',
+    id: 'videasy',
+    name: 'Server 1: Videasy 4K Ultra (Clean / Zero Popups)',
+    quality: '1080p / 4K',
+    badge: '⚡ Direct No-Ad',
     isPrimary: true,
     pingMs: 15,
+    getMovieUrl: (id: number) => `https://player.videasy.to/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://player.videasy.to/tv/${id}/${s}/${e}`,
+    getAnimeUrl: (id: number, ep: number) => `https://player.videasy.to/tv/${id}/1/${ep}`
+  },
+  {
+    id: 'vidlink-pro',
+    name: 'Server 2: VidLink 4K Pro (Zero Ads / Crystal Sound)',
+    quality: '4K Ultra HD',
+    badge: '4K HDR ⚡',
+    pingMs: 20,
     getMovieUrl: (id: number) =>
       `https://vidlink.pro/movie/${id}?primaryColor=6366f1&autoplay=true&autoplay=1&title=true&poster=true`,
     getTvUrl: (id: number, s: number, e: number) =>
@@ -75,7 +85,7 @@ export const STREAM_SERVERS: StreamServer[] = [
   },
   {
     id: 'vidsrc-to',
-    name: 'Server 2: VidSrc TO High-Definition Mirror',
+    name: 'Server 3: VidSrc TO High-Definition Mirror',
     quality: '1080p Ultra',
     badge: 'Fast HD ⚡',
     pingMs: 22,
@@ -85,23 +95,13 @@ export const STREAM_SERVERS: StreamServer[] = [
   },
   {
     id: 'vidsrc-su',
-    name: 'Server 3: VidSrc SU (v3 Stream)',
+    name: 'Server 4: VidSrc SU (v3 Stream)',
     quality: '1080p Crystal',
     badge: 'Crystal HD',
     pingMs: 25,
     getMovieUrl: (id: number) => `https://vidsrc.su/embed/movie/${id}`,
     getTvUrl: (id: number, s: number, e: number) => `https://vidsrc.su/embed/tv/${id}/${s}/${e}`,
     getAnimeUrl: (id: number, ep: number) => `https://vidsrc.su/embed/tv/${id}/1/${ep}`
-  },
-  {
-    id: 'videasy',
-    name: 'Server 4: Videasy Direct CDN',
-    quality: '1080p HD',
-    badge: 'No Lag',
-    pingMs: 30,
-    getMovieUrl: (id: number) => `https://player.videasy.to/movie/${id}`,
-    getTvUrl: (id: number, s: number, e: number) => `https://player.videasy.to/tv/${id}/${s}/${e}`,
-    getAnimeUrl: (id: number, ep: number) => `https://player.videasy.to/tv/${id}/1/${ep}`
   },
   {
     id: 'superembed',
@@ -210,6 +210,7 @@ export interface DirectStreamResponse {
 export async function resolveDirectStream(params: {
   type: 'movie' | 'tv' | 'anime';
   id: number | string;
+  title?: string;
   season?: number;
   episode?: number;
   audioType?: 'sub' | 'dub';
@@ -217,6 +218,7 @@ export async function resolveDirectStream(params: {
   const query = new URLSearchParams({
     type: params.type,
     id: String(params.id),
+    title: params.title || '',
     season: String(params.season || 1),
     episode: String(params.episode || 1),
     audioType: params.audioType || 'sub'

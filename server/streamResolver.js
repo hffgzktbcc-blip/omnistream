@@ -123,13 +123,88 @@ export function formatProxySubtitlesUrl(url) {
   return `/api/proxy/subtitles?url=${encodeURIComponent(url)}`;
 }
 
+import { client, cacheDir } from './torrentStreamer.js';
+
+export async function resolveFromTorrentSwarm(type, queryTitle, season, episode) {
+  if (!queryTitle || typeof queryTitle !== 'string') return null;
+  const cleanTitle = queryTitle
+    .replace(/\s*\(\d{4}\).*/, '')
+    .replace(/[^\w\s-]/g, ' ')
+    .trim();
+
+  let searchQuery = cleanTitle;
+  if (type === 'tv') {
+    const s = String(season).padStart(2, '0');
+    const e = String(episode).padStart(2, '0');
+    searchQuery = `${cleanTitle} S${s}E${e}`;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(searchQuery)}`, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'OmniStream/1.0' }
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0 || data[0].id === '0') return null;
+
+    // Filter video torrents (category 200..299) with seeders >= 3
+    const videoTorrents = data.filter((t) => {
+      const cat = parseInt(t.category, 10) || 0;
+      const seeders = parseInt(t.seeders, 10) || 0;
+      return cat >= 200 && cat < 300 && seeders >= 3;
+    });
+
+    if (videoTorrents.length === 0) return null;
+
+    // Sort by seeders descending
+    videoTorrents.sort((a, b) => parseInt(b.seeders, 10) - parseInt(a.seeders, 10));
+    const best = videoTorrents[0];
+    const infoHash = best.info_hash.toLowerCase();
+
+    // Add to active WebTorrent client in background
+    let torrent = client.torrents.find((t) => t.infoHash.toLowerCase() === infoHash);
+    if (!torrent) {
+      torrent = client.add(infoHash, { path: cacheDir });
+    }
+
+    // Default to file index 0 or find video file
+    let fileIdx = 0;
+    if (torrent && torrent.files && torrent.files.length > 0) {
+      const videoExts = ['.mp4', '.mkv', '.webm', '.avi', '.mov'];
+      const videoFiles = torrent.files.filter(f => videoExts.some(ext => f.name.toLowerCase().endsWith(ext)));
+      if (videoFiles.length > 0) {
+        const largest = videoFiles.reduce((prev, curr) => (curr.length > prev.length ? curr : prev), videoFiles[0]);
+        fileIdx = torrent.files.indexOf(largest);
+      }
+    }
+
+    return {
+      streamUrl: `/api/torrents/stream/${infoHash}/${fileIdx}`,
+      qualities: [
+        { label: `1080p Direct Swarm (${best.seeders} seeders)`, url: `/api/torrents/stream/${infoHash}/${fileIdx}` }
+      ],
+      subtitles: [],
+      audioTracks: [{ label: 'Dolby Digital / Multi-Channel', language: 'en', id: 0 }],
+      format: 'mp4'
+    };
+  } catch (err) {
+    console.warn('[StreamResolver Swarm Error]:', err.message);
+    return null;
+  }
+}
+
 // Upstream scraper extraction stub with timeout for unresolvable/external items
 export async function resolveFromUpstreamScraper(type, id, season, episode, audioType) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 3500);
 
   try {
-    // Dynamic scraper calls can be hooked here.
     return null;
   } catch (err) {
     return null;
@@ -144,7 +219,7 @@ export async function handleStreamResolve(req, res) {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
 
-  const { type, id, season = '1', episode = '1', audioType = 'sub' } = req.query;
+  const { type, id, title, season = '1', episode = '1', audioType = 'sub' } = req.query;
 
   // 1. Validation
   if (!type || !['movie', 'tv', 'anime'].includes(type)) {
@@ -257,7 +332,22 @@ export async function handleStreamResolve(req, res) {
     });
   }
 
-  // 4. Graceful Fallback (Mode B Handshake for frontend)
+  // 4. Check Torrent Swarm Direct Stream (High Speed P2P Direct MP4)
+  if (title) {
+    const swarmResult = await resolveFromTorrentSwarm(type, title, parsedSeason, parsedEpisode);
+    if (swarmResult && swarmResult.streamUrl) {
+      return res.json({
+        success: true,
+        streamUrl: swarmResult.streamUrl,
+        qualities: swarmResult.qualities,
+        subtitles: swarmResult.subtitles,
+        audioTracks: swarmResult.audioTracks,
+        format: 'mp4'
+      });
+    }
+  }
+
+  // 5. Graceful Fallback (Mode B Handshake for frontend)
   return res.json({
     success: false,
     error: `Unable to resolve direct HLS stream for ${type} (ID: ${id}). Please fallback to iframe mirror.`,

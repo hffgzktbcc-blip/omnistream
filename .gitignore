@@ -17,6 +17,7 @@ node_modules
 
 # Large Media & Torrents
 server/data/audiobook_torrents/
+server/data/video_torrents/
 server/data/ebooks/
 SHELF HELP/
 *.mp3

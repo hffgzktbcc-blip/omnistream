@@ -1,9 +1,7 @@
 package com.omnistream.app;
 
 import android.os.Bundle;
-import android.os.SystemClock;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
+import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -13,36 +11,9 @@ public class MainActivity extends BridgeActivity {
 
     public class AndroidTVBridge {
         @JavascriptInterface
-        public void clickCenter() {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    simulateCenterClick();
-                }
-            });
-        }
-
-        @JavascriptInterface
         public boolean isTV() {
             return true;
         }
-    }
-
-    private void simulateCenterClick() {
-        try {
-            if (getBridge() != null && getBridge().getWebView() != null) {
-                WebView webView = getBridge().getWebView();
-                long now = SystemClock.uptimeMillis();
-                float x = webView.getWidth() / 2.0f;
-                float y = webView.getHeight() / 2.0f;
-                MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0);
-                MotionEvent up = MotionEvent.obtain(now, now + 50, MotionEvent.ACTION_UP, x, y, 0);
-                webView.dispatchTouchEvent(down);
-                webView.dispatchTouchEvent(up);
-                down.recycle();
-                up.recycle();
-            }
-        } catch (Exception ignored) {}
     }
 
     @Override
@@ -71,9 +42,17 @@ public class MainActivity extends BridgeActivity {
             // Enable DOM storage and JS
             settings.setDomStorageEnabled(true);
             settings.setJavaScriptEnabled(true);
-            settings.setJavaScriptCanOpenWindowsAutomatically(true);
+            settings.setJavaScriptCanOpenWindowsAutomatically(false);
 
-            // Register JS Bridge for TV remote actions
+            // Block all unrequested downloads to prevent Downloader app from opening
+            webView.setDownloadListener(new DownloadListener() {
+                @Override
+                public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
+                    // Swallow download request so external Downloader app is NEVER triggered
+                }
+            });
+
+            // Register JS Bridge for TV detection
             webView.addJavascriptInterface(new AndroidTVBridge(), "AndroidTVBridge");
         }
     }

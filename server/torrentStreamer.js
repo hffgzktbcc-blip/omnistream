@@ -9,13 +9,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const router = express.Router();
 
-const cacheDir = path.join(__dirname, 'data', 'video_torrents');
+export const cacheDir = path.join(__dirname, 'data', 'video_torrents');
 if (!fs.existsSync(cacheDir)) {
   fs.mkdirSync(cacheDir, { recursive: true });
 }
 
 // ── WebTorrent Client with WebRTC + BitTorrent trackers ──────────────────────
-const client = new WebTorrent({
+export const client = new WebTorrent({
   maxConns: 85,
   dht: true,
   webSeeds: true
