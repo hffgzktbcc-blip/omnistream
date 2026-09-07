@@ -15,6 +15,7 @@ import child_process from 'child_process';
 import audiobooksRouter from './audiobooks.js';
 import streamResolverRouter from './streamResolver.js';
 import streamProxyRouter from './streamProxy.js';
+import torrentStreamerRouter from './torrentStreamer.js';
 
 const dnsPromises = dns.promises;
 const __filename = fileURLToPath(import.meta.url);
@@ -184,6 +185,9 @@ app.use('/api/audiobooks', audiobooksRouter);
 // Cinema Stream Resolution & Proxy Engine
 app.use('/api/stream', streamResolverRouter);
 app.use('/api/proxy', streamProxyRouter);
+
+// WebTorrent Streaming & Direct Swarm Engine
+app.use('/api/torrents', torrentStreamerRouter);
 
 // In-memory cache
 const cache = new Map();

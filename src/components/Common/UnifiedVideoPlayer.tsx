@@ -44,12 +44,14 @@ interface UnifiedVideoPlayerProps {
   session: UnifiedPlayerSession | null;
   onClose: () => void;
   onUpdateSession?: (updates: Partial<UnifiedPlayerSession>) => void;
+  onOpenTorrent?: (title: string) => void;
 }
 
 export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   session,
   onClose,
-  onUpdateSession
+  onUpdateSession,
+  onOpenTorrent
 }) => {
   const [selectedServerIndex, setSelectedServerIndex] = useState<number>(0);
   const [audioType, setAudioType] = useState<'sub' | 'dub'>(() => animeStorage.getAudioPreference());
@@ -601,6 +603,16 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1.5 sm:gap-2">
+                    {onOpenTorrent && (
+                      <button
+                        onClick={() => onOpenTorrent(session?.title || '')}
+                        className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 border border-red-400/40"
+                        title="Search & Stream from BitTorrent P2P Swarm"
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>P2P Swarm</span>
+                      </button>
+                    )}
                     <button
                       onClick={handlePopout}
                       className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5"

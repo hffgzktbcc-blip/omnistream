@@ -43,6 +43,7 @@ import { AudioPlayerBar } from './components/Audiobooks/AudioPlayerBar';
 import { JacketCoverModal } from './components/Audiobooks/JacketCoverModal';
 import { AudiobookTimerModal } from './components/Audiobooks/AudiobookTimerModal';
 import { AudiobookBookmarksModal } from './components/Audiobooks/AudiobookBookmarksModal';
+import { TorrentStreamModal } from './components/Torrents/TorrentStreamModal';
 import { Audiobook, AudioTrack, AudiobookListeningProgress } from './types/audiobook';
 import { Loader2, X } from 'lucide-react';
 
@@ -101,6 +102,7 @@ const AppContent: React.FC = () => {
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
   const [showExtensionsModal, setShowExtensionsModal] = useState<boolean>(false);
   const [showAndroidTVModal, setShowAndroidTVModal] = useState<boolean>(false);
+  const [showTorrentModal, setShowTorrentModal] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState<boolean>(false);
   const [loadingTitle, setLoadingTitle] = useState<string>('Loading...');
 
@@ -504,6 +506,7 @@ const AppContent: React.FC = () => {
         onOpenStats={() => setShowStatsModal(true)}
         onOpenCommandPalette={() => setShowCommandPalette(true)}
         onOpenAndroidTV={() => setShowAndroidTVModal(true)}
+        onOpenTorrentStream={() => setShowTorrentModal(true)}
         onSelectComic={(c) => setSelectedComic(c)}
         onSelectAnime={(a) => setSelectedAnime(a)}
         onSelectMedia={(m) => setSelectedMedia(m)}
@@ -714,6 +717,10 @@ const AppContent: React.FC = () => {
           onUpdateSession={(updates) =>
             setActivePlayerSession((prev) => (prev ? { ...prev, ...updates } : null))
           }
+          onOpenTorrent={(title) => {
+            setSearchQuery(title);
+            setShowTorrentModal(true);
+          }}
         />
       )}
 
@@ -743,6 +750,13 @@ const AppContent: React.FC = () => {
       <AndroidTVModal
         isOpen={showAndroidTVModal}
         onClose={() => setShowAndroidTVModal(false)}
+      />
+
+      {/* WebTorrent Swarm Streamer Modal */}
+      <TorrentStreamModal
+        isOpen={showTorrentModal}
+        onClose={() => setShowTorrentModal(false)}
+        initialQuery={searchQuery}
       />
 
       {/* ──── AUDIOBOOK MODALS & PLAYER (AudioBay + Shelf) ──── */}
