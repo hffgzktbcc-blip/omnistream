@@ -18,8 +18,9 @@ if (!fs.existsSync(cacheDir)) {
 let client;
 try {
   client = new WebTorrent({
-    maxConns: 55,
-    dht: true
+    maxConns: 80,
+    dht: true,
+    webSeeds: true
   });
   client.on('error', (err) => {
     console.error('[AudioBay WebTorrent Engine Error]:', err.message);
@@ -37,6 +38,9 @@ const ABB_MIRRORS = [
 ];
 
 const DEFAULT_TRACKERS = [
+  'wss://tracker.openwebtorrent.com',
+  'wss://tracker.btorrent.xyz',
+  'wss://tracker.fastcast.nz',
   'udp://tracker.opentrackr.org:1337/announce',
   'udp://open.stealth.si:80/announce',
   'udp://tracker.torrent.eu.org:451/announce',
@@ -707,6 +711,11 @@ router.get('/stream/:hash/:fileIndex', async (req, res) => {
     const total = file.length;
     const range = req.headers.range;
 
+    // Prioritize pieces for this specific audio file in the WebTorrent engine
+    if (typeof file.select === 'function') {
+      file.select();
+    }
+
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
@@ -717,19 +726,33 @@ router.get('/stream/:hash/:fileIndex', async (req, res) => {
         'Content-Range': `bytes ${start}-${end}/${total}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunkSize,
-        'Content-Type': contentType
+        'Content-Type': contentType,
+        'Access-Control-Allow-Origin': '*'
       });
 
       const stream = file.createReadStream({ start, end });
       stream.pipe(res);
+
+      req.on('close', () => {
+        if (stream && typeof stream.destroy === 'function') {
+          stream.destroy();
+        }
+      });
     } else {
       res.writeHead(200, {
         'Content-Length': total,
         'Content-Type': contentType,
-        'Accept-Ranges': 'bytes'
+        'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': '*'
       });
       const stream = file.createReadStream();
       stream.pipe(res);
+
+      req.on('close', () => {
+        if (stream && typeof stream.destroy === 'function') {
+          stream.destroy();
+        }
+      });
     }
   } catch (err) {
     console.error('Audio stream error:', err.message);
