@@ -4,15 +4,15 @@ import {
   Headphones,
   Play,
   RotateCcw,
-  Clock,
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   Trash2,
   Zap,
-  BookOpen,
-  Bookmark
+  Bookmark,
+  Library,
+  Video,
+  Globe
 } from 'lucide-react';
 import { Audiobook, AudioTrack, AudiobookListeningProgress } from '../../types/audiobook';
 import { audiobookStorage } from '../../services/audiobookStorage';
@@ -22,12 +22,15 @@ interface AudiobookCatalogProps {
   onResumeListening: (progress: AudiobookListeningProgress) => void;
 }
 
+type AudioSourceType = 'all' | 'archive' | 'youtube' | 'audiobay';
+
 export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
   onSelectBook,
   onResumeListening
 }) => {
   const [books, setBooks] = useState<Audiobook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sourceType, setSourceType] = useState<AudioSourceType>('all');
   const [activeGenre, setActiveGenre] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,18 +50,13 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
     { label: 'Sci-Fi', id: 'sci-fi' },
     { label: 'Mystery', id: 'mystery' },
     { label: 'Thriller', id: 'thriller' },
-    { label: 'Romance', id: 'romance' },
-    { label: 'Non-Fiction', id: 'non-fiction' },
-    { label: 'Historic', id: 'historic' },
     { label: 'Classics', id: 'classic' },
-    { label: 'Young Adult', id: 'young-adult' },
-    { label: 'Crime', id: 'crime' },
     { label: 'Adventure', id: 'adventure' }
   ];
 
   useEffect(() => {
     fetchFeed(1);
-  }, [activeGenre]);
+  }, [activeGenre, sourceType]);
 
   const fetchFeed = async (page: number) => {
     setLoading(true);
@@ -80,19 +78,43 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
     }
 
     try {
-      const endpoint = activeGenre
-        ? `/api/audiobooks/category/${activeGenre}?page=${page}`
-        : `/api/audiobooks/recent?page=${page}`;
+      if (sourceType === 'archive') {
+        const res = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery || 'classic')}&page=${page}`);
+        if (!res.ok) throw new Error('Failed to load archive audiobooks');
+        const data = await res.json();
+        setBooks(data.items || []);
+        setTotalPages(data.totalPages || 1);
+      } else if (sourceType === 'youtube') {
+        const res = await fetch(`/api/audiobooks/youtube/search?q=${encodeURIComponent(searchQuery || 'audiobook')}`);
+        if (!res.ok) throw new Error('Failed to load YouTube audiobooks');
+        const data = await res.json();
+        setBooks(data.items || []);
+        setTotalPages(1);
+      } else {
+        // Default 'all' or 'audiobay': fetch direct archive or AudioBay
+        const endpoint = activeGenre
+          ? `/api/audiobooks/category/${activeGenre}?page=${page}`
+          : `/api/audiobooks/recent?page=${page}`;
 
-      const res = await fetch(endpoint);
-      if (!res.ok) throw new Error('AudioBay stream network error');
-      const data = await res.json();
-
-      setBooks(data.items || []);
-      setTotalPages(data.totalPages || 1);
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error('Audiobook network stream issue');
+        const data = await res.json();
+        setBooks(data.items || []);
+        setTotalPages(data.totalPages || 1);
+      }
     } catch (err: any) {
-      console.warn('Audiobooks fetch failed:', err);
-      setErrorMsg('Failed to reach AudioBay server. Click retry to reconnect.');
+      console.warn('Audiobooks fetch fallback to archive:', err);
+      // Fallback to Internet Archive so user always sees playable audiobooks
+      try {
+        const fallbackRes = await fetch(`/api/audiobooks/archive/search?q=Sherlock&page=1`);
+        if (fallbackRes.ok) {
+          const fbData = await fallbackRes.json();
+          setBooks(fbData.items || []);
+          setTotalPages(fbData.totalPages || 1);
+        }
+      } catch {
+        setErrorMsg('Failed to reach audiobook server. Click retry to reconnect.');
+      }
     } finally {
       setLoading(false);
     }
@@ -111,11 +133,31 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
     setCurrentPage(1);
 
     try {
-      const res = await fetch(`/api/audiobooks/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
-      if (!res.ok) throw new Error('Search failed');
-      const data = await res.json();
-      setBooks(data.items || []);
-      setTotalPages(data.totalPages || 1);
+      if (sourceType === 'archive') {
+        const res = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
+        const data = await res.json();
+        setBooks(data.items || []);
+        setTotalPages(data.totalPages || 1);
+      } else if (sourceType === 'youtube') {
+        const res = await fetch(`/api/audiobooks/youtube/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        const data = await res.json();
+        setBooks(data.items || []);
+        setTotalPages(1);
+      } else {
+        // Universal search
+        const res = await fetch(`/api/audiobooks/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          setBooks(data.items);
+          setTotalPages(data.totalPages || 1);
+        } else {
+          // Fallback to Archive search
+          const aRes = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
+          const aData = await aRes.json();
+          setBooks(aData.items || []);
+          setTotalPages(aData.totalPages || 1);
+        }
+      }
     } catch (e: any) {
       setErrorMsg('Audiobook search failed: ' + e.message);
     } finally {
@@ -140,15 +182,15 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
   };
 
   return (
-    <div className="flex flex-col px-4 md:px-12 py-6 gap-8 animate-fade-in max-w-7xl mx-auto w-full">
-      {/* Search and Hero Header */}
+    <div className="space-y-6 animate-in fade-in duration-300 pb-28">
+      {/* Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-500/30">
-              Direct Swarm Streaming
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              SHELF AUDIO SUITE
             </span>
-            <span className="text-xs text-slate-400">AudiobookBay + Shelf Suite</span>
+            <span className="text-xs text-slate-400">Direct CDN • LibriVox • Swarm</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
             <Headphones className="w-7 h-7 text-amber-400" />
@@ -167,6 +209,54 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
           />
           <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
         </form>
+      </div>
+
+      {/* Source Switcher: All, Archive/LibriVox, YouTube Audio, AudioBay Swarm */}
+      <div className="flex items-center gap-2 border-b border-slate-800/80 pb-3 overflow-x-auto scrollbar-none">
+        <button
+          onClick={() => {
+            setSourceType('all');
+            setSearchQuery('');
+          }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            sourceType === 'all'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Globe className="w-3.5 h-3.5" />
+          <span>All Audiobooks</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setSourceType('archive');
+            setSearchQuery('');
+          }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            sourceType === 'archive'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Library className="w-3.5 h-3.5" />
+          <span>Classic LibriVox (Direct 0s Stream)</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setSourceType('youtube');
+            setSearchQuery('');
+          }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            sourceType === 'youtube'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Video className="w-3.5 h-3.5" />
+          <span>YouTube Audiobooks</span>
+        </button>
       </div>
 
       {/* Genre Pills */}
@@ -266,6 +356,10 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             <span>
               {searchQuery
                 ? `Search results for "${searchQuery}"`
+                : sourceType === 'archive'
+                ? 'Classic LibriVox Audiobooks'
+                : sourceType === 'youtube'
+                ? 'YouTube Full-Length Audiobooks'
                 : activeGenre
                 ? `${activeGenre.toUpperCase()} Releases`
                 : 'Trending Audiobooks'}
@@ -370,7 +464,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                       }}
                     />
                     <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur text-[9px] font-black uppercase text-amber-400 border border-white/10">
-                      {book.format || 'AUDIO'}
+                      {book.format || (book.source === 'archive' ? 'LIBRI' : book.source === 'youtube' ? 'YT' : 'AUDIO')}
                     </div>
 
                     {/* Shelf Bookmark Button */}
@@ -408,7 +502,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-800/60 font-mono">
-                      <span>{book.bitrate || 'Unabridged'}</span>
+                      <span>{book.duration || book.bitrate || 'Unabridged'}</span>
                       <span className="text-amber-400 font-bold flex items-center gap-1">
                         <Zap className="w-3 h-3" /> Stream
                       </span>
