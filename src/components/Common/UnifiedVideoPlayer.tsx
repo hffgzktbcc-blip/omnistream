@@ -139,21 +139,42 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     setReloadKey(Date.now());
   };
 
-  // Close on Escape, Fullscreen on 'F', Next Server on 'S', Unmute on 'M', Theater on 'T'
+  // Close on Escape / Remote Back, Fullscreen on 'F', Next Server on 'S', Unmute on 'M', Theater on 'T'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (['input', 'textarea'].includes((document.activeElement?.tagName || '').toLowerCase())) return;
+      if (['input', 'textarea', 'select'].includes((document.activeElement?.tagName || '').toLowerCase())) return;
       resetControlsTimer();
 
-      if (e.key === 'Escape' || e.keyCode === 4) onClose();
+      if (
+        e.key === 'Escape' ||
+        e.key === 'Back' ||
+        e.key === 'BrowserBack' ||
+        e.key === 'GoBack' ||
+        [4, 27, 10009, 461].includes(e.keyCode)
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
       if (e.key === 'f' || e.key === 'F') toggleFullscreen();
       if (e.key === 't' || e.key === 'T') setTheaterMode((prev) => !prev);
       if (e.key === 's' || e.key === 'S') handleNextServer();
       if (e.key === 'm' || e.key === 'M') setShowUnmutePrompt(false);
       if (e.key === 'r' || e.key === 'R') handleForceRefresh();
     };
+
+    const handleAndroidBack = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('android-back-press', handleAndroidBack);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('android-back-press', handleAndroidBack);
+    };
   }, [onClose, resetControlsTimer]);
 
   // Anti-Popup Armor (Silently swallow popups, but allow user popouts)
@@ -363,6 +384,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     allowPopupRef.current = true;
     try {
       const titleText = `${session.title}${session.type !== 'movie' ? ` S${currentSeason} E${currentEpisode}` : ''}`;
+      const backSectionLabel = session.type === 'movie' ? 'Movies' : session.type === 'tv' ? 'TV Shows' : 'Anime';
       const popoutHtml = `
       <!DOCTYPE html>
       <html lang="en">
@@ -374,22 +396,45 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { background: #000; color: #fff; height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
           .header { background: #0f172a; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e293b; font-size: 13px; font-weight: bold; }
-          .header-left { display: flex; align-items: center; gap: 8px; }
+          .header-left { display: flex; align-items: center; gap: 10px; }
           .badge { background: #6366f1; font-size: 11px; padding: 2px 8px; border-radius: 6px; }
-          .btn { background: #334155; color: #fff; border: 1px solid #475569; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; }
+          .btn { background: #334155; color: #fff; border: 1px solid #475569; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
           .btn:hover { background: #475569; }
+          .btn-back { background: #7c3aed; border-color: #8b5cf6; }
+          .btn-back:hover { background: #6d28d9; }
           iframe { flex: 1; width: 100%; height: 100%; border: none; }
         </style>
       </head>
       <body>
         <div class="header">
           <div class="header-left">
+            <button class="btn btn-back" onclick="returnToMovies()" title="Return to Movie Section (Esc / Remote Back)">
+              <span>◀ Back to ${backSectionLabel}</span>
+            </button>
             <span>▶ ${titleText}</span>
             <span class="badge">${currentServer.name}</span>
           </div>
           <button class="btn" onclick="document.querySelector('iframe').requestFullscreen()">⛶ Fullscreen</button>
         </div>
         <iframe src="${streamUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>
+        <script>
+          function returnToMovies() {
+            if (window.opener && !window.opener.closed) {
+              window.opener.focus();
+              window.close();
+            } else if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              window.location.href = window.location.origin;
+            }
+          }
+          window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' || e.key === 'Back' || e.key === 'BrowserBack' || [4, 27, 10009, 461].includes(e.keyCode)) {
+              e.preventDefault();
+              returnToMovies();
+            }
+          });
+        </script>
       </body>
       </html>
     `;
@@ -434,10 +479,12 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-              title="Close Player (Esc)"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-600/90 hover:bg-purple-600 text-white font-bold text-xs transition-all shadow-md border border-purple-400/30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400"
+              title={`Back to ${session.type === 'movie' ? 'Movies' : session.type === 'tv' ? 'TV Shows' : 'Anime'} (Esc / Remote Back)`}
+              aria-label="Back to section"
             >
-              <X className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
+              <span>Back to {session.type === 'movie' ? 'Movies' : session.type === 'tv' ? 'TV Shows' : 'Anime'}</span>
             </button>
 
             <div>
@@ -562,28 +609,40 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                 </div>
                 <h3 className="text-white font-bold text-sm sm:text-base mb-1">Stream Blocked or Offline</h3>
                 <p className="text-xs text-slate-400 max-w-sm mb-4">
-                  Tested all {STREAM_SERVERS.length} streaming mirrors. Try launching the Direct TV Stream (bypasses iframe embed locks) or retry.
+                  Tested all {STREAM_SERVERS.length} streaming mirrors. Switch to the direct ad-free cinema stream, launch the popout player, or return to {session.type === 'movie' ? 'Movies' : session.type === 'tv' ? 'TV Shows' : 'Anime'}.
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-center gap-3">
                   <button
-                    onClick={handleRetryAll}
+                    onClick={() => {
+                      setCinemaFailed(false);
+                      setCinemaMode('resolving');
+                      setReloadKey(Date.now());
+                    }}
                     className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-lg shadow-purple-600/30 flex items-center gap-1.5"
                   >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Direct Cinema Stream</span>
+                  </button>
+                  <button
+                    onClick={handleRetryAll}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-700"
+                  >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Retry All Servers</span>
+                    <span>Retry Mirrors</span>
                   </button>
                   <button
                     onClick={handlePopout}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-1.5"
+                    className="px-3.5 py-2 rounded-xl bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-1.5"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Direct TV Stream</span>
+                    <span>Popout Player</span>
                   </button>
                   <button
                     onClick={onClose}
-                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white text-xs font-bold transition-all"
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-700"
                   >
-                    Close
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Back to {session.type === 'movie' ? 'Movies' : session.type === 'tv' ? 'TV Shows' : 'Anime'}</span>
                   </button>
                 </div>
               </div>
@@ -612,6 +671,10 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                   `anime_${effectiveTmdbId}`
                 )?.currentTime}
                 onError={() => {
+                  setCinemaFailed(true);
+                  setCinemaMode('iframe');
+                }}
+                onSwitchToMirror={() => {
                   setCinemaFailed(true);
                   setCinemaMode('iframe');
                 }}
@@ -709,11 +772,19 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                     )}
                     <button
                       onClick={handlePopout}
-                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
-                      title="Direct TV Stream (Bypasses Embed Block & Autoplay Restrictions)"
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 border border-slate-700"
+                      title="Popout Window (Bypasses embed blocks, includes Back to Movies button)"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Direct TV Stream</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Popout Window</span>
+                    </button>
+                    <button
+                      onClick={onClose}
+                      className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all"
+                      title={`Back to ${session.type === 'movie' ? 'Movies' : session.type === 'tv' ? 'TV Shows' : 'Anime'}`}
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>Back to {session.type === 'movie' ? 'Movies' : session.type === 'tv' ? 'TV' : 'Anime'}</span>
                     </button>
                     <button
                       onClick={() => setShowUnmutePrompt((prev) => !prev)}

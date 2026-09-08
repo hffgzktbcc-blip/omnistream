@@ -4,7 +4,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Maximize, Minimize,
   Volume2, VolumeX, Subtitles, Music, ChevronUp, ChevronDown,
   Loader2, AlertTriangle, RefreshCw, PictureInPicture2, Airplay,
-  Settings, X, Check
+  Settings, X, Check, ChevronLeft, ArrowLeft, Tv
 } from 'lucide-react';
 import type { DirectStreamSubtitle, DirectStreamAudioTrack } from '../../services/streamingService';
 import { watchHistoryService } from '../../services/watchHistoryService';
@@ -23,6 +23,7 @@ interface CinemaPlayerProps {
   resumeTime?: number;
   onError?: () => void;        // fallback trigger
   onClose?: () => void;
+  onSwitchToMirror?: () => void;
 }
 
 type AspectMode = '16:9' | 'fill' | 'original';
@@ -60,6 +61,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
   resumeTime,
   onError,
   onClose,
+  onSwitchToMirror,
 }) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -428,38 +430,46 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
       const tag = (document.activeElement?.tagName || '').toLowerCase();
       if (['input', 'textarea', 'select'].includes(tag)) return;
 
+      // Android / TV remote Back button (KeyCode 4), Escape (27), Tizen Return (10009), webOS Back (461)
+      if ([4, 27, 10009, 461].includes(e.keyCode)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (showDrawer) {
+          setShowDrawer(null);
+        } else {
+          onClose?.();
+        }
+        return;
+      }
+
       switch (e.key) {
         case 'ArrowLeft':
+        case 'Left':
           e.preventDefault();
           seek(-10);
           break;
         case 'ArrowRight':
+        case 'Right':
           e.preventDefault();
           seek(10);
           break;
         case 'ArrowUp':
+        case 'Up':
           e.preventDefault();
-          if (!showDrawer) {
-            setShowDrawer('subtitles');
-            showHudTemporarily();
-          } else if (showDrawer === 'subtitles') {
-            setShowDrawer('audio');
-          } else if (showDrawer === 'audio') {
-            setShowDrawer('quality');
-          } else {
+          if (showDrawer) {
+            // Close drawer if user presses UP
             setShowDrawer(null);
+          } else {
+            // Show HUD on TV
+            showHudTemporarily();
           }
           break;
         case 'ArrowDown':
+        case 'Down':
           e.preventDefault();
-          if (showDrawer === 'quality') {
-            setShowDrawer('audio');
-          } else if (showDrawer === 'audio') {
-            setShowDrawer('subtitles');
-          } else if (showDrawer === 'subtitles') {
+          if (showDrawer) {
             setShowDrawer(null);
           } else {
-            // Show volume/brightness on mobile; just show HUD on TV
             showHudTemporarily();
           }
           break;
@@ -467,7 +477,6 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         case ' ':
           e.preventDefault();
           if (showDrawer) {
-            // Enter confirms current drawer selection — close it
             setShowDrawer(null);
           } else {
             togglePlay();
@@ -475,7 +484,10 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
           break;
         case 'Escape':
         case 'GoBack':
+        case 'Back':
+        case 'BrowserBack':
           e.preventDefault();
+          e.stopPropagation();
           if (showDrawer) {
             setShowDrawer(null);
           } else {
@@ -498,6 +510,21 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [seek, togglePlay, toggleFullscreen, toggleMute, showDrawer, showHudTemporarily, onClose]);
+
+  // Listener for Android TV native back button event
+  useEffect(() => {
+    const handleAndroidBack = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (showDrawer) {
+        setShowDrawer(null);
+      } else {
+        onClose?.();
+      }
+    };
+    window.addEventListener('android-back-press', handleAndroidBack);
+    return () => window.removeEventListener('android-back-press', handleAndroidBack);
+  }, [showDrawer, onClose]);
 
   // ─── Touch Gestures (Mobile) ───────────────────────────────
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -683,6 +710,19 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         </div>
       )}
 
+      {/* ─── Corner Always-Accessible Back Pill (visible when HUD is idle/hidden) ─── */}
+      {onClose && !showHud && (
+        <button
+          onClick={onClose}
+          title="Back to Movies (Esc / Remote Back)"
+          aria-label="Back to Movies"
+          className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/70 hover:bg-purple-600 text-white/80 hover:text-white text-xs font-bold backdrop-blur-md border border-white/20 transition-all opacity-40 hover:opacity-100 focus:opacity-100 cursor-pointer shadow-lg"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          <span>Back to {mediaType === 'movie' ? 'Movies' : mediaType === 'tv' ? 'TV' : 'Anime'}</span>
+        </button>
+      )}
+
       {/* ─── HUD Overlay (Controls) ─────────────────────── */}
       <div
         className={`absolute inset-0 z-20 transition-opacity duration-300 ${
@@ -693,8 +733,25 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {onClose && (
-              <button onClick={onClose} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors">
-                <X className="w-5 h-5" />
+              <button
+                onClick={onClose}
+                title="Back to Movies (Esc / Remote Back)"
+                aria-label="Back to Movies"
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-900/50 transition-all active:scale-95 border border-purple-400/40 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Back to {mediaType === 'movie' ? 'Movies' : mediaType === 'tv' ? 'TV Shows' : 'Anime'}</span>
+              </button>
+            )}
+            {onSwitchToMirror && (
+              <button
+                onClick={onSwitchToMirror}
+                title="Switch back to Multi-Mirror Player"
+                aria-label="Switch to Mirror Mode"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-xs border border-slate-700 transition-all cursor-pointer"
+              >
+                <Tv className="w-3.5 h-3.5 text-slate-400" />
+                <span className="hidden md:inline">Mirror Mode</span>
               </button>
             )}
             <div>

@@ -338,10 +338,12 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-blue-950/80 hover:bg-blue-900 text-slate-300 hover:text-white transition-colors cursor-pointer border border-blue-800/50 flex-shrink-0"
-              title="Close Player (Esc)"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-900/80 hover:bg-blue-800 text-white font-bold text-xs transition-colors cursor-pointer border border-blue-700/60 flex-shrink-0 shadow-md"
+              title="Back to Sports (Esc / Remote Back)"
+              aria-label="Back to Sports"
             >
-              <X className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
+              <span>Back to Sports</span>
             </button>
 
             <div className="min-w-0">

@@ -159,19 +159,49 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
         setBooks(data.items || []);
         setTotalPages(1);
       } else {
-        // Universal search: AudiobookBay with auto WebTorrent Swarm fallback
-        const res = await fetch(`/api/audiobooks/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
-        const data = await res.json();
-        if (data.items && data.items.length > 0) {
-          setBooks(data.items);
-          setTotalPages(data.totalPages || 1);
-        } else {
-          // Fallback to Archive search
-          const aRes = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
-          const aData = await aRes.json();
-          setBooks(aData.items || []);
-          setTotalPages(aData.totalPages || 1);
+        // Universal search: AudiobookBay with WebTorrent Swarm and Archive fallbacks
+        let foundBooks: Audiobook[] = [];
+        let pages = 1;
+
+        try {
+          const res = await fetch(`/api/audiobooks/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.items) && data.items.length > 0) {
+              foundBooks = data.items;
+              pages = data.totalPages || 1;
+            }
+          }
+        } catch {}
+
+        // If AudiobookBay had 0 results or timed out, query WebTorrent Swarms
+        if (foundBooks.length === 0) {
+          try {
+            const tRes = await fetch(`/api/audiobooks/torrent/search?q=${encodeURIComponent(searchQuery.trim())}`);
+            if (tRes.ok) {
+              const tData = await tRes.json();
+              if (Array.isArray(tData.items) && tData.items.length > 0) {
+                foundBooks = tData.items;
+                pages = 1;
+              }
+            }
+          } catch {}
         }
+
+        // If still empty, query Internet Archive
+        if (foundBooks.length === 0) {
+          try {
+            const aRes = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
+            if (aRes.ok) {
+              const aData = await aRes.json();
+              foundBooks = aData.items || [];
+              pages = aData.totalPages || 1;
+            }
+          } catch {}
+        }
+
+        setBooks(foundBooks);
+        setTotalPages(pages);
       }
     } catch (e: any) {
       setErrorMsg('Audiobook search failed: ' + e.message);

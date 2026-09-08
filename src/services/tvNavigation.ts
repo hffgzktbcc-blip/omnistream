@@ -157,8 +157,8 @@ class TVNavigationService {
     const isEnter = e.key === 'Enter' || e.key === 'Select' ||
       [13, 23, 66, 160].includes(e.keyCode); // 23: Android DPAD_CENTER, 66: Android ENTER
 
-    const isBack = e.key === 'Escape' || e.key === 'Back' ||
-      [27, 4].includes(e.keyCode); // 4: Android KEYCODE_BACK
+    const isBack = e.key === 'Escape' || e.key === 'Back' || e.key === 'BrowserBack' || e.key === 'GoBack' ||
+      [27, 4, 10009, 461].includes(e.keyCode); // 4: Android KEYCODE_BACK, 10009: Tizen, 461: webOS
 
     const isPageDown = e.key === 'PageDown' || [34, 167].includes(e.keyCode);
     const isPageUp = e.key === 'PageUp' || [33, 166].includes(e.keyCode);
@@ -194,14 +194,19 @@ class TVNavigationService {
     }
 
     // -------------------------------------------------------------
-    // 2. HANDLE BACK BUTTON (Android KEYCODE_BACK / Escape)
+    // 2. HANDLE BACK BUTTON (Android KEYCODE_BACK / Escape / Remote Return)
     // -------------------------------------------------------------
     if (isBack) {
       e.preventDefault();
       e.stopPropagation();
 
+      // Dispatch global android-back-press event so all active players/readers/modals receive it
+      window.dispatchEvent(new CustomEvent('android-back-press'));
+
       // Priority A: Close Video Player if open
-      const closePlayerBtn = document.querySelector<HTMLElement>('button[title*="Close Player"], button[title*="Close (Esc)"]');
+      const closePlayerBtn = document.querySelector<HTMLElement>(
+        'button[title*="Back to"], button[title*="Close Player"], button[title*="Close (Esc)"], button[aria-label*="Back to"], button[aria-label*="Close Player"]'
+      );
       if (closePlayerBtn) {
         closePlayerBtn.click();
         return;

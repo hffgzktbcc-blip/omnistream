@@ -127,6 +127,109 @@ const AppContent: React.FC = () => {
     return () => tvNavigation.cleanup();
   }, []);
 
+  // Global Android TV Remote Back and History Management
+  useEffect(() => {
+    const handlePopOrBack = (e?: Event) => {
+      // Priority 1: Unified Video Player (Movies, TV, Anime)
+      if (activePlayerSession) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        setActivePlayerSession(null);
+        return;
+      }
+      // Priority 2: Sports Live Player Modal
+      if (selectedSportsMatch) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        setSelectedSportsMatch(null);
+        return;
+      }
+      // Priority 3: Active Comic Reader
+      if (activeReader) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        setActiveReader(null);
+        return;
+      }
+      // Priority 4: Detail Modals
+      if (selectedMedia) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        setSelectedMedia(null);
+        return;
+      }
+      if (selectedAnime) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        setSelectedAnime(null);
+        return;
+      }
+      if (selectedComic) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        setSelectedComic(null);
+        return;
+      }
+      if (selectedAudiobook) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        setSelectedAudiobook(null);
+        return;
+      }
+      // Priority 5: Secondary Modals
+      if (showTorrentModal) {
+        setShowTorrentModal(false);
+        return;
+      }
+      if (showCommandPalette) {
+        setShowCommandPalette(false);
+        return;
+      }
+      if (showUrlModal) {
+        setShowUrlModal(false);
+        return;
+      }
+      if (showAndroidTVModal) {
+        setShowAndroidTVModal(false);
+        return;
+      }
+    };
+
+    window.addEventListener('android-back-press', handlePopOrBack);
+    window.addEventListener('popstate', handlePopOrBack);
+
+    return () => {
+      window.removeEventListener('android-back-press', handlePopOrBack);
+      window.removeEventListener('popstate', handlePopOrBack);
+    };
+  }, [
+    activePlayerSession,
+    selectedSportsMatch,
+    activeReader,
+    selectedMedia,
+    selectedAnime,
+    selectedComic,
+    selectedAudiobook,
+    showTorrentModal,
+    showCommandPalette,
+    showUrlModal,
+    showAndroidTVModal
+  ]);
+
   // Listener for custom shortcut
   useEffect(() => {
     const handleToggle = () => setShowCommandPalette((prev) => !prev);

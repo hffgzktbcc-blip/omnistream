@@ -212,22 +212,45 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { background: #000; color: #fff; height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
           .header { background: #0f172a; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e293b; font-size: 13px; font-weight: bold; }
-          .header-left { display: flex; align-items: center; gap: 8px; }
+          .header-left { display: flex; align-items: center; gap: 10px; }
           .badge { background: #6366f1; font-size: 11px; padding: 2px 8px; border-radius: 6px; }
-          .btn { background: #334155; color: #fff; border: 1px solid #475569; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; }
+          .btn { background: #334155; color: #fff; border: 1px solid #475569; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
           .btn:hover { background: #475569; }
+          .btn-back { background: #7c3aed; border-color: #8b5cf6; }
+          .btn-back:hover { background: #6d28d9; }
           iframe { flex: 1; width: 100%; height: 100%; border: none; }
         </style>
       </head>
       <body>
         <div class="header">
           <div class="header-left">
+            <button class="btn btn-back" onclick="returnToMovies()" title="Return to OmniStream (Esc / Remote Back)">
+              <span>◀ Back to ${isMovie ? 'Movies' : 'TV Shows'}</span>
+            </button>
             <span>▶ ${titleText}</span>
             <span class="badge">${servers[serverIndex]?.name || 'Direct Stream'}</span>
           </div>
           <button class="btn" onclick="document.querySelector('iframe').requestFullscreen()">⛶ Fullscreen</button>
         </div>
         <iframe src="${currentStreamUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>
+        <script>
+          function returnToMovies() {
+            if (window.opener && !window.opener.closed) {
+              window.opener.focus();
+              window.close();
+            } else if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              window.location.href = window.location.origin;
+            }
+          }
+          window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' || e.key === 'Back' || e.key === 'BrowserBack' || [4, 27, 10009, 461].includes(e.keyCode)) {
+              e.preventDefault();
+              returnToMovies();
+            }
+          });
+        </script>
       </body>
       </html>
     `;
