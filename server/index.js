@@ -161,6 +161,17 @@ async function safeFetch(url, options = {}) {
       reject(new Error(`Timeout fetching ${url}`));
     });
 
+    if (options.signal) {
+      if (options.signal.aborted) {
+        req.destroy();
+        return reject(new Error(`Timeout fetching ${url}`));
+      }
+      options.signal.addEventListener('abort', () => {
+        req.destroy();
+        reject(new Error(`Timeout fetching ${url}`));
+      });
+    }
+
     if (options.body) {
       req.write(options.body);
     }
@@ -379,68 +390,69 @@ app.get('/api/comics/popular', async (req, res) => {
   if (cached) return res.json(cached);
 
   try {
-    let comics = [];
+    const tasks = [];
 
     // Webtoons
     if (category === 'webtoon' || category === 'all') {
-      try {
-        const wtRes = await safeFetch('https://www.webtoons.com/en/dailySchedule', {
+      tasks.push(
+        safeFetch('https://www.webtoons.com/en/dailySchedule', {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
             'Referer': 'https://www.webtoons.com/en/'
-          }
-        });
-        const wtHtml = await wtRes.text();
-        const $ = cheerio.load(wtHtml);
+          },
+          signal: AbortSignal.timeout(3500)
+        }).then(async (wtRes) => {
+          const wtHtml = await wtRes.text();
+          const $ = cheerio.load(wtHtml);
+          const webtoons = [];
+          $('a[href*="title_no"]').each((_, el) => {
+            if (webtoons.length >= 25) return;
+            const href = $(el).attr('href');
+            const title = $(el).find('.title, .subj, strong').first().text().trim() || $(el).attr('data-title-name');
+            const author = $(el).find('.author').text().trim();
+            const img = $(el).find('img').attr('src');
+            const genre = $(el).find('.genre').text().trim() || 'Webtoon';
+            const likes = $(el).find('.view_count, .like_area').text().trim();
 
-        const webtoons = [];
-        $('a[href*="title_no"]').each((_, el) => {
-          if (webtoons.length >= 25) return;
-          const href = $(el).attr('href');
-          const title = $(el).find('.title, .subj, strong').first().text().trim() || $(el).attr('data-title-name');
-          const author = $(el).find('.author').text().trim();
-          const img = $(el).find('img').attr('src');
-          const genre = $(el).find('.genre').text().trim() || 'Webtoon';
-          const likes = $(el).find('.view_count, .like_area').text().trim();
-
-          if (title && href) {
-            try {
-              const urlObj = new URL(href, 'https://www.webtoons.com');
-              const titleNo = urlObj.searchParams.get('title_no') || $(el).attr('data-title-no');
-              if (titleNo && !webtoons.some(w => w.id === titleNo)) {
-                webtoons.push({
-                  id: titleNo,
-                  source: 'webtoons',
-                  title,
-                  description: `Trending official Webtoon series: ${title} ${author ? `by ${author}` : ''} ${likes ? `(${likes} views)` : ''}`,
-                  cover: img || '',
-                  author: author || 'Webtoon Artist',
-                  year: 'Ongoing',
-                  type: 'Webtoon / Manhwa',
-                  status: 'Ongoing',
-                  tags: [genre, 'Webtoon', 'Top Trending'],
-                  webtoonUrl: href.startsWith('http') ? href : `https://www.webtoons.com${href}`
-                });
-              }
-            } catch (e) {}
-          }
-        });
-
-        comics.push(...webtoons);
-      } catch (err) {
-        console.warn('Webtoons popular error:', err.message);
-      }
+            if (title && href) {
+              try {
+                const urlObj = new URL(href, 'https://www.webtoons.com');
+                const titleNo = urlObj.searchParams.get('title_no') || $(el).attr('data-title-no');
+                if (titleNo && !webtoons.some(w => w.id === titleNo)) {
+                  webtoons.push({
+                    id: titleNo,
+                    source: 'webtoons',
+                    title,
+                    description: `Trending official Webtoon series: ${title} ${author ? `by ${author}` : ''} ${likes ? `(${likes} views)` : ''}`,
+                    cover: img || '',
+                    author: author || 'Webtoon Artist',
+                    year: 'Ongoing',
+                    type: 'Webtoon / Manhwa',
+                    status: 'Ongoing',
+                    tags: [genre, 'Webtoon', 'Top Trending'],
+                    webtoonUrl: href.startsWith('http') ? href : `https://www.webtoons.com${href}`
+                  });
+                }
+              } catch (e) {}
+            }
+          });
+          return webtoons;
+        }).catch(err => {
+          console.warn('Webtoons popular error:', err.message);
+          return [];
+        })
+      );
     }
 
     // MangaDex
     if (category === 'manga' || category === 'all') {
-      try {
-        const mdUrl = 'https://api.mangadex.org/manga?limit=25&order[followedCount]=desc&hasAvailableChapters=true&contentRating[]=safe&contentRating[]=suggestive&includes[]=cover_art&includes[]=author';
-        const mRes = await safeFetch(mdUrl);
-        const mData = await mRes.json();
-
-        if (mData.data) {
-          const mdComics = mData.data.map(item => {
+      tasks.push(
+        safeFetch('https://api.mangadex.org/manga?limit=25&order[followedCount]=desc&hasAvailableChapters=true&contentRating[]=safe&contentRating[]=suggestive&includes[]=cover_art&includes[]=author', {
+          signal: AbortSignal.timeout(3500)
+        }).then(async (mRes) => {
+          const mData = await mRes.json();
+          if (!mData.data) return [];
+          return mData.data.map(item => {
             const title = item.attributes?.title?.en || Object.values(item.attributes?.title || {})[0] || 'Untitled';
             const description = item.attributes?.description?.en || Object.values(item.attributes?.description || {})[0] || '';
             const coverRel = item.relationships?.find(r => r.type === 'cover_art');
@@ -461,50 +473,60 @@ app.get('/api/comics/popular', async (req, res) => {
               tags: (item.attributes?.tags || []).slice(0, 3).map(t => t.attributes?.name?.en)
             };
           });
-          comics.push(...mdComics);
-        }
-      } catch (err) {
-        console.warn('MangaDex popular error:', err.message);
-      }
+        }).catch(err => {
+          console.warn('MangaDex popular error:', err.message);
+          return [];
+        })
+      );
     }
 
     // Western Comics / Studios (Marvel, DC, Dark Horse, Image)
     if (['western', 'marvel', 'dc', 'darkhorse', 'all'].includes(category)) {
-      try {
-        let searchTerm = '(batman OR spider-man OR invincible OR x-men OR superman OR avengers OR deadpool OR hellboy OR spawn)';
-        if (category === 'marvel') {
-          searchTerm = '(spider-man OR "x-men" OR avengers OR "iron man" OR wolverine OR deadpool OR "fantastic four" OR venom OR thor OR daredevil OR hulk)';
-        } else if (category === 'dc') {
-          searchTerm = '(batman OR superman OR "the flash" OR "justice league" OR "wonder woman" OR watchmen OR nightwing OR "green lantern" OR aquaman OR shazam)';
-        } else if (category === 'darkhorse') {
-          searchTerm = '(hellboy OR "sin city" OR invincible OR spawn OR "the mask" OR "the boys" OR "umbrella academy" OR "the walking dead" OR saga OR berserk)';
-        }
-
-        const archiveUrl = `https://archive.org/advancedsearch.php?q=(${encodeURIComponent(searchTerm)})+AND+mediatype:(texts)+AND+(collection:comics_inbox+OR+collection:comicbooks)&fl[]=identifier,title,description,creator,year,downloads&sort[]=downloads+desc&rows=25&output=json`;
-        const aRes = await safeFetch(archiveUrl);
-        const aData = await aRes.json();
-
-        if (aData.response?.docs) {
-          const archiveComics = aData.response.docs
-            .filter(d => d.identifier && d.title)
-            .map(d => ({
-              id: d.identifier,
-              source: 'archive',
-              title: d.title,
-              description: typeof d.description === 'string' ? d.description.replace(/<[^>]*>?/gm, '').slice(0, 280) : 'Digital comic issue from Archive Comic Library',
-              cover: `https://archive.org/services/img/${d.identifier}`,
-              author: d.creator || 'Comic Creators',
-              year: d.year || 'Classic',
-              type: category === 'marvel' ? 'Marvel Comic' : category === 'dc' ? 'DC Comic' : category === 'darkhorse' ? 'Dark Horse / Image' : 'Western Comic',
-              status: 'Complete',
-              downloads: d.downloads || 0,
-              tags: [category === 'marvel' ? 'Marvel' : category === 'dc' ? 'DC' : category === 'darkhorse' ? 'Dark Horse' : 'Western Comic', 'Digital Issue']
-            }));
-          comics.push(...archiveComics);
-        }
-      } catch (err) {
-        console.warn('Archive popular fetch failed:', err.message);
+      let searchTerm = '(batman OR spider-man OR invincible OR x-men OR superman OR avengers OR deadpool OR hellboy OR spawn)';
+      if (category === 'marvel') {
+        searchTerm = '(spider-man OR "x-men" OR avengers OR "iron man" OR wolverine OR deadpool OR "fantastic four" OR venom OR thor OR daredevil OR hulk)';
+      } else if (category === 'dc') {
+        searchTerm = '(batman OR superman OR "the flash" OR "justice league" OR "wonder woman" OR watchmen OR nightwing OR "green lantern" OR aquaman OR shazam)';
+      } else if (category === 'darkhorse') {
+        searchTerm = '(hellboy OR "sin city" OR invincible OR spawn OR "the mask" OR "the boys" OR "umbrella academy" OR "the walking dead" OR saga OR berserk)';
       }
+
+      const archiveUrl = `https://archive.org/advancedsearch.php?q=(${encodeURIComponent(searchTerm)})+AND+mediatype:(texts)+AND+(collection:comics_inbox+OR+collection:comicbooks)&fl[]=identifier,title,description,creator,year,downloads&sort[]=downloads+desc&rows=25&output=json`;
+      tasks.push(
+        safeFetch(archiveUrl, { signal: AbortSignal.timeout(3000) })
+          .then(async (aRes) => {
+            const aData = await aRes.json();
+            if (!aData.response?.docs) return [];
+            return aData.response.docs
+              .filter(d => d.identifier && d.title)
+              .map(d => ({
+                id: d.identifier,
+                source: 'archive',
+                title: d.title,
+                description: typeof d.description === 'string' ? d.description.replace(/<[^>]*>?/gm, '').slice(0, 280) : 'Digital comic issue from Archive Comic Library',
+                cover: `https://archive.org/services/img/${d.identifier}`,
+                author: d.creator || 'Comic Creators',
+                year: d.year || 'Classic',
+                type: category === 'marvel' ? 'Marvel Comic' : category === 'dc' ? 'DC Comic' : category === 'darkhorse' ? 'Dark Horse / Image' : 'Western Comic',
+                status: 'Complete',
+                downloads: d.downloads || 0,
+                tags: [category === 'marvel' ? 'Marvel' : category === 'dc' ? 'DC' : category === 'darkhorse' ? 'Dark Horse' : 'Western Comic', 'Digital Issue']
+              }));
+          })
+          .catch(err => {
+            console.warn('Archive popular fetch failed:', err.message);
+            return [];
+          })
+      );
+    }
+
+    const settled = await Promise.allSettled(tasks);
+    let comics = [];
+    for (const r of settled) {
+      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+        comics.push(...r.value);
+      }
+    }
 
       // Add instant curated studio comics if needed
       if (category === 'marvel' && !comics.some(c => c.type?.includes('Marvel'))) {
@@ -629,7 +651,6 @@ app.get('/api/comics/popular', async (req, res) => {
           }
         );
       }
-    }
 
     setCache(cacheKey, comics, 1000 * 60 * 15);
     res.json(comics);
@@ -1343,11 +1364,198 @@ async function attachTmdbToAnime(anime) {
   return anime;
 }
 
+// -------------------------------------------------------------
+// KITSU ANIME ENGINE & CURATED FALLBACK (Zero-Failure Resilience)
+// -------------------------------------------------------------
+function mapKitsuToAnime(item) {
+  const attr = item.attributes || {};
+  const titles = attr.titles || {};
+  return {
+    id: parseInt(item.id, 10) || Math.floor(Math.random() * 100000),
+    title: {
+      romaji: titles.en_jp || attr.canonicalTitle || 'Untitled',
+      english: titles.en || attr.canonicalTitle || 'Untitled',
+      native: titles.ja_jp || ''
+    },
+    coverImage: {
+      extraLarge: attr.posterImage?.original || attr.posterImage?.large || '',
+      large: attr.posterImage?.large || attr.posterImage?.medium || '',
+      medium: attr.posterImage?.medium || attr.posterImage?.small || '',
+      color: '#6366f1'
+    },
+    bannerImage: attr.coverImage?.original || attr.coverImage?.large || '',
+    description: (attr.synopsis || '').replace(/<[^>]*>?/gm, '').slice(0, 400),
+    episodes: attr.episodeCount || 12,
+    status: (attr.status || 'FINISHED').toUpperCase(),
+    genres: ['Anime', 'Series'],
+    averageScore: Math.round(parseFloat(attr.averageRating || '80')),
+    seasonYear: parseInt((attr.startDate || '2024').slice(0, 4), 10) || 2024,
+    format: (attr.subtype || 'TV').toUpperCase(),
+    duration: attr.episodeLength || 24
+  };
+}
+
+async function fetchKitsuTrending(category = 'trending') {
+  try {
+    let url = 'https://kitsu.io/api/edge/trending/anime';
+    if (category === 'popular') {
+      url = 'https://kitsu.io/api/edge/anime?sort=-user_count&page[limit]=25';
+    } else if (category === 'action') {
+      url = 'https://kitsu.io/api/edge/anime?filter[categories]=action&sort=-user_count&page[limit]=25';
+    } else if (category === 'fantasy') {
+      url = 'https://kitsu.io/api/edge/anime?filter[categories]=fantasy&sort=-user_count&page[limit]=25';
+    }
+    const res = await safeFetch(url, { headers: { 'User-Agent': 'OmniStream/2.0' }, signal: AbortSignal.timeout(4500) });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data || []).map(item => mapKitsuToAnime(item));
+  } catch (e) {
+    console.warn('[Kitsu Trending Error]:', e.message);
+    return [];
+  }
+}
+
+async function fetchKitsuSearch(q) {
+  try {
+    const url = `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(q)}&page[limit]=20`;
+    const res = await safeFetch(url, { headers: { 'User-Agent': 'OmniStream/2.0' }, signal: AbortSignal.timeout(4500) });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data || []).map(item => mapKitsuToAnime(item));
+  } catch (e) {
+    console.warn('[Kitsu Search Error]:', e.message);
+    return [];
+  }
+}
+
+const CURATED_FALLBACK_ANIME = [
+  {
+    id: 21,
+    title: { english: 'One Piece', romaji: 'One Piece', native: 'ONE PIECE' },
+    coverImage: {
+      extraLarge: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=600&auto=format&fit=crop',
+      large: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=600&auto=format&fit=crop',
+      medium: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300&auto=format&fit=crop',
+      color: '#e11d48'
+    },
+    bannerImage: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1200',
+    description: 'Gol D. Roger was known as the Pirate King, the strongest and most infamous being to have sailed the Grand Line...',
+    episodes: 1120,
+    status: 'RELEASING',
+    genres: ['Action', 'Adventure', 'Fantasy'],
+    averageScore: 89,
+    seasonYear: 1999,
+    format: 'TV',
+    duration: 24,
+    tmdbId: 37854
+  },
+  {
+    id: 151807,
+    title: { english: 'Solo Leveling', romaji: 'Ore dake Level Up na Ken', native: '俺だけレベルアップな件' },
+    coverImage: {
+      extraLarge: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      large: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      medium: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=300&auto=format&fit=crop',
+      color: '#3b82f6'
+    },
+    bannerImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1200',
+    description: 'In a world where hunters, humans who possess magical powers, must battle deadly monsters to protect the human race...',
+    episodes: 12,
+    status: 'FINISHED',
+    genres: ['Action', 'Adventure', 'Fantasy'],
+    averageScore: 85,
+    seasonYear: 2024,
+    format: 'TV',
+    duration: 24,
+    tmdbId: 127532
+  },
+  {
+    id: 101922,
+    title: { english: 'Demon Slayer: Kimetsu no Yaiba', romaji: 'Kimetsu no Yaiba', native: '鬼滅の刃' },
+    coverImage: {
+      extraLarge: 'https://images.unsplash.com/photo-1563089145-599997674d42?q=80&w=600&auto=format&fit=crop',
+      large: 'https://images.unsplash.com/photo-1563089145-599997674d42?q=80&w=600&auto=format&fit=crop',
+      medium: 'https://images.unsplash.com/photo-1563089145-599997674d42?q=80&w=300&auto=format&fit=crop',
+      color: '#10b981'
+    },
+    bannerImage: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200',
+    description: 'Tanjiro Kamado lives with his impoverished family on a remote mountain. As the oldest sibling, he took upon the responsibility of sustaining them...',
+    episodes: 26,
+    status: 'FINISHED',
+    genres: ['Action', 'Fantasy', 'Supernatural'],
+    averageScore: 86,
+    seasonYear: 2019,
+    format: 'TV',
+    duration: 24,
+    tmdbId: 85937
+  },
+  {
+    id: 113415,
+    title: { english: 'Jujutsu Kaisen', romaji: 'Jujutsu Kaisen', native: '呪術廻戦' },
+    coverImage: {
+      extraLarge: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop',
+      large: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop',
+      medium: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300&auto=format&fit=crop',
+      color: '#8b5cf6'
+    },
+    bannerImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1200',
+    description: 'Idly indulging in paranormal activities with the Occult Club, high schooler Yuuji Itadori spends his days at either the clubroom or the hospital...',
+    episodes: 24,
+    status: 'FINISHED',
+    genres: ['Action', 'Supernatural'],
+    averageScore: 87,
+    seasonYear: 2020,
+    format: 'TV',
+    duration: 24,
+    tmdbId: 95479
+  },
+  {
+    id: 16498,
+    title: { english: 'Attack on Titan', romaji: 'Shingeki no Kyojin', native: '進撃の巨人' },
+    coverImage: {
+      extraLarge: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      large: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop',
+      medium: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=300&auto=format&fit=crop',
+      color: '#f59e0b'
+    },
+    bannerImage: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1200',
+    description: 'Centuries ago, mankind was slaughtered to near extinction by monstrous humanoid creatures called titans...',
+    episodes: 25,
+    status: 'FINISHED',
+    genres: ['Action', 'Drama', 'Fantasy', 'Mystery'],
+    averageScore: 89,
+    seasonYear: 2013,
+    format: 'TV',
+    duration: 24,
+    tmdbId: 1429
+  },
+  {
+    id: 154587,
+    title: { english: "Frieren: Beyond Journey's End", romaji: 'Sousou no Frieren', native: '葬送のフリーレン' },
+    coverImage: {
+      extraLarge: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=600&auto=format&fit=crop',
+      large: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=600&auto=format&fit=crop',
+      medium: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=300&auto=format&fit=crop',
+      color: '#06b6d4'
+    },
+    bannerImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1200',
+    description: 'After the demon king is defeated by the Hero party, elf mage Frieren takes an odyssey through the realms of time...',
+    episodes: 28,
+    status: 'FINISHED',
+    genres: ['Adventure', 'Drama', 'Fantasy'],
+    averageScore: 91,
+    seasonYear: 2023,
+    format: 'TV',
+    duration: 24,
+    tmdbId: 209867
+  }
+];
+
 app.get('/api/anime/trending', async (req, res) => {
   const category = req.query.category || 'trending';
   const cacheKey = `anime_v3_${category}`;
   const cached = getCache(cacheKey);
-  if (cached) return res.json(cached);
+  if (cached && Array.isArray(cached) && cached.length > 0) return res.json(cached);
 
   let sort = ['TRENDING_DESC', 'POPULARITY_DESC'];
   let genre = undefined;
@@ -1381,18 +1589,39 @@ app.get('/api/anime/trending', async (req, res) => {
     }
   `;
 
+  let rawList = [];
+
+  // 1. Try AniList with 3.5s timeout
   try {
-    const data = await fetchAniListGraphQL(query, { sort, genre });
-    const rawList = data.data?.Page?.media || [];
-    
+    const data = await Promise.race([
+      fetchAniListGraphQL(query, { sort, genre }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('AniList timeout')), 3500))
+    ]);
+    if (data?.data?.Page?.media && Array.isArray(data.data.Page.media) && data.data.Page.media.length > 0) {
+      rawList = data.data.Page.media;
+    }
+  } catch (err) {
+    console.warn('[AniList trending unavailable/disabled, querying Kitsu]:', err.message);
+  }
+
+  // 2. Fall back to Kitsu if AniList returned empty or errored (e.g. 403 API disabled)
+  if (rawList.length === 0) {
+    rawList = await fetchKitsuTrending(category);
+  }
+
+  // 3. Fall back to Curated List if remote APIs fail
+  if (rawList.length === 0) {
+    rawList = CURATED_FALLBACK_ANIME;
+  }
+
+  try {
     // Attach TMDB IDs for stable 1080p/4k video streaming
     const animeList = await Promise.all(rawList.map(attachTmdbToAnime));
-    
     setCache(cacheKey, animeList, 1000 * 60 * 30);
     res.json(animeList);
   } catch (err) {
-    console.error('AniList trending error:', err);
-    res.status(500).json({ error: 'Failed to fetch anime', message: err.message });
+    console.error('Anime processing error:', err);
+    res.json(CURATED_FALLBACK_ANIME);
   }
 });
 
@@ -1402,7 +1631,7 @@ app.get('/api/anime/search', async (req, res) => {
 
   const cacheKey = `anime_search_v4_${q.toLowerCase()}`;
   const cached = getCache(cacheKey);
-  if (cached) return res.json(cached);
+  if (cached && Array.isArray(cached) && cached.length > 0) return res.json(cached);
 
   const query = `
     query ($search: String) {
@@ -1425,13 +1654,18 @@ app.get('/api/anime/search', async (req, res) => {
     }
   `;
 
+  let combinedRaw = [];
+
+  // 1. Try AniList with 3.5s timeout
   try {
     const intent = analyzeSearchIntent(q, 'anime');
     const queriesToRun = intent.candidateQueries.slice(0, 2);
-    const combinedRaw = [];
 
     const fetchPromises = queriesToRun.map(qTerm => {
-      return fetchAniListGraphQL(query, { search: qTerm })
+      return Promise.race([
+        fetchAniListGraphQL(query, { search: qTerm }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('AniList timeout')), 3500))
+      ])
         .then(data => data?.data?.Page?.media || [])
         .catch(() => []);
     });
@@ -1446,15 +1680,33 @@ app.get('/api/anime/search', async (req, res) => {
         }
       }
     }
+  } catch (err) {
+    console.warn('[AniList search error]:', err.message);
+  }
 
+  // 2. Fall back to Kitsu Search if AniList returned empty
+  if (combinedRaw.length === 0) {
+    combinedRaw = await fetchKitsuSearch(q);
+  }
+
+  // 3. Fall back to Curated filter if still empty
+  if (combinedRaw.length === 0) {
+    const qLower = q.toLowerCase();
+    combinedRaw = CURATED_FALLBACK_ANIME.filter(a =>
+      a.title?.english?.toLowerCase().includes(qLower) ||
+      a.title?.romaji?.toLowerCase().includes(qLower)
+    );
+  }
+
+  try {
     const animeList = await Promise.all(combinedRaw.map(attachTmdbToAnime));
     const rankedList = scoreAndRankResults(animeList, q);
 
     setCache(cacheKey, rankedList, 1000 * 60 * 15);
     res.json(rankedList);
   } catch (err) {
-    console.error('AniList search error:', err);
-    res.status(500).json({ error: 'Anime search failed', message: err.message });
+    console.error('Anime search failed:', err);
+    res.json([]);
   }
 });
 
@@ -5227,7 +5479,7 @@ function parseEspnEvent(ev, sportName, defaultLeague) {
   };
 }
 
-app.get('/api/sports/live', async (req, res) => {
+app.get(['/api/sports/live', '/api/sports/matches'], async (req, res) => {
   const sport = req.query.sport || 'all';
   const cacheKey = `sports_v4_${sport}`;
   const cached = getCache(cacheKey);
