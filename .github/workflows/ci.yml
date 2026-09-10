@@ -1,0 +1,44 @@
+name: Deployment Safety & CI Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Syntax & Build Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install --include=dev
+
+      - name: Validate Backend Server Syntax
+        run: |
+          echo "🔍 Checking Node server syntax..."
+          node --check server/index.js
+          node --check server/audiobooks.js
+          echo "✅ Backend syntax is 100% valid."
+
+      - name: Validate Client Frontend Build
+        run: |
+          echo "🏗️ Running Vite production build test..."
+          npm run build
+          echo "✅ Frontend built cleanly with zero compilation errors."
+
+      - name: Test Capacitor Android Sync
+        run: |
+          echo "📱 Testing Capacitor sync..."
+          npx cap copy android
+          echo "✅ Mobile assets synced cleanly."
