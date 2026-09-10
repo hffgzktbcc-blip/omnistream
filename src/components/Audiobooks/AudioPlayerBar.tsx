@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play,
   Pause,
@@ -18,17 +18,17 @@ import {
   Maximize2,
   Minimize2,
   Headphones,
-  Loader2
-} from 'lucide-react';
-import { Audiobook, AudioTrack } from '../../types/audiobook';
-import { audiobookStorage } from '../../services/audiobookStorage';
-import { watchHistoryService } from '../../services/watchHistoryService';
+  Loader2,
+} from "lucide-react";
+import { Audiobook, AudioTrack } from "../../types/audiobook";
+import { audiobookStorage } from "../../services/audiobookStorage";
+import { watchHistoryService } from "../../services/watchHistoryService";
 import {
   isAudioDownloaded,
   downloadAudioForOffline,
   removeOfflineAudio,
-  getOfflineAudioUrl
-} from '../../services/offlineAudioStorage';
+  getOfflineAudioUrl,
+} from "../../services/offlineAudioStorage";
 
 interface AudioPlayerBarProps {
   book: Audiobook;
@@ -53,7 +53,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   onOpenBookmarks,
   onTrackChange,
   sleepMinutes,
-  sleepSecondsLeft
+  sleepSecondsLeft,
 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const wakeLockRef = useRef<any>(null);
@@ -65,7 +65,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   const [duration, setDuration] = useState(0);
   const [bufferPct, setBufferPct] = useState(0);
   const [volume, setVolume] = useState<number>(() => {
-    const saved = localStorage.getItem('omnistream_audio_volume');
+    const saved = localStorage.getItem("omnistream_audio_volume");
     return saved !== null ? parseFloat(saved) : 1;
   });
   const [isMuted, setIsMuted] = useState(false);
@@ -81,7 +81,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   const [showDrawer, setShowDrawer] = useState(false);
   const [showCoverModal, setShowCoverModal] = useState(false);
   const [peers, setPeers] = useState(0);
-  const [downloadSpeed, setDownloadSpeed] = useState('');
+  const [downloadSpeed, setDownloadSpeed] = useState("");
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
 
@@ -134,6 +134,335 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
 
     setupStream();
 
+    return () => {
+      isMounted = false;
+    };
+  }, [currentTrack, trackId]);
+
+  // Screen Wake Lock API (keeps mobile screen awake while audio plays)
+  useEffect(() => {
+    if (typeof window === "undefined" || !("wakeLock" in navigator)) return;
+    if (isPlaying) {
+      (navigator as any).wakeLock
+        ?.request("screen")
+        .then((wl: any) => {
+          wakeLockRef.current = wl;
+        })
+        .catch(() => {});
+    } else {
+      wakeLockRef.current?.release?.().catch(() => {});
+      wakeLockRef.current = null;
+    }
+    return () => {
+      wakeLockRef.current?.release?.().catch(() => {});
+    };
+  }, [isPlaying]);
+
+  // MediaSession API: iOS / Android / macOS Lock Screen & AirPods controls
+  useEffect(() => {
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+
+    const coverUrl = book.cover
+      ? book.cover.startsWith("http")
+        ? book.cover
+        : `${window.location.origin}${book.cover}`
+      : "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=500";
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentTrack?.name || book.title,
+      artist: book.author,
+      album: book.title,
+      artwork: [
+        { src: coverUrl, sizes: "96x96", type: "image/jpeg" },
+        { src: coverUrl, sizes: "256x256", type: "image/jpeg" },
+        { src: coverUrl, sizes: "512x512", type: "image/jpeg" },
+      ],
+    });
+
+    navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+
+    try {
+      navigator.mediaSession.setActionHandler("play", () => {
+        audioRef.current?.play().catch(() => {});
+        setIsPlaying(true);
+      });
+      navigator.mediaSession.setActionHandler("pause", () => {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      });
+      navigator.mediaSession.setActionHandler("seekbackward", () => skip(-15));
+      navigator.mediaSession.setActionHandler("seekforward", () => skip(30));
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
+        if (currentTrackIndex > 0) onTrackChange(currentTrackIndex - 1);
+      });
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        if (currentTrackIndex < tracks.length - 1)
+          onTrackChange(currentTrackIndex + 1);
+      });
+      navigator.mediaSession.setActionHandler("seekto", (details) => {
+        if (details.seekTime !== undefined && audioRef.current) {
+          audioRef.current.currentTime = details.seekTime;
+          setCurrentTime(details.seekTime);
+        }
+      });
+    } catch {}
+  }, [book, currentTrack, isPlaying, currentTrackIndex, tracks.length]);
+
+  // Sync position state to system scrubber
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !("mediaSession" in navigator) ||
+      !("setPositionState" in navigator.mediaSession) ||
+      duration <= 0
+    )
+      return;
+
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: Math.max(0, duration),
+        playbackRate: isPlaying ? speeds[speedIdx] : 0,
+        position: Math.min(duration, Math.max(0, currentTime)),
+      });
+    } catch {}
+  }, [currentTime, duration, isPlaying, speedIdx]);
+
+  // Sleep Timer Fade to Silence
+  useEffect(() => {
+    if (sleepSecondsLeft !== null && sleepSecondsLeft <= 5 && isPlaying) {
+      if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+      let currentVol = volume;
+      fadeIntervalRef.current = setInterval(() => {
+        currentVol = Math.max(0, currentVol - 0.2);
+        if (audioRef.current) audioRef.current.volume = currentVol;
+        if (currentVol <= 0) {
+          if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+          audioRef.current?.pause();
+          setIsPlaying(false);
+          if (audioRef.current) audioRef.current.volume = volume;
+        }
+      }, 800);
+    }
+    return () => {
+      if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+    };
+  }, [sleepSecondsLeft, isPlaying, volume]);
+
+  // Swarm Polling (if torrent-backed)
+  useEffect(() => {
+    if (!book.infoHash) return;
+    let isMounted = true;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(
+          `/api/audiobooks/torrent/status/${book.infoHash}`,
+        );
+        if (res.ok) {
+          const s = await res.json();
+          if (isMounted) {
+            setPeers(s.numPeers || 0);
+            setDownloadSpeed(s.downloadSpeedFormatted || "0 KB/s");
+          }
+        }
+      } catch (e) {}
+    };
+
+    poll();
+    const timer = setInterval(poll, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [book.infoHash]);
+
+  // Periodic progress saving
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (audioRef.current && isPlaying && currentTime > 0) {
+        audiobookStorage.saveProgress({
+          bookId: book.id,
+          title: book.title,
+          author: book.author,
+          cover: book.cover,
+          currentTime,
+          duration,
+          currentChapterIndex: currentTrackIndex,
+          currentPartIndex: currentTrackIndex,
+          lastPlayedAt: Date.now(),
+          completed: duration > 0 && currentTime >= duration - 10,
+          percent:
+            duration > 0 ? Math.round((currentTime / duration) * 100) : 0,
+        });
+
+        watchHistoryService.saveAudiobook(
+          book,
+          currentTrackIndex,
+          currentTime,
+          duration,
+        );
+      }
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [isPlaying, currentTime, duration, book, currentTrackIndex]);
+
+  // Global Keyboard Shortcuts (Shelf & AudioBay features)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          (activeEl as HTMLElement).isContentEditable);
+      if (isInput) return;
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePlayPause();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        skip(-15);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        skip(30);
+      } else if (e.key === "b" || e.key === "B") {
+        e.preventDefault();
+        onOpenBookmarks();
+      } else if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        toggleMute();
+      } else if (e.key === "[") {
+        e.preventDefault();
+        cycleSpeed(-1);
+      } else if (e.key === "]") {
+        e.preventDefault();
+        cycleSpeed(1);
+      } else if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        if (currentTrackIndex < tracks.length - 1)
+          onTrackChange(currentTrackIndex + 1);
+      } else if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        if (currentTrackIndex > 0) onTrackChange(currentTrackIndex - 1);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPlaying, currentTrackIndex, tracks.length, volume, isMuted, speedIdx]);
+
+  const togglePlayPause = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.play().catch((e) => console.warn(e));
+      setIsPlaying(true);
+    } else {
+      audio.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const skip = (seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = Math.max(
+      0,
+      Math.min(audio.duration || Infinity, audio.currentTime + seconds),
+    );
+  };
+
+  const cycleSpeed = (delta: number) => {
+    let nextIdx = speedIdx + delta;
+    if (nextIdx >= speeds.length) nextIdx = 0;
+    if (nextIdx < 0) nextIdx = speeds.length - 1;
+    setSpeedIdx(nextIdx);
+    localStorage.setItem(
+      `omnistream:bookRate:${book.id}`,
+      String(speeds[nextIdx]),
+    );
+    if (audioRef.current) {
+      audioRef.current.playbackRate = speeds[nextIdx];
+    }
+  };
+
+  const toggleMute = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    if (audioRef.current) {
+      audioRef.current.volume = next ? 0 : volume;
+    }
+  };
+
+  const handleVolumeChange = (newVal: number) => {
+    setVolume(newVal);
+    setIsMuted(false);
+    localStorage.setItem("omnistream_audio_volume", String(newVal));
+    if (audioRef.current) {
+      audioRef.current.volume = newVal;
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setCurrentTime(audio.currentTime);
+
+    if (audio.buffered.length > 0 && audio.duration > 0) {
+      const end = audio.buffered.end(audio.buffered.length - 1);
+      setBufferPct(Math.min(100, (end / audio.duration) * 100));
+    }
+  };
+
+  const handleToggleOffline = async () => {
+    if (isDownloaded) {
+      await removeOfflineAudio(trackId);
+      setIsDownloaded(false);
+      return;
+    }
+
+    if (!currentTrack) return;
+    setDownloadProgress(0);
+    try {
+      await downloadAudioForOffline(
+        {
+          partId: trackId,
+          bookId: book.id,
+          partTitle: currentTrack.name,
+          bookTitle: book.title,
+          coverUrl: book.cover,
+          audioUrl: currentTrack.streamUrl,
+        },
+        (pct) => setDownloadProgress(pct),
+      );
+      setIsDownloaded(true);
+      setDownloadProgress(null);
+    } catch (e) {
+      setDownloadProgress(null);
+    }
+  };
+
+  const formatTime = (secs: number) => {
+    if (isNaN(secs) || secs < 0) return "0:00";
+    const hrs = Math.floor(secs / 3600);
+    const mins = Math.floor((secs % 3600) / 60);
+    const s = Math.floor(secs % 60);
+    if (hrs > 0) {
+      return `${hrs}:${mins < 10 ? "0" : ""}${mins}:${s < 10 ? "0" : ""}${s}`;
+    }
+    return `${mins}:${s < 10 ? "0" : ""}${s}`;
+  };
+
+  const coverUrl = book.cover
+    ? book.cover.startsWith("http")
+      ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(book.cover)}`
+      : book.cover
+    : "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300";
+
+  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+
   return (
     <>
       <audio
@@ -159,7 +488,10 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
       {showCoverModal && (
         <div className="fixed inset-0 z-[60] bg-[#0f1013] flex flex-col items-center justify-between p-6 sm:p-10 animate-in fade-in duration-200">
           <div className="w-full flex items-center justify-between">
-            <button onClick={() => setShowCoverModal(false)} className="p-3 text-slate-300 hover:text-white bg-[#1e2025] rounded-full transition">
+            <button
+              onClick={() => setShowCoverModal(false)}
+              className="p-3 text-slate-300 hover:text-white bg-[#1e2025] rounded-full transition"
+            >
               <ChevronDown className="w-8 h-8" />
             </button>
             <span className="text-sm font-bold text-[#f69931] uppercase tracking-widest flex items-center gap-2">
@@ -171,7 +503,11 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
 
           <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl">
             <div className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-sm shadow-2xl overflow-hidden mb-12 border border-[#2a2c33]">
-              <img src={coverUrl} alt="" className="w-full h-full object-cover" />
+              <img
+                src={coverUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
             </div>
 
             <h2 className="text-3xl sm:text-4xl font-black text-white text-center line-clamp-1 mb-2">
@@ -184,18 +520,28 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
 
           <div className="w-full max-w-2xl pb-10 space-y-12">
             <div className="flex items-center justify-center gap-10 sm:gap-16">
-              <button onClick={() => skip(-15)} className="p-6 bg-[#1e2025] hover:bg-[#2a2c33] text-slate-300 hover:text-white rounded-full transition cursor-pointer">
+              <button
+                onClick={() => skip(-15)}
+                className="p-6 bg-[#1e2025] hover:bg-[#2a2c33] text-slate-300 hover:text-white rounded-full transition cursor-pointer"
+              >
                 <RotateCcw className="w-10 h-10" />
               </button>
-              
+
               <button
                 onClick={togglePlayPause}
                 className="w-32 h-32 rounded-full bg-[#f69931] text-black flex items-center justify-center shadow-[0_0_40px_rgba(246,153,49,0.3)] transition active:scale-95 cursor-pointer"
               >
-                {isPlaying ? <Pause className="w-14 h-14 fill-current" /> : <Play className="w-14 h-14 fill-current ml-2" />}
+                {isPlaying ? (
+                  <Pause className="w-14 h-14 fill-current" />
+                ) : (
+                  <Play className="w-14 h-14 fill-current ml-2" />
+                )}
               </button>
-              
-              <button onClick={() => skip(30)} className="p-6 bg-[#1e2025] hover:bg-[#2a2c33] text-slate-300 hover:text-white rounded-full transition cursor-pointer">
+
+              <button
+                onClick={() => skip(30)}
+                className="p-6 bg-[#1e2025] hover:bg-[#2a2c33] text-slate-300 hover:text-white rounded-full transition cursor-pointer"
+              >
                 <RotateCw className="w-10 h-10" />
               </button>
             </div>
@@ -211,7 +557,10 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
               <span className="text-sm font-bold text-white uppercase tracking-wider">
                 Chapters / Tracks ({tracks.length})
               </span>
-              <button onClick={() => setShowDrawer(false)} className="p-2 text-slate-400 hover:text-white rounded-full bg-[#0f1013] transition cursor-pointer">
+              <button
+                onClick={() => setShowDrawer(false)}
+                className="p-2 text-slate-400 hover:text-white rounded-full bg-[#0f1013] transition cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -226,16 +575,22 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
                       setShowDrawer(false);
                     }}
                     className={`w-full text-left px-4 py-3 rounded-sm flex items-center justify-between transition cursor-pointer ${
-                      isActive ? 'bg-[#f69931]/10 text-[#f69931]' : 'hover:bg-[#0f1013] text-slate-300 hover:text-white'
+                      isActive
+                        ? "bg-[#f69931]/10 text-[#f69931]"
+                        : "hover:bg-[#0f1013] text-slate-300 hover:text-white"
                     }`}
                   >
-                    <span className="text-sm font-semibold truncate pr-4">{t.name}</span>
+                    <span className="text-sm font-semibold truncate pr-4">
+                      {t.name}
+                    </span>
                     {isActive ? (
                       <span className="flex items-center gap-2 text-xs font-bold">
                         <Play className="w-3 h-3 fill-current" /> PLAYING
                       </span>
                     ) : (
-                      <span className="text-xs text-slate-500 font-mono">{t.sizeFormatted}</span>
+                      <span className="text-xs text-slate-500 font-mono">
+                        {t.sizeFormatted}
+                      </span>
                     )}
                   </button>
                 );
@@ -253,34 +608,50 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             const pos = (e.clientX - rect.left) / rect.width;
-            if (audioRef.current && duration > 0) audioRef.current.currentTime = pos * duration;
+            if (audioRef.current && duration > 0)
+              audioRef.current.currentTime = pos * duration;
           }}
         >
-          <div className="absolute top-0 left-0 h-full bg-slate-500 opacity-30" style={{ width: `${bufferPct}%` }} />
-          <div className="absolute top-0 left-0 h-full bg-[#f69931] transition-all group-hover:h-2" style={{ width: `${progressPct}%` }} />
+          <div
+            className="absolute top-0 left-0 h-full bg-slate-500 opacity-30"
+            style={{ width: `${bufferPct}%` }}
+          />
+          <div
+            className="absolute top-0 left-0 h-full bg-[#f69931] transition-all group-hover:h-2"
+            style={{ width: `${progressPct}%` }}
+          />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 h-20 md:h-24 flex items-center justify-between gap-4">
-          
           {/* Cover & Info (Left) */}
           <div className="flex items-center gap-4 flex-1 min-w-0 h-full">
-            <div 
+            <div
               onClick={() => setShowCoverModal(true)}
               className="relative w-14 h-14 md:w-16 md:h-16 rounded-sm overflow-hidden shrink-0 cursor-pointer shadow-md border border-[#2a2c33] group"
             >
-              <img src={coverUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition" />
+              <img
+                src={coverUrl}
+                alt=""
+                className="w-full h-full object-cover group-hover:scale-105 transition"
+              />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
                 <Maximize2 className="w-5 h-5 text-white" />
               </div>
             </div>
-            
+
             <div className="flex flex-col min-w-0 pr-4">
-              <h4 className="text-sm md:text-base font-bold text-white truncate">{book.title}</h4>
-              <p className="text-xs text-slate-400 truncate mt-0.5">{currentTrack?.name || book.author}</p>
-              
+              <h4 className="text-sm md:text-base font-bold text-white truncate">
+                {book.title}
+              </h4>
+              <p className="text-xs text-slate-400 truncate mt-0.5">
+                {currentTrack?.name || book.author}
+              </p>
+
               <div className="flex items-center gap-3 mt-1.5">
-                <span className="text-[10px] md:text-xs text-[#f69931] font-mono">{formatTime(currentTime)} / {formatTime(duration)}</span>
-                
+                <span className="text-[10px] md:text-xs text-[#f69931] font-mono">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </span>
+
                 {book.infoHash && (
                   <span className="hidden md:flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-sm">
                     <Radio className="w-3 h-3" /> SWARM
@@ -292,10 +663,13 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
 
           {/* Core Playback Controls (Center) */}
           <div className="flex items-center justify-center gap-4 md:gap-8 flex-none">
-            <button onClick={() => skip(-15)} className="text-slate-400 hover:text-white transition cursor-pointer">
+            <button
+              onClick={() => skip(-15)}
+              className="text-slate-400 hover:text-white transition cursor-pointer"
+            >
               <RotateCcw className="w-6 h-6 md:w-7 md:h-7" />
             </button>
-            
+
             <button
               onClick={togglePlayPause}
               className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-[#f69931] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition cursor-pointer"
@@ -308,8 +682,11 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
                 <Play className="w-6 h-6 md:w-8 md:h-8 fill-current ml-1" />
               )}
             </button>
-            
-            <button onClick={() => skip(30)} className="text-slate-400 hover:text-white transition cursor-pointer">
+
+            <button
+              onClick={() => skip(30)}
+              className="text-slate-400 hover:text-white transition cursor-pointer"
+            >
               <RotateCw className="w-6 h-6 md:w-7 md:h-7" />
             </button>
           </div>
@@ -317,35 +694,54 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
           {/* Secondary Actions (Right) */}
           <div className="flex-1 flex items-center justify-end gap-3 sm:gap-4 h-full">
             {/* Speed Toggle */}
-            <button onClick={() => cycleSpeed(1)} className="text-xs font-bold text-[#f69931] w-12 h-8 flex items-center justify-center bg-[#f69931]/10 rounded-sm hover:bg-[#f69931]/20 transition cursor-pointer">
+            <button
+              onClick={() => cycleSpeed(1)}
+              className="text-xs font-bold text-[#f69931] w-12 h-8 flex items-center justify-center bg-[#f69931]/10 rounded-sm hover:bg-[#f69931]/20 transition cursor-pointer"
+            >
               {speeds[speedIdx]}x
             </button>
-            
+
             {/* Chapters Toggle */}
-            <button onClick={() => setShowDrawer(!showDrawer)} className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-sm transition cursor-pointer ${showDrawer ? 'bg-[#f69931] text-black' : 'bg-[#1e2025] text-slate-300 hover:text-white'}`}>
+            <button
+              onClick={() => setShowDrawer(!showDrawer)}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-sm transition cursor-pointer ${showDrawer ? "bg-[#f69931] text-black" : "bg-[#1e2025] text-slate-300 hover:text-white"}`}
+            >
               <ChevronUp className="w-4 h-4" />
               <span className="text-xs font-bold">Chapters</span>
             </button>
 
             {/* Bookmarks */}
-            <button onClick={onOpenBookmarks} className="hidden sm:block p-2 text-slate-400 hover:text-white transition cursor-pointer">
+            <button
+              onClick={onOpenBookmarks}
+              className="hidden sm:block p-2 text-slate-400 hover:text-white transition cursor-pointer"
+            >
               <Bookmark className="w-5 h-5" />
             </button>
-            
+
             {/* Sleep Timer */}
-            <button onClick={onOpenTimer} className="relative p-2 text-slate-400 hover:text-white transition cursor-pointer">
+            <button
+              onClick={onOpenTimer}
+              className="relative p-2 text-slate-400 hover:text-white transition cursor-pointer"
+            >
               <Moon className="w-5 h-5" />
               {sleepMinutes !== null && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#f69931] text-[9px] font-bold text-black border border-[#0f1013]">
-                  {sleepMinutes === 999 ? 'C' : sleepMinutes}
+                  {sleepMinutes === 999 ? "C" : sleepMinutes}
                 </span>
               )}
             </button>
-            
+
             {/* Volume Control (Desktop only) */}
             <div className="hidden lg:flex items-center gap-2 pl-4 border-l border-[#2a2c33]">
-              <button onClick={toggleMute} className="text-slate-400 hover:text-white transition cursor-pointer">
-                {isMuted || volume === 0 ? <VolumeX className="w-5 h-5 text-red-400" /> : <Volume2 className="w-5 h-5" />}
+              <button
+                onClick={toggleMute}
+                className="text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="w-5 h-5 text-red-400" />
+                ) : (
+                  <Volume2 className="w-5 h-5" />
+                )}
               </button>
               <input
                 type="range"
@@ -357,9 +753,12 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
                 className="w-20 accent-[#f69931] bg-[#1e2025] h-1.5 rounded-full appearance-none cursor-pointer"
               />
             </div>
-            
+
             {/* Close Player */}
-            <button onClick={onClose} className="p-2 text-slate-500 hover:text-red-400 transition ml-2 cursor-pointer">
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-500 hover:text-red-400 transition ml-2 cursor-pointer"
+            >
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -368,4 +767,3 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
     </>
   );
 };
-

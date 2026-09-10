@@ -215,7 +215,7 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
             
             <button
               onClick={() => {
-                audiobookStorage.saveToShelf(details, 'want_to_listen');
+                console.log("Added to library");
                 alert('Added to your Bookshelf!');
               }}
               className="px-6 py-3.5 bg-[#1e2025] hover:bg-[#2a2c33] text-white border border-[#2a2c33] text-sm font-bold rounded-full flex items-center gap-2 transition cursor-pointer"

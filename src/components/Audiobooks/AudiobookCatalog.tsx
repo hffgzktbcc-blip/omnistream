@@ -267,7 +267,7 @@ function renderBookCard(book, savedIds, setSavedIds, onSelectBook, activeGenre, 
           loading="lazy"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
-            (e.target).src =
+            (e.target as HTMLImageElement).src =
               'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
           }}
         />
