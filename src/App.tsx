@@ -212,7 +212,6 @@ const AppContent: React.FC = () => {
     selectedAnime,
     selectedComic,
     selectedAudiobook,
-    showTorrentModal,
     showCommandPalette,
     showUrlModal,
     showAndroidTVModal
@@ -781,16 +780,8 @@ const AppContent: React.FC = () => {
           item={selectedMedia}
           onClose={() => setSelectedMedia(null)}
           onPlayMedia={handlePlayMedia}
-          onAddToArr={(media) => setArrModalMedia(media)}
         />
       )}
-
-      {/* 1-Click Add to Sonarr / Radarr Modal */}
-      <AddArrModal
-        isOpen={!!arrModalMedia}
-        onClose={() => setArrModalMedia(null)}
-        media={arrModalMedia}
-      />
 
       {/* Flagship Unified Cinema Video Player (Anime, Movies & TV Shows) */}
       {activePlayerSession && (
@@ -800,10 +791,6 @@ const AppContent: React.FC = () => {
           onUpdateSession={(updates) =>
             setActivePlayerSession((prev) => (prev ? { ...prev, ...updates } : null))
           }
-          onOpenTorrent={(title) => {
-            setSearchQuery(title);
-            setShowTorrentModal(true);
-          }}
         />
       )}
 

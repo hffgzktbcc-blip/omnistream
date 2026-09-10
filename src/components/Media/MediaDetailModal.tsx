@@ -7,21 +7,12 @@ interface MediaDetailModalProps {
   item: MediaItem | null;
   onClose: () => void;
   onPlayMedia: (item: MediaItem, season?: number, episode?: number) => void;
-  onAddToArr?: (media: {
-    title: string;
-    tmdbId?: number | string;
-    type: 'movie' | 'tv' | 'anime';
-    posterUrl?: string;
-    year?: number | string;
-    overview?: string;
-  }) => void;
 }
 
 export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
   item,
   onClose,
-  onPlayMedia,
-  onAddToArr
+  onPlayMedia
 }) => {
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
 
@@ -172,26 +163,6 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
                   <Play className="w-5 h-5 fill-current text-white" />
                   <span>{isMovie ? 'Stream Full Movie' : `Stream Season ${selectedSeason} Ep 1`}</span>
                 </button>
-
-                {onAddToArr && (
-                  <button
-                    onClick={() =>
-                      onAddToArr({
-                        title,
-                        tmdbId: item.id,
-                        type: isMovie ? 'movie' : 'tv',
-                        posterUrl,
-                        year: releaseYear,
-                        overview: item.overview
-                      })
-                    }
-                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
-                    title={`Add to ${isMovie ? 'Radarr' : 'Sonarr'}`}
-                  >
-                    <Download className="w-4 h-4 text-cyan-400" />
-                    <span>{isMovie ? 'Add to Radarr' : 'Add to Sonarr'}</span>
-                  </button>
-                )}
               </div>
 
               {/* Genres */}
