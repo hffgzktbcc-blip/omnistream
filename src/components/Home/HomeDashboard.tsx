@@ -31,7 +31,7 @@ import {
 
 interface HomeDashboardProps {
   onNavigateTab: (
-    tab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr' | 'audiobooks'
+    tab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'library' | 'audiobooks'
   ) => void;
   onSelectComic: (comic: Comic) => void;
   onSelectAnime: (anime: Anime) => void;

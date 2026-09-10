@@ -23,19 +23,15 @@ import { MediaDetailModal } from './components/Media/MediaDetailModal';
 import { UnifiedVideoPlayer, UnifiedPlayerSession } from './components/Common/UnifiedVideoPlayer';
 import { SportsCatalog } from './components/Sports/SportsCatalog';
 import { SportsPlayerModal } from './components/Sports/SportsPlayerModal';
-import { RSSPuller } from './components/RSS/RSSPuller';
 import { MiniPlayer } from './components/Common/MiniPlayer';
 import { CommandPalette } from './components/Common/CommandPalette';
 import { ReadingStatsModal } from './components/Library/ReadingStatsModal';
 import { GlobalDropzone } from './components/Common/GlobalDropzone';
 import { HomeDashboard } from './components/Home/HomeDashboard';
 import { offlineStorage } from './services/offlineStorage';
-import { ExtensionManagerModal } from './components/Extensions/ExtensionManagerModal';
 import { AndroidTVModal } from './components/Common/AndroidTVModal';
 import { TVRemoteHelper } from './components/Common/TVRemoteHelper';
 import { MobileBottomNav } from './components/Common/MobileBottomNav';
-import { ArrHub } from './components/Arr/ArrHub';
-import { AddArrModal } from './components/Arr/AddArrModal';
 import { tvNavigation } from './services/tvNavigation';
 import { AudiobookCatalog } from './components/Audiobooks/AudiobookCatalog';
 import { AudiobookDetailModal } from './components/Audiobooks/AudiobookDetailModal';
@@ -43,15 +39,13 @@ import { AudioPlayerBar } from './components/Audiobooks/AudioPlayerBar';
 import { JacketCoverModal } from './components/Audiobooks/JacketCoverModal';
 import { AudiobookTimerModal } from './components/Audiobooks/AudiobookTimerModal';
 import { AudiobookBookmarksModal } from './components/Audiobooks/AudiobookBookmarksModal';
-import { TorrentStreamModal } from './components/Torrents/TorrentStreamModal';
 import { Audiobook, AudioTrack, AudiobookListeningProgress } from './types/audiobook';
 import { Loader2, X } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr' | 'audiobooks'
+    'home' | 'browse' | 'anime' | 'media' | 'sports' | 'library' | 'audiobooks'
   >('home');
-  const [arrModalMedia, setArrModalMedia] = useState<any | null>(null);
 
   // Audiobooks State (AudioBay & Shelf)
   const [selectedAudiobook, setSelectedAudiobook] = useState<Audiobook | null>(null);
@@ -100,9 +94,7 @@ const AppContent: React.FC = () => {
   const [showUrlModal, setShowUrlModal] = useState<boolean>(false);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
-  const [showExtensionsModal, setShowExtensionsModal] = useState<boolean>(false);
   const [showAndroidTVModal, setShowAndroidTVModal] = useState<boolean>(false);
-  const [showTorrentModal, setShowTorrentModal] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState<boolean>(false);
   const [loadingTitle, setLoadingTitle] = useState<string>('Loading...');
 
@@ -191,10 +183,6 @@ const AppContent: React.FC = () => {
         return;
       }
       // Priority 5: Secondary Modals
-      if (showTorrentModal) {
-        setShowTorrentModal(false);
-        return;
-      }
       if (showCommandPalette) {
         setShowCommandPalette(false);
         return;
@@ -609,7 +597,6 @@ const AppContent: React.FC = () => {
         onOpenStats={() => setShowStatsModal(true)}
         onOpenCommandPalette={() => setShowCommandPalette(true)}
         onOpenAndroidTV={() => setShowAndroidTVModal(true)}
-        onOpenTorrentStream={() => setShowTorrentModal(true)}
         onSelectComic={(c) => setSelectedComic(c)}
         onSelectAnime={(a) => setSelectedAnime(a)}
         onSelectMedia={(m) => setSelectedMedia(m)}
@@ -652,7 +639,6 @@ const AppContent: React.FC = () => {
             onOpenSample={handleLaunchSample}
             onOpenUpload={() => fileInputRef.current?.click()}
             onOpenUrlModal={() => setShowUrlModal(true)}
-            onOpenExtensions={() => setShowExtensionsModal(true)}
           />
         )}
 
@@ -707,10 +693,7 @@ const AppContent: React.FC = () => {
           />
         )}
 
-        {/* 6. LIVE RSS PULLER & FEEDS */}
-        {activeTab === 'rss' && <RSSPuller />}
-
-        {/* 7. USER LIBRARY */}
+        {/* 5. USER LIBRARY */}
         {activeTab === 'library' && (
           <LibraryView
             onOpenComic={(comic, chapterId, pageNum, panelIdx) => {
@@ -725,10 +708,7 @@ const AppContent: React.FC = () => {
           />
         )}
 
-        {/* 8. SONARR & RADARR AUTOMATION */}
-        {activeTab === 'arr' && <ArrHub />}
-
-        {/* 9. AUDIOBOOKS HUB (AudioBay + Shelf) */}
+        {/* 6. AUDIOBOOKS HUB (AudioBay + Shelf) */}
         {activeTab === 'audiobooks' && (
           <AudiobookCatalog
             onSelectBook={(book) => setSelectedAudiobook(book)}
@@ -842,24 +822,10 @@ const AppContent: React.FC = () => {
         onScrapeSuccess={handleScrapeSuccess}
       />
 
-      {/* Mihon / Tachiyomi Extension Hub Modal */}
-      <ExtensionManagerModal
-        isOpen={showExtensionsModal}
-        onClose={() => setShowExtensionsModal(false)}
-        onSourcesChanged={() => loadComics(activeCategory)}
-      />
-
       {/* Android TV & 10-Foot Remote Hub Modal */}
       <AndroidTVModal
         isOpen={showAndroidTVModal}
         onClose={() => setShowAndroidTVModal(false)}
-      />
-
-      {/* WebTorrent Swarm Streamer Modal */}
-      <TorrentStreamModal
-        isOpen={showTorrentModal}
-        onClose={() => setShowTorrentModal(false)}
-        initialQuery={searchQuery}
       />
 
       {/* ──── AUDIOBOOK MODALS & PLAYER (AudioBay + Shelf) ──── */}

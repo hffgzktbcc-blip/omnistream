@@ -145,187 +145,159 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
     : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="bg-[#0f1422] border border-blue-900/50 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col my-auto max-h-[90vh]">
-        {/* Header Bar */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-800/80 bg-slate-900/50">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-500/30">
-              {details.id.startsWith('ia_') || (details as any).source === 'archive'
-                ? 'LibriVox Direct CDN'
-                : details.id.startsWith('yt_') || (details as any).source === 'youtube'
-                ? 'YouTube Audiobook'
-                : 'WebTorrent P2P Swarm'}
-            </span>
-            {numPeers > 0 && (
-              <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
-                <Users className="w-3.5 h-3.5" /> {numPeers} peers
-              </span>
-            )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-sm">
+      <div className="bg-[#0f1013] border border-[#2a2c33] w-full max-w-4xl rounded-sm shadow-2xl overflow-hidden flex flex-col max-h-[95vh] relative animate-in zoom-in-95 duration-200">
+        
+        {/* Edge-to-Edge Hero Header */}
+        <div className="relative h-64 sm:h-80 w-full overflow-hidden shrink-0">
+          <div className="absolute inset-0 bg-[#0f1013]">
+             <img 
+               src={coverUrl} 
+               className="w-full h-full object-cover blur-3xl opacity-40 scale-110" alt="" 
+             />
           </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0f1013] via-[#0f1013]/60 to-transparent"></div>
+          
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            className="absolute top-4 right-4 p-2 rounded-full bg-black/40 text-slate-300 hover:text-white backdrop-blur-md transition cursor-pointer z-20"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
-        </div>
-
-        {/* Content Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
-          {/* Top Banner (Cover + Metadata) */}
-          <div className="flex flex-col sm:flex-row gap-5">
-            <div className="relative group w-36 sm:w-44 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl bg-slate-900 shrink-0 mx-auto sm:mx-0 border border-slate-800">
+          
+          <div className="absolute inset-0 flex items-end p-6 sm:p-8 z-10 gap-6">
+            <div className="relative group w-32 sm:w-48 aspect-square rounded shadow-2xl bg-[#1e2025] shrink-0 border border-white/10">
               <img
                 src={coverUrl}
                 alt={details.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src =
-                    'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
                 }}
               />
               <button
                 onClick={onOpenJacketPicker}
-                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1 text-white text-[11px] font-bold p-2 text-center cursor-pointer"
-                title="Search Apple Books & Open Library for Official Jacket"
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-2 text-white text-xs font-bold p-2 text-center cursor-pointer"
               >
-                <ImageIcon className="w-5 h-5 text-amber-400" />
-                <span>Change Jacket</span>
+                <ImageIcon className="w-6 h-6 text-[#f69931]" />
+                <span>Update Art</span>
               </button>
             </div>
-
-            <div className="flex-1 flex flex-col justify-between">
-              <div>
-                <h2 className="text-lg sm:text-xl font-black text-white leading-tight mb-1">
-                  {details.title}
-                </h2>
-                <p className="text-sm font-semibold text-slate-300 mb-1">
-                  {details.author ? `by ${details.author}` : 'Unknown Author'}
+            
+            <div className="flex-1 flex flex-col justify-end pb-2">
+              <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight mb-2 drop-shadow-lg">
+                {details.title}
+              </h2>
+              <p className="text-lg font-semibold text-slate-300 mb-1 drop-shadow-md">
+                {details.author ? `by ${details.author}` : 'Unknown Author'}
+              </p>
+              {details.narrator && (
+                <p className="text-sm text-[#f69931] font-medium drop-shadow-md">
+                  Narrated by: {details.narrator}
                 </p>
-                {details.narrator && (
-                  <p className="text-xs text-amber-400/90 font-medium mb-3">
-                    Narrated by: {details.narrator}
-                  </p>
-                )}
+              )}
+            </div>
+          </div>
+        </div>
 
-                {/* Metadata Pills */}
-                <div className="flex flex-wrap gap-1.5 mb-4">
-                  <span className="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-400 text-[10px] font-black uppercase border border-amber-500/20">
-                    {details.format || 'DIRECT MP3'}
-                  </span>
-                  {details.bitrate && (
-                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 text-slate-300 text-[10px] font-bold border border-slate-800">
-                      {details.bitrate}
-                    </span>
-                  )}
-                  {details.size && (
-                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 text-slate-300 text-[10px] font-bold border border-slate-800">
-                      {details.size}
-                    </span>
-                  )}
-                  {details.categories && details.categories.length > 0 && (
-                    <span className="px-2 py-0.5 rounded-lg bg-blue-900/40 text-blue-300 text-[10px] font-bold border border-blue-800/40">
-                      {details.categories.join(', ')}
-                    </span>
-                  )}
-                </div>
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8 bg-[#0f1013]">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              disabled={tracks.length === 0}
+              onClick={() => onPlayTrack(details, tracks, 0)}
+              className="px-10 py-3.5 bg-[#f69931] hover:bg-[#e08929] disabled:opacity-50 text-black font-bold text-sm rounded-full flex items-center gap-2 shadow-lg shadow-[#f69931]/20 transition cursor-pointer active:scale-95"
+            >
+              <Play className="w-5 h-5 fill-current" />
+              <span>Start Listening</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                audiobookStorage.saveToShelf(details, 'want_to_listen');
+                alert('Added to your Bookshelf!');
+              }}
+              className="px-6 py-3.5 bg-[#1e2025] hover:bg-[#2a2c33] text-white border border-[#2a2c33] text-sm font-bold rounded-full flex items-center gap-2 transition cursor-pointer"
+            >
+              <Bookmark className="w-5 h-5 text-slate-400" />
+              <span>Add to Library</span>
+            </button>
+            
+            <div className="flex items-center gap-2 ml-auto">
+              {numPeers > 0 && (
+                <span className="text-sm text-emerald-400 font-bold flex items-center gap-1.5 px-3 py-1.5 bg-emerald-400/10 rounded-full border border-emerald-400/20">
+                  <Users className="w-4 h-4" /> {numPeers} peers
+                </span>
+              )}
+              <span className="px-3 py-1.5 rounded-full bg-[#1e2025] text-slate-300 text-xs font-bold border border-[#2a2c33] uppercase">
+                {details.format || 'Unabridged'}
+              </span>
+            </div>
+          </div>
 
-                {/* Synopsis */}
-                <div className="bg-slate-900/60 rounded-2xl p-3 border border-slate-800/80 max-h-28 overflow-y-auto scrollbar-none">
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {loadingMetadata ? (
-                      <span className="flex items-center gap-1.5 text-slate-400">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" /> Resolving audio stream...
-                      </span>
-                    ) : (
-                      details.description || 'No synopsis provided for this release.'
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-800/60">
-                <button
-                  disabled={tracks.length === 0}
-                  onClick={() => onPlayTrack(details, tracks, 0)}
-                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-amber-500/20 transition cursor-pointer active:scale-95"
-                >
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>Start Listening Now</span>
-                </button>
-
-                <button
-                  onClick={onOpenJacketPicker}
-                  className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
-                >
-                  <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Jacket Art</span>
-                </button>
-
-                <button
-                  onClick={onOpenBookmarks}
-                  className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
-                >
-                  <Bookmark className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Bookmarks</span>
-                </button>
-              </div>
+          {/* Synopsis */}
+          <div>
+            <h3 className="text-lg font-bold text-white mb-3">Publisher's Summary</h3>
+            <div className="text-sm text-slate-300 leading-relaxed max-w-4xl">
+              {loadingMetadata ? (
+                <span className="flex items-center gap-2 text-slate-400">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#f69931]" /> Resolving audio stream...
+                </span>
+              ) : (
+                <p>{details.description || 'No synopsis provided for this release.'}</p>
+              )}
             </div>
           </div>
 
           {/* Chapters & Audio Tracks Section */}
-          <div className="space-y-3 pt-2">
+          <div className="space-y-4 pt-4 border-t border-[#2a2c33]">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
-                <FileAudio className="w-4 h-4 text-amber-400" />
-                <span>Audio Tracks & Chapters ({tracks.length})</span>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <span>Audio Chapters ({tracks.length})</span>
               </h3>
               {loadingTracks && (
-                <span className="text-xs text-amber-400 flex items-center gap-1.5 font-bold">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Resolving tracks...
+                <span className="text-sm text-[#f69931] flex items-center gap-2 font-bold">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Resolving tracks...
                 </span>
               )}
             </div>
 
             {/* Tracks List */}
-            <div className="bg-slate-900/60 rounded-2xl border border-slate-800/80 divide-y divide-slate-800/50 max-h-56 overflow-y-auto pr-1">
+            <div className="bg-[#1e2025] rounded-sm border border-[#2a2c33] divide-y divide-[#2a2c33] max-h-72 overflow-y-auto">
               {tracks.length === 0 && !loadingTracks && (
-                <div className="p-4 text-center text-slate-500 text-xs">
+                <div className="p-6 text-center text-slate-400 text-sm">
                   Preparing stream tracks... Click "Start Listening" to begin.
                 </div>
               )}
 
               {tracks.map((track, idx) => (
-                <div
-                  key={track.index || idx}
-                  className="p-3 flex items-center justify-between hover:bg-slate-800/60 transition group cursor-pointer"
-                  onClick={() => onPlayTrack(details, tracks, idx)}
-                >
-                  <div className="flex items-center gap-3 min-w-0 pr-4">
-                    <span className="w-6 h-6 rounded-lg bg-slate-800 text-slate-400 group-hover:bg-amber-500 group-hover:text-slate-950 font-mono text-[11px] font-bold flex items-center justify-center shrink-0 transition">
-                      {idx + 1}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-200 group-hover:text-white truncate">
-                      {track.name}
-                    </span>
+                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-[#2a2c33] transition group gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <button
+                      onClick={() => onPlayTrack(details, tracks, idx)}
+                      className="w-10 h-10 rounded-full bg-[#0f1013] border border-[#2a2c33] flex items-center justify-center text-slate-400 group-hover:text-[#f69931] group-hover:border-[#f69931] transition shrink-0 cursor-pointer"
+                    >
+                      <Play className="w-4 h-4 fill-current ml-0.5" />
+                    </button>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white truncate">{track.name}</p>
+                      <p className="text-xs text-slate-500 font-mono mt-0.5">Part {idx + 1}</p>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-[11px] font-mono text-slate-400">
+                  <div className="flex items-center gap-3 shrink-0 ml-14 sm:ml-0">
+                    <span className="text-xs font-mono text-slate-400 bg-[#0f1013] px-2 py-1 rounded-sm border border-[#2a2c33]">
                       {track.sizeFormatted}
                     </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPlayTrack(details, tracks, idx);
-                      }}
-                      className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-slate-950 transition cursor-pointer"
-                      title="Play this track"
+                    <a
+                      href={track.downloadUrl}
+                      download
+                      className="p-2 rounded-full text-slate-400 hover:text-[#f69931] hover:bg-[#0f1013] transition cursor-pointer"
+                      title="Download Track"
                     >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                    </button>
+                      <Download className="w-4 h-4" />
+                    </a>
                   </div>
                 </div>
               ))}

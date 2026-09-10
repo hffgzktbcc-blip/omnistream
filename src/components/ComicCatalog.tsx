@@ -30,7 +30,6 @@ interface ComicCatalogProps {
   onOpenSample: () => void;
   onOpenUpload: () => void;
   onOpenUrlModal: () => void;
-  onOpenExtensions?: () => void;
 }
 
 const CATEGORIES = [
@@ -144,25 +143,15 @@ export const ComicCatalog: React.FC<ComicCatalogProps> = ({
             </h1>
 
             <p className="text-sm md:text-base text-slate-300 leading-relaxed">
-              Powered by modular <strong>Tachiyomi Scraper Extensions</strong>, <strong>Offline Chapter Downloads</strong>, and <strong>Smart Guided Panel View</strong>.
+              Powered by native <strong>MangaDex & Webtoons</strong>, <strong>Offline Chapter Downloads</strong>, and <strong>Smart Guided Panel View</strong>.
             </p>
 
             <div className="pt-2 flex flex-wrap items-center gap-3">
-              {onOpenExtensions && (
-                <button
-                  onClick={onOpenExtensions}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
-                >
-                  <Puzzle className="w-4 h-4" />
-                  <span>Extension Manager</span>
-                </button>
-              )}
-
               <button
                 onClick={onOpenSample}
-                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm shadow-lg border border-slate-700 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
               >
-                <Sparkles className="w-4 h-4 text-blue-400" />
+                <Sparkles className="w-4 h-4 text-white" />
                 <span>Panel View Demo</span>
               </button>
 

@@ -31,9 +31,9 @@ import { MediaItem } from '../types/media';
 import { SportsMatch } from '../types/sports';
 
 interface HeaderProps {
-  activeTab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr' | 'audiobooks';
+  activeTab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'library' | 'audiobooks';
   setActiveTab: (
-    tab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr' | 'audiobooks'
+    tab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'library' | 'audiobooks'
   ) => void;
   onSearch: (query: string) => void;
   searchQuery: string;
@@ -43,7 +43,6 @@ interface HeaderProps {
   onOpenStats: () => void;
   onOpenCommandPalette: () => void;
   onOpenAndroidTV: () => void;
-  onOpenTorrentStream?: () => void;
   onSelectComic?: (comic: Comic) => void;
   onSelectAnime?: (anime: Anime) => void;
   onSelectMedia?: (media: MediaItem) => void;
@@ -84,7 +83,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenStats,
   onOpenCommandPalette,
   onOpenAndroidTV,
-  onOpenTorrentStream,
   onSelectComic,
   onSelectAnime,
   onSelectMedia,
@@ -210,8 +208,6 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Search audiobooks (Dune, Project Hail Mary, Good Omens...)';
       case 'sports':
         return 'Search sports matches (Six Nations Rugby, Premier League, NBA, UFC...)';
-      case 'rss':
-        return 'Search news feeds...';
       default:
         return 'Search movies, anime, manga, sports, audiobooks...';
     }
@@ -585,37 +581,10 @@ export const Header: React.FC<HeaderProps> = ({
             <Trophy className="w-3.5 h-3.5" />
             <span>Sports</span>
           </button>
-
-          {/* Sonarr & Radarr Hub */}
-          <button
-            onClick={() => {
-              setActiveTab('arr');
-              handleClearSearch();
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === 'arr'
-                ? 'bg-gradient-to-r from-sky-500 to-amber-500 text-slate-950 shadow-md shadow-sky-500/30 ring-1 ring-amber-400'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5 fill-current text-amber-400" />
-            <span>Sonarr & Radarr</span>
-          </button>
         </div>
 
         {/* Right Action Tools */}
         <div className="flex items-center gap-1.5 text-slate-300">
-          {onOpenTorrentStream && (
-            <button
-              onClick={onOpenTorrentStream}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-red-300 font-bold text-xs transition-colors cursor-pointer shadow-sm shadow-red-500/10"
-              title="WebTorrent P2P Streamer & Search"
-            >
-              <Zap className="w-3.5 h-3.5 text-red-400" />
-              <span className="hidden lg:inline">Torrent Stream</span>
-            </button>
-          )}
-
           <button
             onClick={onOpenAndroidTV}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/50 text-amber-300 font-bold text-xs transition-colors cursor-pointer shadow-sm shadow-amber-400/10"

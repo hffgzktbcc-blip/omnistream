@@ -16,7 +16,7 @@ import {
 import { tvNavigation } from '../../services/tvNavigation';
 
 interface MobileBottomNavProps {
-  activeTab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'rss' | 'library' | 'arr' | 'audiobooks';
+  activeTab: 'home' | 'browse' | 'anime' | 'media' | 'sports' | 'library' | 'audiobooks';
   setActiveTab: (tab: any) => void;
   onOpenStats?: () => void;
   onOpenAndroidTV?: () => void;
@@ -45,12 +45,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
   const moreItems = [
     { id: 'sports', label: 'Live Sports', icon: Trophy, color: 'text-amber-400' },
-    { id: 'library', label: 'My Library', icon: Bookmark, color: 'text-emerald-400' },
-    { id: 'rss', label: 'News Feeds', icon: Rss, color: 'text-orange-400' },
-    { id: 'arr', label: 'Arr Media Vault', icon: HardDrive, color: 'text-cyan-400' }
+    { id: 'library', label: 'My Library', icon: Bookmark, color: 'text-emerald-400' }
   ];
 
-  const isMoreActive = ['sports', 'library', 'rss', 'arr'].includes(activeTab);
+  const isMoreActive = ['sports', 'library'].includes(activeTab);
 
   return (
     <>

@@ -226,19 +226,99 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
     return `${mins}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  
+function renderBookCard(book, savedIds, setSavedIds, onSelectBook, activeGenre, setBooks) {
+  const isSaved = savedIds.has(book.id);
+  const coverUrl = book.cover
+    ? book.cover.startsWith('http')
+      ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(book.cover)}`
+      : book.cover
+    : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
+
+  const handleToggleShelf = (e) => {
+    e.stopPropagation();
+    if (isSaved) {
+      audiobookStorage.removeFromShelf(book.id);
+      setSavedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(book.id);
+        return next;
+      });
+      if (activeGenre === 'my_bookshelf') {
+        setBooks((prev) => prev.filter((b) => b.id !== book.id));
+      }
+    } else {
+      audiobookStorage.saveToShelf(book, 'want_to_listen');
+      setSavedIds((prev) => new Set(prev).add(book.id));
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-28">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelectBook(book)}
+      className="group flex flex-col transition cursor-pointer w-full"
+    >
+      <div className="relative aspect-square w-full bg-[#1e2025] mb-3 shadow-lg group-hover:shadow-2xl group-hover:shadow-[#f69931]/10 transition-shadow">
+        <img
+          src={coverUrl}
+          alt={book.title}
+          loading="lazy"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={(e) => {
+            (e.target).src =
+              'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
+          }}
+        />
+        
+        {/* Only From tag mockup */}
+        <div className="absolute top-0 left-0 w-full bg-[#f69931] text-black text-[9px] font-black uppercase text-center py-0.5 tracking-widest shadow-md">
+          {book.format === 'M4B' ? 'Premium' : 'Unabridged'}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleToggleShelf}
+          className={`absolute bottom-2 right-2 p-2 rounded-full backdrop-blur-md transition-all z-10 ${
+            isSaved
+              ? 'bg-[#f69931] text-black shadow-md'
+              : 'bg-black/60 text-white hover:bg-black/90'
+          }`}
+        >
+          <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+        </button>
+
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-[#f69931] text-black flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition">
+            <Play className="w-5 h-5 fill-current ml-1" />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col">
+        <h4 className="text-sm font-bold text-white group-hover:text-[#f69931] transition truncate leading-tight mb-1" title={book.title}>
+          {book.title}
+        </h4>
+        <p className="text-xs text-slate-400 truncate mb-1">{book.author}</p>
+        <p className="text-[11px] text-slate-500 font-mono mt-1">{book.size || book.bitrate || 'Length: 12 hrs and 30 mins'}</p>
+      </div>
+    </div>
+  );
+}
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-300 pb-28 bg-[#0f1013] min-h-screen -mx-4 sm:-mx-8 px-4 sm:px-8 pt-4">
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              SHELF AUDIO SUITE
+            <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#f69931] text-black">
+              PREMIUM AUDIO
             </span>
-            <span className="text-xs text-slate-400">WebTorrent P2P • Direct CDN • LibriVox</span>
+            <span className="text-xs text-slate-400">WebTorrent P2P • Direct CDN</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
-            <Headphones className="w-7 h-7 text-amber-400" />
             <span>Audiobooks Hub</span>
           </h1>
         </div>
@@ -249,78 +329,15 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search audiobooks by title, author..."
-            className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-2xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-slate-500 focus:outline-none shadow-inner"
+            placeholder="Search audiobooks, authors..."
+            className="w-full bg-[#1e2025] border border-[#2a2c33] focus:border-[#f69931] rounded-sm py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:outline-none"
           />
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
         </form>
       </div>
 
-      {/* Source Switcher: All, WebTorrent P2P Swarms, Archive/LibriVox, YouTube Audio */}
-      <div className="flex items-center gap-2 border-b border-slate-800/80 pb-3 overflow-x-auto scrollbar-none">
-        <button
-          onClick={() => {
-            setSourceType('all');
-            setSearchQuery('');
-          }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-            sourceType === 'all'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-white'
-          }`}
-        >
-          <Globe className="w-3.5 h-3.5" />
-          <span>All Audiobooks</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setSourceType('webtorrent');
-            setSearchQuery('');
-          }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-            sourceType === 'webtorrent'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-white'
-          }`}
-        >
-          <Radio className="w-3.5 h-3.5" />
-          <span>WebTorrent Swarms (P2P)</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setSourceType('archive');
-            setSearchQuery('');
-          }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-            sourceType === 'archive'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-white'
-          }`}
-        >
-          <Library className="w-3.5 h-3.5" />
-          <span>Classic LibriVox (Direct 0s Stream)</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setSourceType('youtube');
-            setSearchQuery('');
-          }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-            sourceType === 'youtube'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-white'
-          }`}
-        >
-          <Video className="w-3.5 h-3.5" />
-          <span>YouTube Audiobooks</span>
-        </button>
-      </div>
-
       {/* Genre Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-2 border-b border-[#2a2c33]">
         {genres.map((g) => {
           const isActive = activeGenre === g.id;
           return (
@@ -330,10 +347,10 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                 setActiveGenre(g.id);
                 setSearchQuery('');
               }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+              className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition cursor-pointer ${
                 isActive
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80'
+                  ? 'bg-[#f69931] text-black'
+                  : 'bg-transparent text-slate-300 hover:text-white border border-[#2a2c33] hover:border-slate-500'
               }`}
             >
               {g.label}
@@ -342,19 +359,28 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
         })}
       </div>
 
-      {/* Continue Listening Shelf (Shelf Feature) */}
-      {continueList.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-              <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-              <span>Continue Listening</span>
-            </h3>
-            <span className="text-[11px] text-slate-500">{continueList.length} in progress</span>
+      {/* Error State */}
+      {errorMsg && (
+        <div className="p-6 rounded-md bg-[#1e2025] border border-red-900/50 text-center flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center">
+            <Activity className="w-5 h-5" />
           </div>
+          <p className="text-sm text-slate-300 max-w-sm">{errorMsg}</p>
+          <button
+            onClick={() => fetchFeed(currentPage)}
+            className="px-6 py-2 bg-[#f69931] hover:bg-[#e08929] text-black font-bold text-sm rounded-sm transition cursor-pointer"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-            {continueList.slice(0, 3).map((item) => {
+      {/* Continue Listening Shelf */}
+      {continueList.length > 0 && !searchQuery && !activeGenre && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight">Jump Back In</h2>
+          <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-none">
+            {continueList.map((item) => {
               const coverUrl = item.cover
                 ? item.cover.startsWith('http')
                   ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(item.cover)}`
@@ -365,42 +391,33 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                 <div
                   key={item.bookId}
                   onClick={() => onResumeListening(item)}
-                  className="bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800/80 hover:border-amber-500/50 rounded-2xl p-3 flex items-center gap-3.5 group transition cursor-pointer relative shadow-lg"
+                  className="snap-start shrink-0 w-[300px] bg-[#1e2025] border border-[#2a2c33] hover:border-[#f69931] rounded-sm p-4 flex gap-4 group transition cursor-pointer shadow-lg"
                 >
                   <img
                     src={coverUrl}
                     alt=""
-                    className="w-14 h-16 object-cover rounded-xl bg-slate-950 border border-slate-800 shrink-0 shadow"
+                    className="w-20 h-20 object-cover rounded shadow-md shrink-0"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src =
                         'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
                     }}
                   />
-                  <div className="flex-1 min-w-0 pr-4">
-                    <h4 className="text-xs font-bold text-white truncate leading-tight group-hover:text-amber-300 transition">
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <h4 className="text-sm font-bold text-white truncate leading-tight group-hover:text-[#f69931] transition">
                       {item.title}
                     </h4>
-                    <p className="text-[11px] text-slate-400 truncate mb-2">{item.author}</p>
-                    {/* Progress bar */}
-                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden flex">
+                    <p className="text-xs text-slate-400 truncate mt-1 mb-3">{item.author}</p>
+                    
+                    <div className="w-full bg-[#0f1013] h-1.5 rounded-full overflow-hidden flex">
                       <div
-                        className="bg-amber-500 h-full rounded-full transition-all"
+                        className="bg-[#f69931] h-full rounded-full transition-all"
                         style={{ width: `${item.percent}%` }}
                       />
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1 font-mono">
-                      <span>{formatTime(item.currentTime)}</span>
-                      <span className="text-amber-400 font-bold">{item.percent}%</span>
+                      <span>{formatTime(item.currentTime)} left</span>
                     </div>
                   </div>
-
-                  <button
-                    onClick={(e) => handleClearProgress(item.bookId, e)}
-                    className="absolute top-2 right-2 p-1 text-slate-500 hover:text-rose-400 rounded-lg transition opacity-0 group-hover:opacity-100"
-                    title="Remove from history"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               );
             })}
@@ -408,200 +425,129 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
         </section>
       )}
 
-      {/* Catalog Section */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>
-              {searchQuery
-                ? `Search results for "${searchQuery}"`
-                : sourceType === 'webtorrent'
-                ? 'WebTorrent P2P Audio Swarms'
-                : sourceType === 'archive'
-                ? 'Classic LibriVox Audiobooks'
-                : sourceType === 'youtube'
-                ? 'YouTube Full-Length Audiobooks'
-                : activeGenre
-                ? `${activeGenre.toUpperCase()} Releases`
-                : 'Trending Audiobooks'}
-            </span>
-          </h3>
-          <span className="text-xs text-slate-500 font-mono">{books.length} audiobooks</span>
-        </div>
-
-        {/* Error State */}
-        {errorMsg && (
-          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-center flex flex-col items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <Headphones className="w-5 h-5" />
-            </div>
-            <p className="text-xs text-slate-300 max-w-sm">{errorMsg}</p>
-            <button
-              onClick={() => fetchFeed(currentPage)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition cursor-pointer"
-            >
-              Retry Connection
-            </button>
+      {/* Featured Hero (Only if not searching and have books) */}
+      {!loading && !searchQuery && books.length > 0 && !activeGenre && (
+        <section className="relative w-full h-[350px] md:h-[400px] rounded-sm overflow-hidden mb-8 shadow-2xl group cursor-pointer" onClick={() => onSelectBook(books[0])}>
+          <div className="absolute inset-0 bg-[#0f1013]">
+             <img 
+               src={books[0].cover ? (books[0].cover.startsWith('http') ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(books[0].cover)}` : books[0].cover) : ''} 
+               className="w-full h-full object-cover blur-3xl opacity-40 scale-110" alt="" 
+             />
           </div>
-        )}
-
-        {/* Loading Skeletons */}
-        {loading && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div
-                key={i}
-                className="bg-slate-900/60 rounded-2xl p-2.5 flex flex-col gap-2 animate-pulse border border-slate-800/50"
-              >
-                <div className="aspect-[2/3] w-full rounded-xl bg-slate-800" />
-                <div className="h-3 w-3/4 bg-slate-800 rounded" />
-                <div className="h-2.5 w-1/2 bg-slate-800 rounded" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Books Grid */}
-        {!loading && !errorMsg && books.length === 0 && (
-          <div className="py-16 text-center text-slate-500 text-xs">
-            No audiobooks found matching this criteria.
-          </div>
-        )}
-
-        {!loading && !errorMsg && books.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4">
-            {books.map((book) => {
-              const coverUrl = book.cover
-                ? book.cover.startsWith('http')
-                  ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(book.cover)}`
-                  : book.cover
-                : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
-
-              const isSaved = savedIds.has(book.id);
-
-              const handleToggleShelf = (e: React.MouseEvent) => {
-                e.stopPropagation();
-                if (isSaved) {
-                  audiobookStorage.removeFromShelf(book.id);
-                  setSavedIds((prev) => {
-                    const next = new Set(prev);
-                    next.delete(book.id);
-                    return next;
-                  });
-                  if (activeGenre === 'my_bookshelf') {
-                    setBooks((prev) => prev.filter((b) => b.id !== book.id));
-                  }
-                } else {
-                  audiobookStorage.saveToShelf(book, 'want_to_listen');
-                  setSavedIds((prev) => new Set(prev).add(book.id));
-                }
-              };
-
-              return (
-                <div
-                  key={book.id}
-                  role="button"
-                  tabIndex={0}
-                  data-focusable="true"
-                  aria-label={book.title}
-                  onClick={() => onSelectBook(book)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
-                      e.preventDefault();
-                      onSelectBook(book);
-                    }
-                  }}
-                  className="group bg-slate-900/70 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/50 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 rounded-2xl p-2.5 flex flex-col transition cursor-pointer shadow-md hover:shadow-xl hover:shadow-amber-500/5 hover:scale-105"
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0f1013] via-[#0f1013]/60 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0f1013] via-[#0f1013]/80 to-transparent"></div>
+          
+          <div className="absolute inset-0 p-8 flex items-center gap-8 z-10">
+            <img 
+              src={books[0].cover ? (books[0].cover.startsWith('http') ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(books[0].cover)}` : books[0].cover) : ''} 
+              className="w-40 h-40 sm:w-56 sm:h-56 object-cover rounded shadow-2xl group-hover:scale-105 transition duration-500" 
+              alt=""
+            />
+            <div className="flex flex-col gap-3 max-w-xl">
+              <span className="text-[#f69931] text-xs font-bold tracking-widest uppercase">Featured Title</span>
+              <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight line-clamp-2">{books[0].title}</h2>
+              <p className="text-lg text-slate-300">{books[0].author}</p>
+              
+              <div className="mt-4 flex items-center gap-4">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onSelectBook(books[0]); }}
+                  className="px-8 py-3 bg-[#f69931] hover:bg-[#e08929] text-black font-bold text-sm rounded-sm transition flex items-center gap-2"
                 >
-                  <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-slate-950 mb-2.5 shadow">
-                    <img
-                      src={coverUrl}
-                      alt={book.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
-                      }}
-                    />
-                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur text-[9px] font-black uppercase text-amber-400 border border-white/10 flex items-center gap-1">
-                      {book.format || (book.source === 'archive' ? 'LIBRI' : book.source === 'youtube' ? 'YT' : book.infoHash ? 'SWARM' : 'AUDIO')}
-                      {book.seeders !== undefined && (
-                        <span className="text-emerald-400 font-bold">🟢 {book.seeders}</span>
-                      )}
+                  <Play className="w-5 h-5 fill-current" /> Play Sample
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="bg-[#1e2025] rounded-sm p-3 flex flex-col gap-3 animate-pulse border border-[#2a2c33]">
+              <div className="aspect-square w-full rounded bg-[#2a2c33]" />
+              <div className="h-4 w-3/4 bg-[#2a2c33] rounded" />
+              <div className="h-3 w-1/2 bg-[#2a2c33] rounded" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Main Catalog View */}
+      {!loading && !errorMsg && books.length > 0 && (
+        <section className="space-y-8">
+          
+          {/* If searching or a specific genre is selected, just show grid */}
+          {(searchQuery || activeGenre) ? (
+            <div>
+              <h2 className="text-xl font-bold text-white tracking-tight mb-6 flex items-center gap-2">
+                <span>{searchQuery ? `Results for "${searchQuery}"` : `${activeGenre.toUpperCase()}`}</span>
+                <span className="text-sm font-normal text-slate-400">({books.length})</span>
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+                {books.map((book) => renderBookCard(book, savedIds, setSavedIds, onSelectBook, activeGenre, setBooks))}
+              </div>
+            </div>
+          ) : (
+            // If home page, chunk into simulated categories
+            <>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight mb-4 flex justify-between items-end">
+                  <span>Trending Now</span>
+                  <span className="text-sm font-normal text-[#f69931] hover:underline cursor-pointer">See all</span>
+                </h2>
+                <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-4 snap-x snap-mandatory scrollbar-none">
+                  {books.slice(1, 8).map((book) => (
+                    <div key={book.id} className="snap-start shrink-0 w-[160px] sm:w-[180px]">
+                       {renderBookCard(book, savedIds, setSavedIds, onSelectBook, activeGenre, setBooks)}
                     </div>
+                  ))}
+                </div>
+              </div>
 
-                    {/* Shelf Bookmark Button */}
-                    <button
-                      type="button"
-                      tabIndex={0}
-                      onClick={handleToggleShelf}
-                      title={isSaved ? 'In your Bookshelf (Click to remove)' : 'Save to Bookshelf'}
-                      className={`absolute top-1.5 right-1.5 p-1.5 rounded-lg backdrop-blur transition-all z-10 ${
-                        isSaved
-                          ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30 font-bold'
-                          : 'bg-black/60 text-slate-300 hover:text-white hover:bg-black/90'
-                      }`}
-                    >
-                      <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
-                    </button>
-
-                    {/* Hover Play Glow Button */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                      <div className="w-10 h-10 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/50">
-                        <Play className="w-4 h-4 fill-current ml-0.5" />
+              {books.length > 8 && (
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight mb-4 flex justify-between items-end">
+                    <span>New Releases</span>
+                    <span className="text-sm font-normal text-[#f69931] hover:underline cursor-pointer">See all</span>
+                  </h2>
+                  <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-4 snap-x snap-mandatory scrollbar-none">
+                    {books.slice(8, 15).map((book) => (
+                      <div key={book.id} className="snap-start shrink-0 w-[160px] sm:w-[180px]">
+                         {renderBookCard(book, savedIds, setSavedIds, onSelectBook, activeGenre, setBooks)}
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <h4
-                        className="text-xs font-bold text-white group-hover:text-amber-300 transition truncate leading-tight"
-                        title={book.title}
-                      >
-                        {book.title}
-                      </h4>
-                      <p className="text-[11px] text-slate-400 truncate mb-1">{book.author}</p>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-800/60 font-mono">
-                      <span>{book.size || book.duration || book.bitrate || 'Unabridged'}</span>
-                      <span className="text-amber-400 font-bold flex items-center gap-1">
-                        <Zap className="w-3 h-3" /> Stream
-                      </span>
-                    </div>
+                    ))}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </section>
+      )}
 
-        {/* Pagination Bar */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 pt-6 pb-20">
-            <button
-              disabled={currentPage <= 1 || loading}
-              onClick={() => fetchFeed(currentPage - 1)}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 disabled:opacity-40 text-slate-300 hover:text-white transition cursor-pointer"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <span className="text-xs font-mono text-slate-400 font-bold">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              disabled={currentPage >= totalPages || loading}
-              onClick={() => fetchFeed(currentPage + 1)}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 disabled:opacity-40 text-slate-300 hover:text-white transition cursor-pointer"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-        )}
-      </section>
+      {/* Pagination Bar */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 pt-10 pb-10">
+          <button
+            disabled={currentPage <= 1}
+            onClick={() => fetchFeed(currentPage - 1)}
+            className="p-3 rounded-full bg-[#1e2025] border border-[#2a2c33] disabled:opacity-40 text-slate-300 hover:bg-[#2a2c33] transition cursor-pointer"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span className="text-sm font-semibold text-white">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            disabled={currentPage >= totalPages}
+            onClick={() => fetchFeed(currentPage + 1)}
+            className="p-3 rounded-full bg-[#1e2025] border border-[#2a2c33] disabled:opacity-40 text-slate-300 hover:bg-[#2a2c33] transition cursor-pointer"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
