@@ -1,0 +1,467 @@
+{
+  "updatedAt": "2026-09-10T12:41:11.660Z",
+  "spotlights": [
+    {
+      "id": "media_1185806",
+      "type": "media",
+      "title": "PAW Patrol: The Dino Movie",
+      "subtitle": "Movie • 4K Ultra HD • Trending Worldwide",
+      "tag": "#1 TRENDING",
+      "tagColor": "bg-rose-600 text-white",
+      "ambientGlow": "rgba(225, 29, 72, 0.25)",
+      "description": "The Paw Patrol lands on a mysterious dinosaur island after a storm, where they meet Rex, a stranded pup. When Humdinger's reckless mining triggers a volcano, the team faces their biggest rescue mission yet to save the island.",
+      "cover": "https://image.tmdb.org/t/p/original/6TSxLmwT7j1ugtKi8NyMmdzWAGj.jpg",
+      "actionText": "Watch in 4K",
+      "actionTab": "media",
+      "rawItem": {
+        "id": 1185806,
+        "title": "PAW Patrol: The Dino Movie",
+        "overview": "The Paw Patrol lands on a mysterious dinosaur island after a storm, where they meet Rex, a stranded pup. When Humdinger's reckless mining triggers a volcano, the team faces their biggest rescue mission yet to save the island.",
+        "poster_path": "https://image.tmdb.org/t/p/w500/qnin56Syy5rbG7KCaxWY7SPuy6p.jpg",
+        "backdrop_path": "https://image.tmdb.org/t/p/original/6TSxLmwT7j1ugtKi8NyMmdzWAGj.jpg",
+        "media_type": "movie",
+        "vote_average": 7,
+        "release_date": "2026-07-23"
+      }
+    },
+    {
+      "id": "anime_7442",
+      "type": "anime",
+      "title": "Attack on Titan",
+      "subtitle": "Anime Simulcast • Sub & Dub • Top Rated",
+      "tag": "ANIME HIT",
+      "tagColor": "bg-purple-600 text-white",
+      "ambientGlow": "rgba(147, 51, 234, 0.25)",
+      "description": "Centuries ago, mankind was slaughtered to near extinction by monstrous humanoid creatures called titans, forcing humans to hide in fear behind enormous concentric walls. What makes these giants truly terrifying is that their taste for human flesh is not born out of hunger but what appears to be out of pleasure. To ensure their survival, the remnants of humanity began living within defensive barriers, resulting in one hundred years without a single titan encounter. However, that fragile calm is soon shattered when a colossal titan manages to breach the supposedly impregnable outer wall, reigniting the fight for survival against the man-eating abominations.\n\nAfter witnessing a horrific personal loss at the hands of the invading creatures, Eren Yeager dedicates his life to their eradication by enlisting into the Survey Corps, an elite military unit that combats the merciless humanoids outside the protection of the walls. Based on Hajime Isayama's award-winning manga, Shingeki no Kyojin follows Eren, along with his adopted sister Mikasa Ackerman and his childhood friend Armin Arlert, as they join the brutal war against the titans and race to discover a way of defeating them before the last walls are breached.\n\n(Source: MAL Rewrite)",
+      "cover": "https://media.kitsu.app/anime/cover_images/7442/large.jpg",
+      "actionText": "Watch Episode 1",
+      "actionTab": "anime",
+      "rawItem": {
+        "id": "7442",
+        "title": "Attack on Titan",
+        "description": "Centuries ago, mankind was slaughtered to near extinction by monstrous humanoid creatures called titans, forcing humans to hide in fear behind enormous concentric walls. What makes these giants truly terrifying is that their taste for human flesh is not born out of hunger but what appears to be out of pleasure. To ensure their survival, the remnants of humanity began living within defensive barriers, resulting in one hundred years without a single titan encounter. However, that fragile calm is soon shattered when a colossal titan manages to breach the supposedly impregnable outer wall, reigniting the fight for survival against the man-eating abominations.\n\nAfter witnessing a horrific personal loss at the hands of the invading creatures, Eren Yeager dedicates his life to their eradication by enlisting into the Survey Corps, an elite military unit that combats the merciless humanoids outside the protection of the walls. Based on Hajime Isayama's award-winning manga, Shingeki no Kyojin follows Eren, along with his adopted sister Mikasa Ackerman and his childhood friend Armin Arlert, as they join the brutal war against the titans and race to discover a way of defeating them before the last walls are breached.\n\n(Source: MAL Rewrite)",
+        "coverImage": "https://media.kitsu.app/anime/poster_images/7442/large.jpg",
+        "bannerImage": "https://media.kitsu.app/anime/cover_images/7442/large.jpg",
+        "averageScore": 84,
+        "status": "FINISHED",
+        "year": "2013",
+        "genres": [
+          "Action",
+          "Fantasy"
+        ]
+      }
+    },
+    {
+      "id": "media_1440098",
+      "type": "media",
+      "title": "Drawn Together",
+      "subtitle": "Movie • 4K HDR • Critic Favorite",
+      "tag": "BLOCKBUSTER",
+      "tagColor": "bg-amber-600 text-white",
+      "ambientGlow": "rgba(217, 119, 6, 0.25)",
+      "description": "Marfil Cortés, a daughter of a wealthy Spanish businessman, is kidnapped and released, leading her father to hire Sebastian Moore as a bodyguard. Despite initial clashes, they form an irremediable attraction, navigating a world where no one is who they say they are.",
+      "cover": "https://image.tmdb.org/t/p/original/i65y7cMae36K0giN0GRaMjAHUru.jpg",
+      "actionText": "Stream in 4K",
+      "actionTab": "media",
+      "rawItem": {
+        "id": 1440098,
+        "title": "Drawn Together",
+        "overview": "Marfil Cortés, a daughter of a wealthy Spanish businessman, is kidnapped and released, leading her father to hire Sebastian Moore as a bodyguard. Despite initial clashes, they form an irremediable attraction, navigating a world where no one is who they say they are.",
+        "poster_path": "https://image.tmdb.org/t/p/w500/6rpvddXbaQPOi0fB2HKWbZ3uUSg.jpg",
+        "backdrop_path": "https://image.tmdb.org/t/p/original/i65y7cMae36K0giN0GRaMjAHUru.jpg",
+        "media_type": "movie",
+        "vote_average": 6.944,
+        "release_date": "2026-09-09"
+      }
+    },
+    {
+      "id": "supersport_live",
+      "type": "sports",
+      "title": "SuperSport World of Champions",
+      "subtitle": "Live Sports • Rugby, Premier League, NBA & F1",
+      "tag": "LIVE SATELLITE",
+      "tagColor": "bg-amber-400 text-slate-950 font-black",
+      "ambientGlow": "rgba(245, 158, 11, 0.25)",
+      "description": "Stream live Premier League, Springboks Test Rugby, Champions League, Formula 1, and UFC match broadcasts with zero latency.",
+      "cover": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1200&auto=format&fit=crop",
+      "actionText": "Open Match Center",
+      "actionTab": "sports"
+    }
+  ],
+  "trendingMedia": [
+    {
+      "id": 1185806,
+      "title": "PAW Patrol: The Dino Movie",
+      "overview": "The Paw Patrol lands on a mysterious dinosaur island after a storm, where they meet Rex, a stranded pup. When Humdinger's reckless mining triggers a volcano, the team faces their biggest rescue mission yet to save the island.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/qnin56Syy5rbG7KCaxWY7SPuy6p.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/6TSxLmwT7j1ugtKi8NyMmdzWAGj.jpg",
+      "media_type": "movie",
+      "vote_average": 7,
+      "release_date": "2026-07-23"
+    },
+    {
+      "id": 1440098,
+      "title": "Drawn Together",
+      "overview": "Marfil Cortés, a daughter of a wealthy Spanish businessman, is kidnapped and released, leading her father to hire Sebastian Moore as a bodyguard. Despite initial clashes, they form an irremediable attraction, navigating a world where no one is who they say they are.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/6rpvddXbaQPOi0fB2HKWbZ3uUSg.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/i65y7cMae36K0giN0GRaMjAHUru.jpg",
+      "media_type": "movie",
+      "vote_average": 6.944,
+      "release_date": "2026-09-09"
+    },
+    {
+      "id": 108978,
+      "title": "Reacher",
+      "overview": "Jack Reacher, a veteran military police investigator, has just recently entered civilian life. Reacher is a drifter, carrying no phone and the barest of essentials as he travels the country and explores the nation he once served.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/f1VCQIG2iCyOookdgOzwtUpwWC0.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/pF0qkRsrHkdYadPWY9AMeFZfcwk.jpg",
+      "media_type": "tv",
+      "vote_average": 8.11,
+      "release_date": "2022-02-03"
+    },
+    {
+      "id": 1108427,
+      "title": "Moana",
+      "overview": "Teenage Moana answers the Ocean's call and, for the first time, voyages beyond the reef of her island of Motunui with infamous demigod Maui on an unforgettable journey to restore prosperity to her people.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/gaet1xQ2nxrG0V1Ep9T20ZMNEIC.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/c6BPbkO5Npt1OdwttAxCFo06wtH.jpg",
+      "media_type": "movie",
+      "vote_average": 6.9,
+      "release_date": "2026-07-08"
+    },
+    {
+      "id": 1522689,
+      "title": "Why Did I Get Married Again?",
+      "overview": "The couples reunite for the destination wedding of Marcus and Angela's daughter, bringing drama old and new as they ask, \"Why did we get married again?\"",
+      "poster_path": "https://image.tmdb.org/t/p/w500/bgZN3gniRohjfKdsw1Q7EGBAyqz.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/lJYniNRM2i9wXnfWVHOB4PxygFZ.jpg",
+      "media_type": "movie",
+      "vote_average": 7.1,
+      "release_date": "2026-09-08"
+    },
+    {
+      "id": 258230,
+      "title": "Last Seen",
+      "overview": "When emergency dispatcher Ian Ridley receives a frantic call from a teenager he believes could be his long-missing daughter, he stops at nothing to find her.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/vozJZjHv0Yyv4PjoOxF5tVMUGFI.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/1562e8QwwpFCxQAnJTUQrth5VrI.jpg",
+      "media_type": "tv",
+      "vote_average": 9.5,
+      "release_date": "2026-09-09"
+    },
+    {
+      "id": 246473,
+      "title": "Made in Korea",
+      "overview": "In 1970s South Korea, follow two men on opposite sides of power — one driven by ambition, the other by justice. As their worlds collide, greed, loyalty, and survival intertwine in a battle that will shape a nation.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/cyBg9FJ2AmTWEGktA43gMo4t0Vj.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/3GmRS3efCTp6jumogKOxYBrV5mO.jpg",
+      "media_type": "tv",
+      "vote_average": 8.1,
+      "release_date": "2025-12-24"
+    },
+    {
+      "id": 1204680,
+      "title": "Coyote vs. Acme",
+      "overview": "After Acme products fail him one too many times in his dogged pursuit of the Roadrunner, Wile E. Coyote decides to hire a billboard lawyer to sue the Acme Corporation.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/orkLtdgMGiO9rTVMqJ1kKwrnup1.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/l9mFW9HQnAZ4r1ChZJHoOT3jaal.jpg",
+      "media_type": "movie",
+      "vote_average": 7.7,
+      "release_date": "2026-08-20"
+    },
+    {
+      "id": 969681,
+      "title": "Spider-Man: Brand New Day",
+      "overview": "Fighting crime full-time as Spider-Man in a world that doesn't remember him—and the pressure of seeing his old friends move on without him—sparks a change in Peter Parker he may not have the power to control. But that transformation might also be the only thing that can stop a shocking new threat to the city and those he loves - a powerful villain no one can even see.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/bjiS5ipwxb9JFy3XRRN4OAilSeX.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/qeQJx07rK2xm8SD2sJxFKhE7gs0.jpg",
+      "media_type": "movie",
+      "vote_average": 7.862,
+      "release_date": "2026-07-29"
+    },
+    {
+      "id": 1302904,
+      "title": "Practical Magic 2",
+      "overview": "The Owens sisters must confront the dark curse that threatens to unravel their family once and for all.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/ogwQOLbCfncjvBhFb5l0OmQH8KC.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/nUcauJ000dFBYkgGpxyxJ5aWEH2.jpg",
+      "media_type": "movie",
+      "vote_average": 6.5,
+      "release_date": "2026-09-09"
+    },
+    {
+      "id": 253941,
+      "title": "The Paper",
+      "overview": "The documentary crew that immortalized Dunder Mifflin's Scranton branch is in search of a new subject when they discover a historic Toledo newspaper, The Truth Teller, and the eager publisher trying to revive it.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/ySA5MvhoxTdezNUMe0ifPmhxH4w.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/qtMVO0McAXN4IV30SMFAVmXraBL.jpg",
+      "media_type": "tv",
+      "vote_average": 7.106,
+      "release_date": "2025-09-04"
+    },
+    {
+      "id": 1288445,
+      "title": "Mutiny",
+      "overview": "After witnessing his billionaire boss' murder and being framed for the crime, Cole Reed boards a cargo ship on a one-man crusade to avenge his boss' death only to discover an international conspiracy.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/pu2VxGlpGwffOx292w18b1tv96j.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/e2QAGrEmbpmZpMymDRkDisJkvg9.jpg",
+      "media_type": "movie",
+      "vote_average": 6.353,
+      "release_date": "2026-08-19"
+    },
+    {
+      "id": 1368337,
+      "title": "The Odyssey",
+      "overview": "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods, mythological monsters, and trials that stretch both his cunning and his humanity to the breaking point.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/RMXG8myu1aGlNUsRjtxzmpdMK0.jpg",
+      "media_type": "movie",
+      "vote_average": 7.999,
+      "release_date": "2026-07-15"
+    },
+    {
+      "id": 1137844,
+      "title": "Mayday",
+      "overview": "When a U.S. Navy pilot on a top-secret mission during the Cold War gets trapped behind enemy lines, his only chance at survival is to form an alliance with an eccentric ex-KGB agent.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/hVXjX1jLZ1ljFSNGXpjJfbTUOa7.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/4gyx49ibwQslyrwuUS1c58PJEEd.jpg",
+      "media_type": "movie",
+      "vote_average": 7.9,
+      "release_date": "2026-09-03"
+    },
+    {
+      "id": 1433367,
+      "title": "One Night Only",
+      "overview": "Two love-starved strangers crash into each other on the one night of the year when single people are allowed to have sex.",
+      "poster_path": "https://image.tmdb.org/t/p/w500/46q8z1TbbVcF8uhRHsvt5s0h2SH.jpg",
+      "backdrop_path": "https://image.tmdb.org/t/p/original/bpll0oy6gHwLvypfFNfT2QI4VkT.jpg",
+      "media_type": "movie",
+      "vote_average": 6.8,
+      "release_date": "2026-07-28"
+    }
+  ],
+  "trendingAnime": [
+    {
+      "id": "7442",
+      "title": "Attack on Titan",
+      "description": "Centuries ago, mankind was slaughtered to near extinction by monstrous humanoid creatures called titans, forcing humans to hide in fear behind enormous concentric walls. What makes these giants truly terrifying is that their taste for human flesh is not born out of hunger but what appears to be out of pleasure. To ensure their survival, the remnants of humanity began living within defensive barriers, resulting in one hundred years without a single titan encounter. However, that fragile calm is soon shattered when a colossal titan manages to breach the supposedly impregnable outer wall, reigniting the fight for survival against the man-eating abominations.\n\nAfter witnessing a horrific personal loss at the hands of the invading creatures, Eren Yeager dedicates his life to their eradication by enlisting into the Survey Corps, an elite military unit that combats the merciless humanoids outside the protection of the walls. Based on Hajime Isayama's award-winning manga, Shingeki no Kyojin follows Eren, along with his adopted sister Mikasa Ackerman and his childhood friend Armin Arlert, as they join the brutal war against the titans and race to discover a way of defeating them before the last walls are breached.\n\n(Source: MAL Rewrite)",
+      "coverImage": "https://media.kitsu.app/anime/poster_images/7442/large.jpg",
+      "bannerImage": "https://media.kitsu.app/anime/cover_images/7442/large.jpg",
+      "averageScore": 84,
+      "status": "FINISHED",
+      "year": "2013",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    },
+    {
+      "id": "11469",
+      "title": "My Hero Academia",
+      "description": "What would the world be like if 80 percent of the population manifested extraordinary superpowers called “Quirks” at age four? Heroes and villains would be battling it out everywhere! Becoming a hero would mean learning to use your power, but where would you go to study? U.A. High's Hero Program of course! But what would you do if you were one of the 20 percent who were born Quirkless?\n\nMiddle school student Izuku Midoriya wants to be a hero more than anything, but he hasn't got an ounce of power in him. With no chance of ever getting into the prestigious U.A. High School for budding heroes, his life is looking more and more like a dead end. Then an encounter with All Might, the greatest hero of them all gives him a chance to change his destiny…\n\n(Source: Viz Media)",
+      "coverImage": "https://media.kitsu.app/anime/poster_images/11469/large.jpg",
+      "bannerImage": "https://media.kitsu.app/anime/cover_images/11469/large.jpg",
+      "averageScore": 83,
+      "status": "FINISHED",
+      "year": "2016",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    },
+    {
+      "id": "12268",
+      "title": "My Hero Academia Season 2",
+      "description": "Taking off right after the last episode of the first season. The school is temporarily closed due to security. When U.A. restarts, it is announced that the highly anticipated School Sports Festival will soon be taking place. All classes: Hero, Support, General and Business will be participating. Tournaments all around will decide who is the top Hero in training.\n\n(Source: Anime News Network)",
+      "coverImage": "https://media.kitsu.app/anime/poster_images/12268/large.jpg",
+      "bannerImage": "https://media.kitsu.app/anime/cover_images/12268/large.jpg",
+      "averageScore": 83,
+      "status": "FINISHED",
+      "year": "2017",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    },
+    {
+      "id": "13881",
+      "title": "My Hero Academia Season 3",
+      "description": "Summer is here, and the heroes of Class 1-A and 1-B are in for the toughest training camp of their lives! A group of seasoned pros pushes everyone's Quirks to new heights as the students face one overwhelming challenge after another. Braving the elements in this secret location becomes the least of their worries when routine training turns into a critical struggle for survival.\n\n(Source: Crunchyroll)",
+      "coverImage": "https://media.kitsu.app/anime/poster_images/13881/large.jpg",
+      "bannerImage": "https://media.kitsu.app/anime/cover_images/13881/large.jpg",
+      "averageScore": 83,
+      "status": "FINISHED",
+      "year": "2018",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    },
+    {
+      "id": "12",
+      "title": "One Piece",
+      "description": "Gol D. Roger was known as the \"Pirate King,\" the strongest and most infamous being to have sailed the Grand Line. The capture and death of Roger by the World Government brought a change throughout the world. His last words before his death revealed the existence of the greatest treasure in the world, One Piece. It was this revelation that brought about the Grand Age of Pirates, men who dreamed of finding One Piece—which promises an unlimited amount of riches and fame—and quite possibly the pinnacle of glory and the title of the Pirate King.\nEnter Monkey D. Luffy, a 17-year-old boy who defies your standard definition of a pirate. Rather than the popular persona of a wicked, hardened, toothless pirate ransacking villages for fun, Luffy’s reason for being a pirate is one of pure wonder: the thought of an exciting adventure that leads him to intriguing people and ultimately, the promised treasure. Following in the footsteps of his childhood hero, Luffy and his crew travel across the Grand Line, experiencing crazy adventures, unveiling dark mysteries and battling strong enemies, all in order to reach the most coveted of all fortunes—One Piece.\n[Written by MAL Rewrite]",
+      "coverImage": "https://media.kitsu.app/anime/poster_images/12/large.jpg",
+      "bannerImage": "https://media.kitsu.app/anime/12/cover_image/large-3e72f400a87b5241780c5082f0582611.jpeg",
+      "averageScore": 84,
+      "status": "RELEASING",
+      "year": "1999",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    },
+    {
+      "id": "10740",
+      "title": "One Punch Man",
+      "description": "The seemingly ordinary and unimpressive Saitama has a rather unique hobby: being a hero. In order to pursue his childhood dream, he trained relentlessly for three years—and lost all of his hair in the process. Now, Saitama is incredibly powerful, so much so that no enemy is able to defeat him in battle. In fact, all it takes to defeat evildoers with just one punch has led to an unexpected problem—he is no longer able to enjoy the thrill of battling and has become quite bored.\n\nThis all changes with the arrival of Genos, a 19-year-old cyborg, who wishes to be Saitama's disciple after seeing what he is capable of. Genos proposes that the two join the Hero Association in order to become certified heroes that will be recognized for their positive contributions to society, and Saitama, shocked that no one knows who he is, quickly agrees. And thus begins the story of One Punch Man, an action-comedy that follows an eccentric individual who longs to fight strong enemies that can hopefully give him the excitement he once felt and just maybe, he'll become popular in the process.\n\n(Source: MAL Rewrite)",
+      "coverImage": "https://media.kitsu.app/anime/poster_images/10740/large.jpg",
+      "bannerImage": "https://media.kitsu.app/anime/cover_images/10740/large.jpg",
+      "averageScore": 83,
+      "status": "FINISHED",
+      "year": "2015",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    },
+    {
+      "id": "1376",
+      "title": "Death Note",
+      "description": "A shinigami, as a god of death, can kill any person—provided they see their victim's face and write their victim's name in a notebook called a Death Note. One day, Ryuk, bored by the shinigami lifestyle and interested in seeing how a human would use a Death Note, drops one into the human realm.\n\nHigh school student and prodigy Light Yagami stumbles upon the Death Note and—since he deplores the state of the world—tests the deadly notebook by writing a criminal's name in it. When the criminal dies immediately following his experiment with the Death Note, Light is greatly surprised and quickly recognizes how devastating the power that has fallen into his hands could be.\n\nWith this divine capability, Light decides to extinguish all criminals in order to build a new world where crime does not exist and people worship him as a god. Police, however, quickly discover that a serial killer is targeting criminals and, consequently, try to apprehend the culprit. To do this, the Japanese investigators count on the assistance of the best detective in the world: a young and eccentric man known only by the name of L.\n\n(Source: MAL Rewrite)",
+      "coverImage": "https://media.kitsu.app/anime/poster_images/1376/large.jpg",
+      "bannerImage": "https://media.kitsu.app/anime/cover_images/1376/large.jpg",
+      "averageScore": 83,
+      "status": "FINISHED",
+      "year": "2006",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    },
+    {
+      "id": "6448",
+      "title": "Hunter x Hunter (2011)",
+      "description": "Hunter x Hunter is set in a world where Hunters exist to perform all manner of dangerous tasks like capturing criminals and bravely searching for lost treasures in uncharted territories. Twelve-year-old Gon Freecss is determined to become the best Hunter possible in hopes of finding his father, who was a Hunter himself and had long ago abandoned his young son. However, Gon soon realizes the path to achieving his goals is far more challenging than he could have ever imagined.\n\nAlong the way to becoming an official Hunter, Gon befriends the lively doctor-in-training Leorio, vengeful Kurapika, and rebellious ex-assassin Killua. To attain their own goals and desires, together the four of them take the Hunter Exam, notorious for its low success rate and high probability of death. Throughout their journey, Gon and his friends embark on an adventure that puts them through many hardships and struggles. They will meet a plethora of monsters, creatures, and characters—all while learning what being a Hunter truly means.\n\n(Source: MAL Rewrite)",
+      "coverImage": "https://media.kitsu.app/anime/poster_images/6448/large.jpg",
+      "bannerImage": "https://media.kitsu.app/anime/cover_images/6448/large.jpg",
+      "averageScore": 84,
+      "status": "FINISHED",
+      "year": "2011",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    },
+    {
+      "id": "50040",
+      "title": "Smoking Behind the Supermarket With You",
+      "description": "Sasaki is an overworked salaryman drifting through the corporate grind, sustained by cigarettes and the cheerful service and smile of Yamada, the clerk at his favorite supermarket. But one night after a grueling shift, he arrives late to find Yamada nowhere to be seen. With nowhere left to smoke, his spirits sink—until a pierced young woman calls out to him: “You can smoke here.”\n\n(Source: Crunchyroll)\n\nNote: Episodes 1-6 had an early release by ABEMA and Crunchyroll on June 3rd, 2026, in a mini-episode batch format that splits 6 episodes into 12, ahead of the TV broadcast, which starts on July 9th, 2026.",
+      "coverImage": "https://media.kitsu.app/anime/50040/poster_image/large-6c60537fbda7aa6ce812138bed3f26f6.jpeg",
+      "bannerImage": "https://media.kitsu.app/anime/50040/cover_image/large-49baf6fc44cf03e9b40aea1c694a32eb.jpeg",
+      "averageScore": 83,
+      "status": "RELEASING",
+      "year": "2026",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    },
+    {
+      "id": "11614",
+      "title": "Your Name.",
+      "description": "From director Makoto Shinkai, the innovative mind behind Voices of a Distant Star and 5 Centimeters Per Second, comes a beautiful masterpiece about time, the thread of fate, and the hearts of two young souls.\n\nThe day the stars fell, two lives changed forever. High schoolers Mitsuha and Taki are complete strangers living separate lives. But one night, they suddenly switch places. Mitsuha wakes up in Taki’s body, and he in hers. This bizarre occurrence continues to happen randomly, and the two must adjust their lives around each other. Yet, somehow, it works. They build a connection and communicate by leaving notes, messages, and more importantly, an imprint.\n\nWhen a dazzling comet lights up the night’s sky, it dawns on them. They want something more from this connection—a chance to meet, an opportunity to truly know each other. Tugging at the string of fate, they try to find a way to each other. But distance isn’t the only thing keeping them apart. Is their bond strong enough to face the cruel irony of time? Or is their meeting nothing more than a wish upon the stars?\n\n(Source: FUNimation Films)",
+      "coverImage": "https://media.kitsu.app/anime/poster_images/11614/large.jpg",
+      "bannerImage": "https://media.kitsu.app/anime/cover_images/11614/large.jpg",
+      "averageScore": 83,
+      "status": "FINISHED",
+      "year": "2016",
+      "genres": [
+        "Action",
+        "Fantasy"
+      ]
+    }
+  ],
+  "trendingManga": [
+    {
+      "id": "32d76d19-8a05-4db0-9fc2-e0b0648fe9d0",
+      "source": "mangadex",
+      "title": "Na Honjaman Level-Up",
+      "cover": "https://uploads.mangadex.org/covers/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/e90bdc47-c8b9-4df7-b2c0-17641b645ee1.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2018
+    },
+    {
+      "id": "aa6c76f7-5f5f-46b6-a800-911145f81b9b",
+      "source": "mangadex",
+      "title": "Sono Bisque Doll wa Koi o Suru",
+      "cover": "https://uploads.mangadex.org/covers/aa6c76f7-5f5f-46b6-a800-911145f81b9b/d3e909b9-c667-48a5-beec-ac96f23fa228.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2018
+    },
+    {
+      "id": "77bee52c-d2d6-44ad-a33a-1734c1fe696a",
+      "source": "mangadex",
+      "title": "Kage no Jitsuryokusha ni Naritakute!",
+      "cover": "https://uploads.mangadex.org/covers/77bee52c-d2d6-44ad-a33a-1734c1fe696a/6079dd31-838b-4d61-87c4-121f3ad19158.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2018
+    },
+    {
+      "id": "e78a489b-6632-4d61-b00b-5206f5b8b22b",
+      "source": "mangadex",
+      "title": "Tensei Shitara Slime datta Ken",
+      "cover": "https://uploads.mangadex.org/covers/e78a489b-6632-4d61-b00b-5206f5b8b22b/420ec3c0-2dab-47f2-8f9e-a9e0c3faf16d.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2015
+    },
+    {
+      "id": "a77742b1-befd-49a4-bff5-1ad4e6b0ef7b",
+      "source": "mangadex",
+      "title": "Chainsaw Man",
+      "cover": "https://uploads.mangadex.org/covers/a77742b1-befd-49a4-bff5-1ad4e6b0ef7b/6e518bd1-5f60-446b-8832-bfe6bf74834b.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2018
+    },
+    {
+      "id": "b0b721ff-c388-4486-aa0f-c2b0bb321512",
+      "source": "mangadex",
+      "title": "Sousou no Frieren",
+      "cover": "https://uploads.mangadex.org/covers/b0b721ff-c388-4486-aa0f-c2b0bb321512/b9a049b0-186b-4714-a83e-bb965458914a.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2020
+    },
+    {
+      "id": "28c77530-dfa1-4b05-8ec3-998960ba24d4",
+      "source": "mangadex",
+      "title": "Otome Game Sekai wa Mob ni Kibishii Sekai desu",
+      "cover": "https://uploads.mangadex.org/covers/28c77530-dfa1-4b05-8ec3-998960ba24d4/59acf82f-745f-4192-bffb-47d75bb1113a.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2018
+    },
+    {
+      "id": "d8a959f7-648e-4c8d-8f23-f1f3f8e129f3",
+      "source": "mangadex",
+      "title": "One Punch-Man",
+      "cover": "https://uploads.mangadex.org/covers/d8a959f7-648e-4c8d-8f23-f1f3f8e129f3/511fc404-e6b4-4204-bb10-e4a28f7b5271.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2012
+    },
+    {
+      "id": "bd6d0982-0091-4945-ad70-c028ed3c0917",
+      "source": "mangadex",
+      "title": "Mushoku Tensei: Isekai Ittara Honki Dasu",
+      "cover": "https://uploads.mangadex.org/covers/bd6d0982-0091-4945-ad70-c028ed3c0917/6a9f3d32-b7bb-478a-9c76-54868276c26f.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2014
+    },
+    {
+      "id": "a96676e5-8ae2-425e-b549-7f15dd34a6d8",
+      "source": "mangadex",
+      "title": "Komi-san wa Komyushou Desu.",
+      "cover": "https://uploads.mangadex.org/covers/a96676e5-8ae2-425e-b549-7f15dd34a6d8/f8f44329-1dd7-4301-9ec7-a4a76182e8eb.jpg.512.jpg",
+      "type": "Manga / Manhwa",
+      "year": 2016
+    }
+  ]
+}

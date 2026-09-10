@@ -142,9 +142,33 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 }) => {
   const [activeSpotlight, setActiveSpotlight] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
+  const [spotlightList, setSpotlightList] = useState<any[]>(SPOTLIGHT_ITEMS);
   const [continueWatchingAnime, setContinueWatchingAnime] = useState<any[]>([]);
   const [recentComics, setRecentComics] = useState<any[]>([]);
   const [historyItems, setHistoryItems] = useState<UnifiedHistoryItem[]>([]);
+
+  // Fetch dynamic trending & spotlight feeds (Local static cache with remote GitHub fallback)
+  useEffect(() => {
+    const fetchDynamicFeeds = async () => {
+      try {
+        // Priority 1: Local /data/trending.json (bundled or cached)
+        let res = await fetch('/data/trending.json', { cache: 'no-store' });
+        if (!res.ok) {
+          // Priority 2: Direct raw GitHub remote file (always live)
+          res = await fetch('https://raw.githubusercontent.com/hffgzktbcc-blip/omnistream/main/public/data/trending.json');
+        }
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.spotlights) && data.spotlights.length > 0) {
+            setSpotlightList(data.spotlights);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load dynamic spotlight, using built-in catalog:', err);
+      }
+    };
+    fetchDynamicFeeds();
+  }, []);
 
   useEffect(() => {
     try {
@@ -179,7 +203,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     const timer = setInterval(() => {
       setProgressPercent((prev) => {
         if (prev >= 100) {
-          setActiveSpotlight((s) => (s + 1) % SPOTLIGHT_ITEMS.length);
+          setActiveSpotlight((s) => (s + 1) % (spotlightList.length || 1));
           return 0;
         }
         return prev + step;
@@ -187,9 +211,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     }, interval);
 
     return () => clearInterval(timer);
-  }, [activeSpotlight]);
+  }, [activeSpotlight, spotlightList.length]);
 
-  const currentHero = SPOTLIGHT_ITEMS[activeSpotlight] || SPOTLIGHT_ITEMS[0];
+  const currentHero = spotlightList[activeSpotlight] || spotlightList[0] || SPOTLIGHT_ITEMS[0];
 
   const safeMedia = Array.isArray(trendingMedia) ? trendingMedia : [];
   const safeAnime = Array.isArray(trendingAnime) ? trendingAnime : [];
@@ -249,7 +273,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {/* Action Buttons */}
           <div className="flex items-center gap-3 pt-2">
             <button
-              onClick={() => onNavigateTab(currentHero.actionTab as any)}
+              onClick={() => {
+                if (currentHero.rawItem) {
+                  if (currentHero.type === 'media') onSelectMedia(currentHero.rawItem);
+                  else if (currentHero.type === 'anime') onSelectAnime(currentHero.rawItem);
+                  else onNavigateTab(currentHero.actionTab as any);
+                } else {
+                  onNavigateTab(currentHero.actionTab as any);
+                }
+              }}
               className="px-6 py-3 rounded-2xl bg-white hover:bg-slate-200 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-white/10 transition-all hover:scale-105 cursor-pointer"
             >
               <Play className="w-4 h-4 fill-slate-950" />
@@ -267,7 +299,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         {/* Dynamic Carousel Slide Selector Pills */}
         <div className="absolute bottom-6 right-6 z-10 flex items-center gap-2">
-          {SPOTLIGHT_ITEMS.map((item, idx) => (
+          {spotlightList.map((item, idx) => (
             <button
               key={item.id}
               onClick={() => {
