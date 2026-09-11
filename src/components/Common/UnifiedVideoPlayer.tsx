@@ -90,8 +90,8 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   const [serverPings, setServerPings] = useState<Record<string, number>>({});
   const [reloadKey, setReloadKey] = useState<number>(Date.now());
   const [showUnmutePrompt, setShowUnmutePrompt] = useState<boolean>(true);
-  // ─── Cinema Player Direct HLS Mode ───────────────────────────
-  const [cinemaMode, setCinemaMode] = useState<'resolving' | 'cinema' | 'iframe'>('resolving');
+  const [cinemaMode, setCinemaMode] = useState<'resolving' | 'cinema' | 'iframe'>('iframe');
+
   const [directStream, setDirectStream] = useState<DirectStreamResponse | null>(null);
   const [cinemaFailed, setCinemaFailed] = useState(false);
   const playerContainerRef = useRef<HTMLDivElement>(null);
@@ -251,24 +251,12 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     }
   }, [session, audioType]);
 
-  // ─── Direct Stream Resolution (Cinema Mode) ────────────────
+  // ─── Direct Stream Resolution (Non-blocking background promotion) ────
   useEffect(() => {
-    if (!session || cinemaFailed) {
-      setCinemaMode('iframe');
-      return;
-    }
+    if (!session || cinemaFailed) return;
 
-    setCinemaMode('resolving');
     const effectiveTmdb = resolvedTmdbId || session.tmdbId || (session.type === 'anime' ? session.animeData?.id : session.mediaData?.id);
-    if (!effectiveTmdb) {
-      setCinemaMode('iframe');
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      // If resolution takes > 5s, fall back to iframe
-      setCinemaMode('iframe');
-    }, 5000);
+    if (!effectiveTmdb) return;
 
     resolveDirectStream({
       type: session.type,
@@ -278,20 +266,13 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
       episode: session.episode,
       audioType: session.type === 'anime' ? audioType : undefined,
     }).then((result) => {
-      clearTimeout(timeoutId);
       if (result.success && result.streamUrl) {
         setDirectStream(result);
         setCinemaMode('cinema');
-      } else {
-        setCinemaMode('iframe');
       }
-    }).catch(() => {
-      clearTimeout(timeoutId);
-      setCinemaMode('iframe');
-    });
-
-    return () => clearTimeout(timeoutId);
+    }).catch(() => {});
   }, [session, resolvedTmdbId, audioType, cinemaFailed, reloadKey]);
+
 
   if (!session) return null;
 
@@ -544,22 +525,31 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
               <RotateCcw className="w-4 h-4" />
             </button>
 
-            <select
-              value={selectedServerIndex}
-              onChange={(e) => {
-                setSelectedServerIndex(parseInt(e.target.value));
-                setExhaustedServers(false);
-                setServersTried(0);
-                setReloadKey(Date.now());
-              }}
-              className="bg-slate-800 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-700 focus:outline-none focus:border-purple-500 cursor-pointer"
-            >
-              {STREAM_SERVERS.map((s, idx) => (
-                <option key={idx} value={idx}>
-                  {s.name} {serverPings[s.id] ? `(${serverPings[s.id]}ms)` : ''}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl border border-slate-700/80 overflow-x-auto scrollbar-none max-w-[200px] sm:max-w-md">
+              {STREAM_SERVERS.map((s, idx) => {
+                const isSelected = selectedServerIndex === idx;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setSelectedServerIndex(idx);
+                      setExhaustedServers(false);
+                      setServersTried(0);
+                      setReloadKey(Date.now());
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/60'
+                    }`}
+                  >
+                    <span>{s.name}</span>
+                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+                  </button>
+                );
+              })}
+            </div>
+
 
             <button
               onClick={handlePopout}
@@ -682,127 +672,17 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
               />
             ) : (
               <>
-                {/* ─── Iframe Fallback Mode ──────────────── */}
-                {/* Android TV Unmute & Audio Activation Prompt */}
-                {showUnmutePrompt && !loadingServer && (
-                  <div
-                    onClick={() => setShowUnmutePrompt(false)}
-                    className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 cursor-pointer border-2 border-white/50 animate-bounce transition-all scale-105"
-                  >
-                    <Volume2 className="w-5 h-5 text-slate-950 animate-pulse" />
-                    <span className="text-xs sm:text-sm">🔊 No Sound on Android TV? Click / Press OK here to Unmute</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowUnmutePrompt(false);
-                      }}
-                      className="p-1 rounded-full bg-black/20 hover:bg-black/40 text-slate-950 ml-1"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-
+                {/* ─── Iframe Clean Fast Mode (No sandbox, direct acceleration) ──────────────── */}
                 <iframe
                   key={`stream_${currentServer.id}_${effectiveTmdbId}_${currentSeason}_${currentEpisode}_${audioType}_${reloadKey}`}
                   src={streamUrl}
                   title={`${session.title} Player`}
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                   allowFullScreen
                   referrerPolicy="no-referrer"
                   onLoad={handleIframeLoaded}
                   className="w-full h-full border-0 absolute inset-0 z-10"
                 />
-
-                {/* Floating TV Remote Control Bar */}
-                <div
-                  className={`absolute bottom-0 left-0 right-0 z-20 p-2 sm:p-3 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-transparent flex flex-wrap items-center justify-between gap-2 pointer-events-auto transition-all duration-300 ${
-                    showControls ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-full pointer-events-none'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <button
-                      onClick={handlePrevServer}
-                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 text-[11px] sm:text-xs font-bold flex items-center gap-1 transition-all shadow-md"
-                      title="Previous Server"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Prev Mirror</span>
-                    </button>
-                    <button
-                      onClick={handleNextServer}
-                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-purple-600/90 hover:bg-purple-500 text-white border border-purple-400/50 text-[11px] sm:text-xs font-bold flex items-center gap-1 transition-all shadow-md shadow-purple-600/20"
-                      title="Next Server (S)"
-                    >
-                      <span>Next Mirror (S)</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={handleForceRefresh}
-                      className="p-1.5 sm:p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-colors"
-                      title="Reload Stream (R)"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <button
-                      onClick={() => {
-                        setCinemaFailed(false);
-                        setCinemaMode('resolving');
-                        setReloadKey(Date.now());
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 border border-purple-400/40"
-                      title="Switch to Direct Ad-Free Cinema Stream (High Quality Swarm)"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Direct Cinema Stream</span>
-                    </button>
-                    {onOpenTorrent && (
-                      <button
-                        onClick={() => onOpenTorrent(session?.title || '')}
-                        className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 border border-red-400/40"
-                        title="Search & Stream from BitTorrent P2P Swarm"
-                      >
-                        <Zap className="w-3.5 h-3.5" />
-                        <span>P2P Swarm</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={handlePopout}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 border border-slate-700"
-                      title="Popout Window (Bypasses embed blocks, includes Back to Movies button)"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Popout Window</span>
-                    </button>
-                    <button
-                      onClick={onClose}
-                      className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all"
-                      title={`Back to ${session.type === 'movie' ? 'Movies' : session.type === 'tv' ? 'TV Shows' : 'Anime'}`}
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                      <span>Back to {session.type === 'movie' ? 'Movies' : session.type === 'tv' ? 'TV' : 'Anime'}</span>
-                    </button>
-                    <button
-                      onClick={() => setShowUnmutePrompt((prev) => !prev)}
-                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/40 text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all"
-                      title="Unmute / Audio Help (M)"
-                    >
-                      <Volume2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Unmute Sound</span>
-                    </button>
-                    <button
-                      onClick={toggleFullscreen}
-                      className="p-1.5 sm:p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-colors"
-                      title="Fullscreen (F)"
-                    >
-                      <Maximize className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
               </>
             )}
           </div>
