@@ -107,8 +107,78 @@ export const VERIFIED_FIXTURES = {
 // AniList to TMDB Mapping (and TMDB reverse alias)
 export const ANIME_ID_ALIAS = {
   37854: 21,      // One Piece TMDB -> AniList
-  127532: 151807  // Solo Leveling TMDB -> AniList
+  127532: 151807, // Solo Leveling TMDB -> AniList
+  85937: 101922,  // Demon Slayer
+  95479: 113415,  // Jujutsu Kaisen
+  1429: 16498,    // Attack on Titan
+  30984: 269,     // Bleach
+  114410: 127230, // Chainsaw Man
+  209867: 154587, // Frieren
+  120089: 140960, // Spy x Family
+  46260: 20,      // Naruto
+  31910: 1735,    // Naruto Shippuden
+  13916: 1535,    // Death Note
+  45952: 11061,   // Hunter x Hunter (2011)
+  65930: 21459,   // My Hero Academia
+  65942: 189046,  // Re:Zero
+  31911: 5114,    // Fullmetal Alchemist: Brotherhood
+  42509: 9253,    // Steins;Gate
+  30991: 1,       // Cowboy Bebop
+  32726: 1575,    // Code Geass
+  86831: 101347,  // Vinland Saga
+  67075: 21507,   // Mob Psycho 100
+  203737: 143866, // Oshi no Ko
+  202008: 130003, // Bocchi the Rock!
+  105248: 116006, // Cyberpunk: Edgerunners
+  240411: 171018, // Dandadan
+  12971: 813,     // Dragon Ball Z
+  62715: 6702,    // Dragon Ball Super
+  126963: 19,     // Monster
+  30983: 30,      // Neon Genesis Evangelion
+  60626: 20605,   // Tokyo Ghoul
+  63926: 20954,   // A Silent Voice
+  372058: 21519   // Your Name
 };
+
+// Reverse map: AniList ID -> TMDB ID
+export const ANILIST_TO_TMDB = Object.fromEntries(
+  Object.entries(ANIME_ID_ALIAS).map(([tmdb, anilist]) => [anilist, Number(tmdb)])
+);
+
+const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
+
+// Cache for TMDB titles so repeated calls are instantaneous
+const titleCache = new Map();
+
+export async function fetchTitleFromTmdb(type, id) {
+  if (!id) return null;
+  const cacheKey = `${type}_${id}`;
+  if (titleCache.has(cacheKey)) {
+    return titleCache.get(cacheKey);
+  }
+
+  try {
+    const endpoint = type === 'tv' ? 'tv' : 'movie';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
+    const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${id}?api_key=${TMDB_API_KEY}`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const resolvedTitle = data.title || data.name || data.original_title || data.original_name || null;
+    if (resolvedTitle) {
+      titleCache.set(cacheKey, resolvedTitle);
+    }
+    return resolvedTitle;
+  } catch (err) {
+    console.warn('[StreamResolver TMDB Lookup Error]:', err.message);
+    return null;
+  }
+}
 
 // URL formatting helpers
 export function formatProxyHlsUrl(url, referer) {
@@ -137,6 +207,8 @@ export async function resolveFromTorrentSwarm(type, queryTitle, season, episode)
     const s = String(season).padStart(2, '0');
     const e = String(episode).padStart(2, '0');
     searchQuery = `${cleanTitle} S${s}E${e}`;
+  } else if (type === 'anime') {
+    searchQuery = `${cleanTitle} ${episode}`;
   }
 
   try {
@@ -153,11 +225,11 @@ export async function resolveFromTorrentSwarm(type, queryTitle, season, episode)
     const data = await res.json();
     if (!Array.isArray(data) || data.length === 0 || data[0].id === '0') return null;
 
-    // Filter video torrents (category 200..299) with seeders >= 3
+    // Filter video torrents (category 200..299) with seeders >= 2
     const videoTorrents = data.filter((t) => {
       const cat = parseInt(t.category, 10) || 0;
       const seeders = parseInt(t.seeders, 10) || 0;
-      return cat >= 200 && cat < 300 && seeders >= 3;
+      return cat >= 200 && cat < 300 && seeders >= 2;
     });
 
     if (videoTorrents.length === 0) return null;
@@ -333,8 +405,23 @@ export async function handleStreamResolve(req, res) {
   }
 
   // 4. Check Torrent Swarm Direct Stream (High Speed P2P Direct MP4)
-  if (title) {
-    const swarmResult = await resolveFromTorrentSwarm(type, title, parsedSeason, parsedEpisode);
+  let effectiveTitle = title ? String(title).trim() : '';
+
+  // If title was not explicitly sent by caller, fetch title dynamically from TMDB
+  if (!effectiveTitle && numericId) {
+    if (type === 'movie' || type === 'tv') {
+      effectiveTitle = await fetchTitleFromTmdb(type, numericId);
+    } else if (type === 'anime') {
+      // Check if we have an alias to a TMDB TV id
+      const tmdbTvId = ANILIST_TO_TMDB[numericId];
+      if (tmdbTvId) {
+        effectiveTitle = await fetchTitleFromTmdb('tv', tmdbTvId);
+      }
+    }
+  }
+
+  if (effectiveTitle) {
+    const swarmResult = await resolveFromTorrentSwarm(type, effectiveTitle, parsedSeason, parsedEpisode);
     if (swarmResult && swarmResult.streamUrl) {
       return res.json({
         success: true,
@@ -342,7 +429,8 @@ export async function handleStreamResolve(req, res) {
         qualities: swarmResult.qualities,
         subtitles: swarmResult.subtitles,
         audioTracks: swarmResult.audioTracks,
-        format: 'mp4'
+        format: 'mp4',
+        resolvedTitle: effectiveTitle
       });
     }
   }

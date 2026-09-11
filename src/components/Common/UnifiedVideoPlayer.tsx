@@ -582,7 +582,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
         {/* Video Canvas & Episode Drawer Container */}
         <div className="relative flex-1 bg-black flex overflow-hidden">
           <div className="relative flex-1 aspect-video sm:aspect-auto min-h-[360px] sm:min-h-[480px] bg-black">
-            {loadingServer && !exhaustedServers && (
+            {loadingServer && !exhaustedServers && cinemaMode === 'iframe' && (
               <div className="absolute inset-0 z-30 bg-black/90 flex flex-col items-center justify-center gap-2 text-purple-400">
                 <Loader2 className="w-8 h-8 animate-spin" />
                 <span className="text-xs font-semibold">
