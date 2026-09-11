@@ -3,6 +3,7 @@ import { SportsMatch } from '../../types/sports';
 import { HlsVideoPlayer } from './HlsVideoPlayer';
 import {
   X,
+  ChevronLeft,
   RotateCcw,
   Maximize,
   Loader2,
