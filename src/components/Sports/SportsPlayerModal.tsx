@@ -39,60 +39,38 @@ function getSportSpecificServers(match: SportsMatch, homeName: string, awayName:
 
   const servers: StreamServer[] = [];
 
-  // 1. Exact Match Official Highlights, Goals & Video (Guaranteed high-quality playback for this exact fixture)
-  servers.push({
-    name: `🎬 Official Match Video & Highlights (${homeName} vs ${awayName})`,
-    url: `https://www.youtube-nocookie.com/embed?listType=search&list=${encodedQuery}+match+highlights&autoplay=1`,
-    type: 'youtube',
-    badge: '1080p Official'
-  });
+  // 1. Direct Match Servers (Prioritized if explicitly supplied, e.g. 24/7 channels or custom streams)
+  if (match.servers && Array.isArray(match.servers) && match.servers.length > 0) {
+    match.servers.forEach((s) => {
+      if (s.url && !servers.some((srv) => srv.url === s.url)) {
+        servers.push({
+          name: s.name,
+          url: s.url,
+          type: s.url.includes('.m3u8')
+            ? 'hls'
+            : s.url.includes('youtube')
+            ? 'youtube'
+            : 'web',
+          badge: s.url.includes('.m3u8') ? '1080p Native HLS' : 'Direct Feed'
+        });
+      }
+    });
+  }
 
-  // 2. Press Conference / Post-Match Tactical Interview
-  servers.push({
-    name: `🎙️ Team Press Conference & Analysis (${homeName})`,
-    url: `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(homeName + ' press conference highlights')}&autoplay=1`,
-    type: 'youtube',
-    badge: 'Official Press'
-  });
-
-  // 3. Sport-Specific SuperSport & International Channels
-  if (
-    sport === 'rugby' ||
-    league.includes('rugby') ||
-    league.includes('six nations') ||
-    league.includes('urc') ||
-    league.includes('championship')
-  ) {
+  // 2. High-Reliability Native HLS 24/7 Sports Networks (Guaranteed smooth in-app playback)
+  if (sport === 'f1' || league.includes('formula') || league.includes('racing')) {
     servers.push(
       {
-        name: '🏉 SuperSport Rugby HD (Live Match Channel)',
-        url: 'https://topembed.pw/channel/SuperSportRugby',
-        type: 'web',
-        badge: 'SuperSport HD'
+        name: '🏎️ Red Bull TV HD (Live 24/7 Motorsport & F1 Action)',
+        url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+        type: 'hls',
+        badge: '1080p Native HLS'
       },
       {
-        name: '🏉 SuperSport Grandstand HD (Main Event)',
-        url: 'https://topembed.pw/channel/SuperSportGrandstand',
-        type: 'web',
-        badge: 'SuperSport HD'
-      },
-      {
-        name: '🏉 Sky Sports Arena HD (Rugby Live)',
-        url: 'https://topembed.pw/channel/SkySportsArena',
-        type: 'web',
-        badge: 'Sky Sports'
-      },
-      {
-        name: `⚡ Streamed.su Rugby Match Feed (${homeName} vs ${awayName})`,
-        url: 'https://streamed.su/category/rugby',
-        type: 'web',
-        badge: 'Live Match'
-      },
-      {
-        name: `🌍 VIPRow Rugby HD Feed`,
-        url: 'https://www.viprow.nu/rugby-online',
-        type: 'web',
-        badge: 'External Popout'
+        name: '🏎️ FloRacing 24/7 (Sprint Cars & Asphalt Racing)',
+        url: 'https://floracing-distro-firetv.amagi.tv/playlist.m3u8',
+        type: 'hls',
+        badge: '1080p Native HLS'
       }
     );
   } else if (
@@ -105,61 +83,22 @@ function getSportSpecificServers(match: SportsMatch, homeName: string, awayName:
   ) {
     servers.push(
       {
-        name: '⚽ SuperSport Premier League HD',
-        url: 'https://topembed.pw/channel/SkySportsPremierLeague',
-        type: 'web',
-        badge: 'SuperSport HD'
+        name: '⚽ FIFA+ Official Live HD',
+        url: 'https://fifa-fifaplus-1-us.samsung.wurl.tv/playlist.m3u8',
+        type: 'hls',
+        badge: '720p Native HLS'
       },
       {
-        name: '⚽ TNT Sports 1 HD (Champions League & EPL)',
-        url: 'https://topembed.pw/channel/TNTSports1',
-        type: 'web',
-        badge: 'TNT Sports'
-      },
-      {
-        name: '⚽ Sky Sports Main Event HD',
-        url: 'https://topembed.pw/channel/SkySportsMainEvent',
-        type: 'web',
-        badge: 'Sky Sports'
-      },
-      {
-        name: `⚡ Streamed.su Live Football Feed (${homeName} vs ${awayName})`,
-        url: 'https://streamed.su/category/football',
-        type: 'web',
-        badge: 'Live Match'
-      },
-      {
-        name: `🌍 VIPRow Football HD Feed`,
-        url: 'https://www.viprow.nu/football-online',
-        type: 'web',
-        badge: 'External Popout'
-      }
-    );
-  } else if (sport === 'f1' || league.includes('formula') || league.includes('racing')) {
-    servers.push(
-      {
-        name: '🏎️ Sky Sports F1 HD (Live Grand Prix & Quali)',
-        url: 'https://topembed.pw/channel/SkySportsF1',
-        type: 'web',
-        badge: 'Sky Sports F1'
-      },
-      {
-        name: '🏎️ Red Bull TV Live HD (Official 24/7 Action Broadcast)',
-        url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+        name: '⚽ fubo Sports Network (Live Football & Tournaments)',
+        url: 'https://fubotv-fubosportsnetwork-1-us.samsung.wurl.tv/playlist.m3u8',
         type: 'hls',
         badge: '1080p Native HLS'
       },
       {
-        name: '🏎️ F1 Paddock & Onboard Camera Feeds',
-        url: `https://www.youtube-nocookie.com/embed?listType=search&list=F1+Formula+1+Live+Paddock+Onboard&autoplay=1`,
-        type: 'youtube',
-        badge: 'Official F1'
-      },
-      {
-        name: '⚡ Streamed.su Motorsport HD Feed',
-        url: 'https://streamed.su/category/motor-sports',
-        type: 'web',
-        badge: 'Live Race'
+        name: '🏆 SportsGrid 24/7 Match Center & Live Odds',
+        url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
+        type: 'hls',
+        badge: '1080p Native HLS'
       }
     );
   } else if (
@@ -170,106 +109,109 @@ function getSportSpecificServers(match: SportsMatch, homeName: string, awayName:
   ) {
     servers.push(
       {
-        name: '🥊 TNT Sports 2 / UFC PPV HD',
-        url: 'https://topembed.pw/channel/TNTSports2',
-        type: 'web',
-        badge: 'UFC Live'
+        name: '🥊 DAZN Combat HD (Live Boxing & MMA)',
+        url: 'https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8',
+        type: 'hls',
+        badge: 'HD Native HLS'
       },
       {
-        name: '🥊 SuperSport Action & Combat HD',
-        url: 'https://topembed.pw/channel/DAZN1',
-        type: 'web',
-        badge: 'SuperSport Action'
-      },
-      {
-        name: '🥊 DAZN 1 Combat & Boxing HD',
-        url: 'https://topembed.pw/channel/DAZN1',
-        type: 'web',
-        badge: 'DAZN HD'
-      },
-      {
-        name: '⚡ Streamed.su UFC & Fight Feed',
-        url: 'https://streamed.su/category/fight',
-        type: 'web',
-        badge: 'Live Fight'
+        name: '🥊 Fight Network HD (24/7 Combat Sports)',
+        url: 'https://antennatv-fightnetwork-1-us.samsung.wurl.tv/playlist.m3u8',
+        type: 'hls',
+        badge: '1080p Native HLS'
       }
     );
-  } else if (sport === 'basketball' || league.includes('nba')) {
+  } else {
+    servers.push({
+      name: '🏆 SportsGrid 24/7 Live Network (Match Center & Odds)',
+      url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
+      type: 'hls',
+      badge: '1080p Native HLS'
+    });
+  }
+
+  // 3. Live Web Match Scrapers & Broadcast Mirrors
+  if (sport === 'rugby' || league.includes('rugby')) {
     servers.push(
       {
-        name: '🏀 ESPN HD (Live NBA Broadcast)',
-        url: 'https://topembed.pw/channel/ESPN',
+        name: `⚡ Streamed.su Rugby Match Feed (${homeName} vs ${awayName})`,
+        url: 'https://streamed.su/category/rugby',
         type: 'web',
-        badge: 'ESPN HD'
+        badge: 'Web Popout'
       },
       {
-        name: '🏀 TNT Sports 3 HD (NBA Live)',
-        url: 'https://topembed.pw/channel/TNTSports3',
-        type: 'web',
-        badge: 'TNT Sports'
-      },
-      {
-        name: '⚡ Streamed.su NBA Live Feed',
-        url: 'https://streamed.su/category/basketball',
-        type: 'web',
-        badge: 'Live NBA'
-      }
-    );
-  } else if (sport === 'cricket') {
-    servers.push(
-      {
-        name: '🏏 SuperSport Cricket HD',
-        url: 'https://topembed.pw/channel/SuperSportCricket',
+        name: '🏉 SuperSport Rugby HD',
+        url: 'https://topembed.pw/channel/SuperSportRugby',
         type: 'web',
         badge: 'SuperSport HD'
       },
       {
-        name: '🏏 Sky Sports Cricket HD',
-        url: 'https://topembed.pw/channel/SkySportsCricket',
+        name: '🏉 Sky Sports Arena HD',
+        url: 'https://topembed.pw/channel/SkySportsArena',
         type: 'web',
         badge: 'Sky Sports'
-      },
-      {
-        name: '⚡ Streamed.su Cricket Feed',
-        url: 'https://streamed.su/category/cricket',
-        type: 'web',
-        badge: 'Live Stream'
       }
     );
-  } else {
+  } else if (sport === 'soccer' || league.includes('premier') || league.includes('champions')) {
     servers.push(
       {
-        name: '🏆 SportsGrid Live HD (24/7 Match Center)',
-        url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
-        type: 'hls',
-        badge: 'Native HLS'
+        name: `⚡ Streamed.su Football Feed (${homeName} vs ${awayName})`,
+        url: 'https://streamed.su/category/football',
+        type: 'web',
+        badge: 'Web Popout'
       },
       {
-        name: '🌍 VIPRow Live Sports Stream',
-        url: 'https://www.viprow.nu/sports-online',
+        name: '⚽ SuperSport Premier League HD',
+        url: 'https://topembed.pw/channel/SkySportsPremierLeague',
         type: 'web',
-        badge: 'External Popout'
+        badge: 'SuperSport HD'
+      },
+      {
+        name: '⚽ TNT Sports 1 HD',
+        url: 'https://topembed.pw/channel/TNTSports1',
+        type: 'web',
+        badge: 'TNT Sports'
+      }
+    );
+  } else if (sport === 'f1' || league.includes('racing')) {
+    servers.push(
+      {
+        name: '⚡ Streamed.su Motorsport Live Feed',
+        url: 'https://streamed.su/category/motor-sports',
+        type: 'web',
+        badge: 'Web Popout'
+      },
+      {
+        name: '🏎️ Sky Sports F1 HD',
+        url: 'https://topembed.pw/channel/SkySportsF1',
+        type: 'web',
+        badge: 'Sky Sports F1'
+      }
+    );
+  } else if (sport === 'mma' || league.includes('ufc')) {
+    servers.push(
+      {
+        name: '⚡ Streamed.su UFC & Fight Feed',
+        url: 'https://streamed.su/category/fight',
+        type: 'web',
+        badge: 'Web Popout'
+      },
+      {
+        name: '🥊 TNT Sports 2 / UFC PPV',
+        url: 'https://topembed.pw/channel/TNTSports2',
+        type: 'web',
+        badge: 'UFC Live'
       }
     );
   }
 
-  // Include any extra servers attached directly to the match object
-  if (match.servers && Array.isArray(match.servers)) {
-    match.servers.forEach((s) => {
-      if (s.url && !servers.some((srv) => srv.url === s.url)) {
-        servers.push({
-          name: s.name,
-          url: s.url,
-          type: s.url.includes('.m3u8')
-            ? 'hls'
-            : s.url.includes('youtube')
-            ? 'youtube'
-            : 'web',
-          badge: 'Match Feed'
-        });
-      }
-    });
-  }
+  // 4. Official YouTube Highlights & Search (Optional)
+  servers.push({
+    name: `🎬 Search Match Highlights on YouTube (${homeName} vs ${awayName})`,
+    url: `https://www.youtube.com/results?search_query=${encodedQuery}+match+highlights`,
+    type: 'web',
+    badge: 'YouTube'
+  });
 
   return servers;
 }

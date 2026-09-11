@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MediaItem } from '../../types/media';
 import { MediaCard } from './MediaCard';
+import { TrailerModal } from '../Common/TrailerModal';
 import {
   Sparkles,
   Flame,
@@ -14,7 +15,8 @@ import {
   Radio,
   ChevronRight,
   TrendingUp,
-  Search
+  Search,
+  Video
 } from 'lucide-react';
 
 interface MediaCatalogProps {
@@ -27,14 +29,17 @@ interface MediaCatalogProps {
   onSearchQuery: (query: string) => void;
 }
 
-// 1. Primary Media Type & Genre Categories
+// 1. Primary Media Type & Curated Thematic Collections
 const CATEGORIES = [
-  { id: 'trending', label: 'Trending All', icon: Flame },
-  { id: 'movies', label: 'Feature Movies', icon: Film },
-  { id: 'tv', label: 'TV Shows & Series', icon: Tv },
-  { id: 'superhero', label: 'Marvel & DC', icon: Sparkles },
-  { id: 'action', label: 'Action & Sci-Fi', icon: Compass }
+  { id: 'trending', label: '🔥 Trending All', icon: Flame },
+  { id: 'movies', label: '🎬 Feature Movies', icon: Film },
+  { id: 'tv', label: '📺 TV Series', icon: Tv },
+  { id: 'top_rated', label: '⭐ IMDb Top 250', icon: Star },
+  { id: 'ghibli', label: '🍃 Studio Ghibli', icon: Sparkles },
+  { id: 'scifi', label: '🚀 Sci-Fi Thrillers', icon: Compass },
+  { id: 'superhero', label: '🦸 Marvel & DC', icon: Sparkles }
 ];
+
 
 // 2. Curated Streaming Platforms
 const STREAMING_NETWORKS = [
@@ -103,6 +108,7 @@ export const MediaCatalog: React.FC<MediaCatalogProps> = ({
   searchQuery,
   onSearchQuery
 }) => {
+  const [trailerItem, setTrailerItem] = useState<MediaItem | null>(null);
   const isPlatformActive = STREAMING_NETWORKS.some((n) => n.id === activeCategory);
 
   const featured = mediaList[0];
@@ -251,16 +257,30 @@ export const MediaCatalog: React.FC<MediaCatalogProps> = ({
               {featured.overview || 'Stream full HD movies and complete television seasons ad-free.'}
             </p>
 
-            <div className="pt-2 flex items-center gap-3">
-              <button className="px-6 py-3 rounded-2xl bg-white hover:bg-slate-200 text-slate-950 font-black text-xs sm:text-sm shadow-xl flex items-center gap-2 transition-all hover:scale-105 cursor-pointer">
-                <Play className="w-4 h-4 fill-current" />
+            <div className="pt-2 flex items-center gap-3 flex-wrap">
+              <button
+                onClick={() => onSelectMedia(featured)}
+                className="px-6 py-3 rounded-2xl bg-white hover:bg-slate-200 text-slate-950 font-black text-xs sm:text-sm shadow-xl flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+              >
+                <Play className="w-4 h-4 fill-current text-slate-950" />
                 <span>Stream Now</span>
               </button>
-              <button className="px-5 py-3 rounded-2xl bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 font-bold text-xs sm:text-sm backdrop-blur-md flex items-center gap-2 transition-all hover:scale-105 cursor-pointer">
+              <button
+                onClick={() => setTrailerItem(featured)}
+                className="px-5 py-3 rounded-2xl bg-rose-600/90 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm shadow-xl shadow-rose-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+              >
+                <Video className="w-4 h-4 text-white" />
+                <span>Watch Trailer</span>
+              </button>
+              <button
+                onClick={() => onSelectMedia(featured)}
+                className="px-5 py-3 rounded-2xl bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 font-bold text-xs sm:text-sm backdrop-blur-md flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+              >
                 <Info className="w-4 h-4" />
                 <span>View Details</span>
               </button>
             </div>
+
           </div>
         </div>
       )}
@@ -321,6 +341,22 @@ export const MediaCatalog: React.FC<MediaCatalogProps> = ({
           </p>
         </div>
       )}
+
+
+      {trailerItem && (
+        <TrailerModal
+          mediaId={trailerItem.id}
+          mediaType={trailerItem.media_type === 'tv' ? 'tv' : 'movie'}
+          title={trailerItem.title || trailerItem.name || trailerItem.original_title || 'Media'}
+          onClose={() => setTrailerItem(null)}
+          onPlayFullMedia={() => {
+            const item = trailerItem;
+            setTrailerItem(null);
+            onSelectMedia(item);
+          }}
+        />
+      )}
     </div>
   );
 };
+

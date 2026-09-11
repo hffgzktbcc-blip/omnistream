@@ -69,7 +69,7 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
   const totalEpisodes = item.number_of_episodes || totalSeasons * 10;
   const episodesInCurrentSeason = Math.min(Math.ceil(totalEpisodes / totalSeasons), 24);
 
-  // Multi-Server Embed Sources
+  // Multi-Server Embed Sources (Next-Gen High-Speed Providers)
   const movieServers = [
     {
       name: 'Server 1: VidLink Pro 4K',
@@ -77,27 +77,35 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
         `https://vidlink.pro/movie/${id}?primaryColor=6366f1&secondaryColor=a855f7&iconColor=ffffff&title=true&poster=true&autoplay=true`
     },
     {
-      name: 'Server 2: VidSrc XYZ',
+      name: 'Server 2: Embed.su (Ultra HD & Subtitles)',
+      getUrl: (id: number) => `https://embed.su/embed/movie/${id}`
+    },
+    {
+      name: 'Server 3: VidSrc XYZ',
       getUrl: (id: number) => `https://vidsrc.xyz/embed/movie/${id}`
     },
     {
-      name: 'Server 3: VidSrc CC',
+      name: 'Server 4: RiveStream Direct',
+      getUrl: (id: number) => `https://rivestream.live/embed?type=movie&id=${id}`
+    },
+    {
+      name: 'Server 5: VidSrc CC',
       getUrl: (id: number) => `https://vidsrc.cc/v2/embed/movie/${id}`
     },
     {
-      name: 'Server 4: AutoEmbed Direct',
+      name: 'Server 6: AutoEmbed Direct',
       getUrl: (id: number) => `https://player.autoembed.cc/embed/movie/${id}`
     },
     {
-      name: 'Server 5: SmashyStream',
+      name: 'Server 7: SmashyStream',
       getUrl: (id: number) => `https://player.smashystream.com/movie/${id}`
     },
     {
-      name: 'Server 6: MultiEmbed Universal',
+      name: 'Server 8: MultiEmbed Universal',
       getUrl: (id: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1`
     },
     {
-      name: 'Server 7: 2Embed VIP',
+      name: 'Server 9: 2Embed VIP',
       getUrl: (id: number) => `https://www.2embed.cc/embed/${id}`
     }
   ];
@@ -109,36 +117,46 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
         `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=6366f1&secondaryColor=a855f7&iconColor=ffffff&title=true&poster=true&autoplay=true`
     },
     {
-      name: 'Server 2: VidSrc XYZ',
+      name: 'Server 2: Embed.su (Ultra HD & Subtitles)',
+      getUrl: (id: number, s: number, e: number) => `https://embed.su/embed/tv/${id}/${s}/${e}`
+    },
+    {
+      name: 'Server 3: VidSrc XYZ',
       getUrl: (id: number, s: number, e: number) =>
         `https://vidsrc.xyz/embed/tv/${id}/${s}-${e}`
     },
     {
-      name: 'Server 3: VidSrc CC',
+      name: 'Server 4: RiveStream Direct',
+      getUrl: (id: number, s: number, e: number) =>
+        `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}`
+    },
+    {
+      name: 'Server 5: VidSrc CC',
       getUrl: (id: number, s: number, e: number) =>
         `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`
     },
     {
-      name: 'Server 4: AutoEmbed Direct',
+      name: 'Server 6: AutoEmbed Direct',
       getUrl: (id: number, s: number, e: number) =>
         `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`
     },
     {
-      name: 'Server 5: SmashyStream',
+      name: 'Server 7: SmashyStream',
       getUrl: (id: number, s: number, e: number) =>
         `https://player.smashystream.com/tv/${id}?s=${s}&e=${e}`
     },
     {
-      name: 'Server 6: MultiEmbed Universal',
+      name: 'Server 8: MultiEmbed Universal',
       getUrl: (id: number, s: number, e: number) =>
         `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`
     },
     {
-      name: 'Server 7: 2Embed VIP',
+      name: 'Server 9: 2Embed VIP',
       getUrl: (id: number, s: number, e: number) =>
         `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
     }
   ];
+
 
   const servers = isMovie ? movieServers : tvServers;
   const currentStreamUrl = isMovie

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { MediaItem, TVSeason } from '../../types/media';
-import { X, Play, Star, Calendar, Clock, Film, Tv, Clapperboard, Download } from 'lucide-react';
+import { X, Play, Star, Calendar, Clock, Film, Tv, Clapperboard, Download, Video } from 'lucide-react';
 import { tvNavigation } from '../../services/tvNavigation';
+import { TrailerModal } from '../Common/TrailerModal';
 
 interface MediaDetailModalProps {
   item: MediaItem | null;
@@ -15,6 +16,7 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
   onPlayMedia
 }) => {
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
+  const [showTrailer, setShowTrailer] = useState<boolean>(false);
 
   if (!item) return null;
 
@@ -163,7 +165,18 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
                   <Play className="w-5 h-5 fill-current text-white" />
                   <span>{isMovie ? 'Stream Full Movie' : `Stream Season ${selectedSeason} Ep 1`}</span>
                 </button>
+
+                <button
+                  type="button"
+                  tabIndex={0}
+                  onClick={() => setShowTrailer(true)}
+                  className="px-5 py-3 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                >
+                  <Video className="w-4 h-4 text-rose-400" />
+                  <span>Watch Trailer</span>
+                </button>
               </div>
+
 
               {/* Genres */}
               {item.genres && item.genres.length > 0 && (
@@ -233,6 +246,20 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
           )}
         </div>
       </div>
+
+      {showTrailer && (
+        <TrailerModal
+          mediaId={item.id}
+          mediaType={isMovie ? 'movie' : 'tv'}
+          title={title}
+          onClose={() => setShowTrailer(false)}
+          onPlayFullMedia={() => {
+            setShowTrailer(false);
+            onPlayMedia(item, isMovie ? undefined : selectedSeason, 1);
+          }}
+        />
+      )}
     </div>
   );
 };
+

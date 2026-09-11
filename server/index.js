@@ -16,6 +16,7 @@ import audiobooksRouter from './audiobooks.js';
 import streamResolverRouter from './streamResolver.js';
 import streamProxyRouter from './streamProxy.js';
 import torrentStreamerRouter from './torrentStreamer.js';
+import { getSportsChannels } from './sportsChannels.js';
 
 const dnsPromises = dns.promises;
 const __filename = fileURLToPath(import.meta.url);
@@ -2045,6 +2046,30 @@ app.get('/api/media/trending', async (req, res) => {
       setCache(cacheKey, results, 1000 * 60 * 30);
       return res.json(results);
     }
+    if (category === 'ghibli') {
+      const url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_companies=10342&sort_by=vote_average.desc&vote_count.gte=300`;
+      const tRes = await safeFetch(url);
+      const data = await tRes.json();
+      const results = (data.results || []).map(r => ({ ...r, media_type: 'movie' }));
+      setCache(cacheKey, results, 1000 * 60 * 60);
+      return res.json(results);
+    }
+    if (category === 'top_rated' || category === 'imdb_top') {
+      const url = `https://api.themoviedb.org/3/movie/top_rated?api_key=${TMDB_API_KEY}&region=US`;
+      const tRes = await safeFetch(url);
+      const data = await tRes.json();
+      const results = (data.results || []).map(r => ({ ...r, media_type: 'movie' }));
+      setCache(cacheKey, results, 1000 * 60 * 60);
+      return res.json(results);
+    }
+    if (category === 'scifi') {
+      const url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=878&sort_by=popularity.desc`;
+      const tRes = await safeFetch(url);
+      const data = await tRes.json();
+      const results = (data.results || []).map(r => ({ ...r, media_type: 'movie' }));
+      setCache(cacheKey, results, 1000 * 60 * 60);
+      return res.json(results);
+    }
 
     if (STREAMING_PROVIDERS[category]) {
       const prov = STREAMING_PROVIDERS[category];
@@ -2144,6 +2169,52 @@ app.get('/api/media/search', async (req, res) => {
     res.status(500).json({ error: 'Media search failed', message: err.message });
   }
 });
+
+app.get('/api/media/trailer', async (req, res) => {
+  const { id, type = 'movie' } = req.query;
+  if (!id) return res.status(400).json({ error: 'Missing id parameter' });
+
+  const endpointType = type === 'tv' ? 'tv' : 'movie';
+  const cacheKey = `trailer_${endpointType}_${id}`;
+  const cached = getCache(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const url = `https://api.themoviedb.org/3/${endpointType}/${id}/videos?api_key=${TMDB_API_KEY}`;
+    const vRes = await safeFetch(url);
+    const data = await vRes.json();
+    const results = data.results || [];
+
+    const officialTrailer = results.find(
+      (v) => v.site === 'YouTube' && v.type === 'Trailer' && v.official
+    ) || results.find(
+      (v) => v.site === 'YouTube' && v.type === 'Trailer'
+    ) || results.find(
+      (v) => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip')
+    ) || results[0];
+
+    if (!officialTrailer) {
+      return res.json({ found: false });
+    }
+
+    const payload = {
+      found: true,
+      key: officialTrailer.key,
+      name: officialTrailer.name,
+      site: officialTrailer.site,
+      type: officialTrailer.type,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${officialTrailer.key}?autoplay=1&rel=0`,
+      youtubeUrl: `https://www.youtube.com/watch?v=${officialTrailer.key}`
+    };
+
+    setCache(cacheKey, payload, 1000 * 60 * 60 * 24);
+    res.json(payload);
+  } catch (err) {
+    console.error('Trailer fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch trailer', message: err.message });
+  }
+});
+
 
 // -------------------------------------------------------------
 // 8. E-BOOKS & MODERN BESTSELLERS ENGINE
@@ -5701,6 +5772,18 @@ app.get('/api/sports/search', async (req, res) => {
     res.json([]);
   }
 });
+
+app.get('/api/sports/channels', async (req, res) => {
+  const sport = req.query.sport || 'all';
+  try {
+    const channels = await getSportsChannels(sport);
+    res.json(channels);
+  } catch (err) {
+    console.error('Sports channels error:', err);
+    res.status(500).json({ error: 'Failed to fetch sports channels', message: err.message });
+  }
+});
+
 
 // -------------------------------------------------------------
 // 11. RSS / ATOM LIVE FEED PULLER

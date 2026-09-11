@@ -51,28 +51,8 @@ const SUPERSPORT_CATEGORIES = [
 
 const SUPERSPORT_247_FEEDS = [
   {
-    id: 'feed_ss_rugby_highlights',
-    name: 'SuperSport Rugby Highlights HD',
-    badge: '🏉 Springboks & URC',
-    sport: 'rugby',
-    icon: '🏉',
-    desc: 'Official Springboks, Six Nations, Rugby Championship & URC match highlights',
-    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PL0D5C35BB8FAEF3E8&autoplay=1',
-    gradient: 'from-amber-600/30 via-[#00173d] to-[#000c1e] border-amber-400/40 text-amber-300'
-  },
-  {
-    id: 'feed_ss_epl_live',
-    name: 'Premier League Goals & Action',
-    badge: '⚽ 24/7 EPL Highlights',
-    sport: 'soccer',
-    icon: '⚽',
-    desc: 'Official Premier League matchday goals, tactical cam & press conferences',
-    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PLQ_vl3g3HkWn3R8ZJ0T1kG5kP8V9rV3B_&autoplay=1',
-    gradient: 'from-blue-600/30 via-[#00173d] to-[#000c1e] border-blue-400/40 text-blue-300'
-  },
-  {
-    id: 'feed_ss_f1_live',
-    name: 'Red Bull TV (Live 24/7 F1 & Action)',
+    id: 'feed_redbull_tv',
+    name: 'Red Bull TV HD',
     badge: '🏎️ 1080p Native HLS',
     sport: 'f1',
     icon: '🏎️',
@@ -81,34 +61,54 @@ const SUPERSPORT_247_FEEDS = [
     gradient: 'from-red-600/30 via-[#00173d] to-[#000c1e] border-red-400/40 text-red-300'
   },
   {
-    id: 'feed_ss_sportsgrid',
+    id: 'feed_fifa_plus',
+    name: 'FIFA+ Official Live',
+    badge: '⚽ 720p Native HLS',
+    sport: 'soccer',
+    icon: '⚽',
+    desc: 'Official FIFA live tournaments, World Cup archives, documentaries and global leagues',
+    url: 'https://fifa-fifaplus-1-us.samsung.wurl.tv/playlist.m3u8',
+    gradient: 'from-blue-600/30 via-[#00173d] to-[#000c1e] border-blue-400/40 text-blue-300'
+  },
+  {
+    id: 'feed_sportsgrid',
     name: 'SportsGrid 24/7 Live Network',
     badge: '🏆 Live Satellite HLS',
     sport: 'all',
     icon: '🏆',
     desc: '24/7 real-time sports odds, match analysis, live scores and commentary',
     url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
-    gradient: 'from-yellow-500/30 via-[#00173d] to-[#000c1e] border-yellow-400/40 text-yellow-300'
+    gradient: 'from-amber-500/30 via-[#00173d] to-[#000c1e] border-amber-400/40 text-amber-300'
   },
   {
-    id: 'feed_ss_f1_paddock',
-    name: 'Formula 1 Paddock & Analysis',
-    badge: '🏎️ Official F1 HD',
-    sport: 'f1',
-    icon: '🏎️',
-    desc: 'Grand Prix on-boards, technical breakdowns, driver interviews & press feeds',
-    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PLfoNZDHitwjWq3qGz5hS5b6XJ3Q1X1Z1Z&autoplay=1',
+    id: 'feed_dazn_combat',
+    name: 'DAZN Combat HD',
+    badge: '🥊 Native HLS Combat',
+    sport: 'mma',
+    icon: '🥊',
+    desc: 'World championship boxing, MMA bouts, knockout archives & fighter press',
+    url: 'https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8',
+    gradient: 'from-emerald-600/30 via-[#00173d] to-[#000c1e] border-emerald-400/40 text-emerald-300'
+  },
+  {
+    id: 'feed_fight_network',
+    name: 'Fight Network HD',
+    badge: '🥊 1080p MMA & Pro',
+    sport: 'mma',
+    icon: '🥊',
+    desc: '24/7 combat sports, professional wrestling, kickboxing, and mixed martial arts',
+    url: 'https://antennatv-fightnetwork-1-us.samsung.wurl.tv/playlist.m3u8',
     gradient: 'from-purple-600/30 via-[#00173d] to-[#000c1e] border-purple-400/40 text-purple-300'
   },
   {
-    id: 'feed_ss_ufc_live',
-    name: 'UFC & Combat Free Fights',
-    badge: '🥊 UFC Live Replays',
-    sport: 'mma',
-    icon: '🥊',
-    desc: 'Official full fight replays, knockout compilations, weigh-ins & press conferences',
-    url: 'https://www.youtube-nocookie.com/embed/videoseries?list=PL_Gzvvgow5rw5sP5t3wS0D4v_p68d8x7b&autoplay=1',
-    gradient: 'from-emerald-600/30 via-[#00173d] to-[#000c1e] border-emerald-400/40 text-emerald-300'
+    id: 'feed_fubo_sports',
+    name: 'fubo Sports Network',
+    badge: '📡 1080p Live Sports',
+    sport: 'all',
+    icon: '📡',
+    desc: 'Award-winning live events, football, basketball tournaments, and studio analysis',
+    url: 'https://fubotv-fubosportsnetwork-1-us.samsung.wurl.tv/playlist.m3u8',
+    gradient: 'from-indigo-600/30 via-[#00173d] to-[#000c1e] border-indigo-400/40 text-indigo-300'
   }
 ];
 
@@ -129,10 +129,23 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
   const [newChanName, setNewChanName] = useState('');
   const [newChanUrl, setNewChanUrl] = useState('');
   const [newChanSport, setNewChanSport] = useState<any>('all');
+  const [iptvChannels, setIptvChannels] = useState<any[]>([]);
 
   useEffect(() => {
     setCustomChannels(iptvStorage.getChannels().filter((c) => c.isCustom));
   }, []);
+
+  useEffect(() => {
+    fetch(`/api/sports/channels?sport=${activeSport}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setIptvChannels(data);
+        }
+      })
+      .catch(() => {});
+  }, [activeSport]);
+
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,21 +157,22 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
     onSearchQuery('');
   };
 
-  const handleWatchFeed = (feed: typeof SUPERSPORT_247_FEEDS[0] | IPTVChannel) => {
+  const handleWatchFeed = (feed: any) => {
     const dummyMatch: SportsMatch = {
-      id: feed.id,
-      sport: (feed as any).sport || 'all',
-      league: feed.name,
+      id: feed.id || `channel_${Date.now()}`,
+      sport: feed.sport || 'all',
+      league: feed.category || feed.name,
       homeTeam: { name: feed.name, score: 'LIVE' },
-      awayTeam: { name: 'SuperSport HD Broadcast', score: '24/7' },
+      awayTeam: { name: '24/7 HD HLS Feed', score: 'LIVE' },
       status: 'LIVE',
-      statusText: (feed as any).desc || '24/7 Live Broadcast Feed',
+      statusText: feed.desc || '24/7 Live Broadcast Feed',
       servers: [
-        { name: `${feed.name}`, url: feed.url }
+        { name: `${feed.name} (${feed.badge || '1080p'})`, url: feed.url }
       ]
     };
     onWatchMatch(dummyMatch);
   };
+
 
   const handleAddCustomChannel = (e: React.FormEvent) => {
     e.preventDefault();
