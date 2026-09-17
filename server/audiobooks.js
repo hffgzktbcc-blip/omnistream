@@ -30,12 +30,10 @@ try {
   console.error('[WebTorrent Init Error]:', e);
 }
 
-// AudiobookBay Mirrors
+// AudiobookBay Mirrors (Verified Active)
 const ABB_MIRRORS = [
   'https://audiobookbay.lu',
-  'https://audiobookbay.is',
-  'https://audiobookbay.nl',
-  'https://audiobookbay.se'
+  'https://audiobookbay.me'
 ];
 
 const DEFAULT_TRACKERS = [
@@ -160,12 +158,13 @@ async function fetchABB(urlPath) {
   const fetchSingleMirror = async (mirror) => {
     const fullUrl = urlPath.startsWith('http') ? urlPath : `${mirror}${urlPath.startsWith('/') ? '' : '/'}${urlPath}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 6500);
 
     try {
       const res = await fetch(fullUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': `${mirror}/`,
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.9'
         },
@@ -643,7 +642,8 @@ router.get('/torrent/search', async (req, res) => {
 // Search (AudiobookBay + Auto WebTorrent Swarm Fallback)
 router.get('/search', async (req, res) => {
   try {
-    const query = (req.query.q || '').trim();
+    const rawQuery = (req.query.q || '').trim();
+    const query = rawQuery.toLowerCase();
     const page = parseInt(req.query.page, 10) || 1;
     if (!query) {
       return res.status(400).json({ error: 'Missing search query (q)' });
@@ -1099,8 +1099,8 @@ router.get('/archive/search', async (req, res) => {
   const start = (page - 1) * rows;
 
   const queryStr = q
-    ? `mediatype:(audio)+AND+collection:(librivoxaudio)+AND+(title:(${encodeURIComponent(q)})+OR+creator:(${encodeURIComponent(q)}))`
-    : 'mediatype:(audio)+AND+collection:(librivoxaudio)';
+    ? `mediatype:(audio)+AND+(collection:(audio_bookspoetry)+OR+collection:(audio_book)+OR+collection:(librivoxaudio)+OR+subject:(audiobook))+AND+(title:(${encodeURIComponent(q)})+OR+creator:(${encodeURIComponent(q)}))`
+    : 'mediatype:(audio)+AND+(collection:(audio_bookspoetry)+OR+collection:(audio_book)+OR+collection:(librivoxaudio)+OR+subject:(audiobook))';
 
   const cacheKey = `ia:search:${queryStr}:${page}`;
   const cached = getCache(cacheKey, 600);
@@ -1110,7 +1110,7 @@ router.get('/archive/search', async (req, res) => {
     const url = `https://archive.org/advancedsearch.php?q=${queryStr}&fl[]=identifier,title,creator,description,downloads,year&sort[]=downloads+desc&rows=${rows}&start=${start}&output=json`;
     const response = await fetch(url, {
       headers: { 'User-Agent': 'OmniStream/1.0' },
-      signal: AbortSignal.timeout(3500)
+      signal: AbortSignal.timeout(5000)
     });
     if (!response.ok) throw new Error(`Archive.org error ${response.status}`);
     const data = await response.json();
@@ -1121,7 +1121,7 @@ router.get('/archive/search', async (req, res) => {
         id: `ia_${d.identifier}`,
         identifier: d.identifier,
         title: d.title || 'Untitled Audiobook',
-        author: d.creator || 'LibriVox Volunteer',
+        author: d.creator || 'Audiobook Narrator',
         cover: `https://archive.org/services/img/${d.identifier}`,
         description: (d.description || '').replace(/<[^>]*>?/gm, '').slice(0, 300),
         downloads: d.downloads || 0,

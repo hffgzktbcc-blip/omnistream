@@ -336,27 +336,57 @@ function renderBookCard(book, savedIds, setSavedIds, onSelectBook, activeGenre, 
         </form>
       </div>
 
-      {/* Genre Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-2 border-b border-[#2a2c33]">
-        {genres.map((g) => {
-          const isActive = activeGenre === g.id;
-          return (
-            <button
-              key={g.id}
-              onClick={() => {
-                setActiveGenre(g.id);
-                setSearchQuery('');
-              }}
-              className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition cursor-pointer ${
-                isActive
-                  ? 'bg-[#f69931] text-black'
-                  : 'bg-transparent text-slate-300 hover:text-white border border-[#2a2c33] hover:border-slate-500'
-              }`}
-            >
-              {g.label}
-            </button>
-          );
-        })}
+      {/* Source Selector & Genre Pills */}
+      <div className="flex flex-col gap-3 border-b border-[#2a2c33] pb-3">
+        {/* Source Engine Toggle */}
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">Source:</span>
+          {[
+            { id: 'all', label: '⚡ All & AudiobookBay' },
+            { id: 'webtorrent', label: '🧲 WebTorrent P2P' },
+            { id: 'archive', label: '🏛️ BBC & Archive' },
+            { id: 'youtube', label: '📺 YouTube Editions' },
+          ].map((src) => {
+            const isSelected = sourceType === src.id;
+            return (
+              <button
+                key={src.id}
+                type="button"
+                onClick={() => setSourceType(src.id as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#f69931] text-black shadow-md'
+                    : 'bg-[#1a1c22] text-slate-400 hover:text-white border border-[#2a2c33]'
+                }`}
+              >
+                {src.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Genre Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+          {genres.map((g) => {
+            const isActive = activeGenre === g.id;
+            return (
+              <button
+                key={g.id}
+                onClick={() => {
+                  setActiveGenre(g.id);
+                  setSearchQuery('');
+                }}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                  isActive
+                    ? 'bg-white text-black'
+                    : 'bg-transparent text-slate-300 hover:text-white border border-[#2a2c33] hover:border-slate-500'
+                }`}
+              >
+                {g.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Error State */}
