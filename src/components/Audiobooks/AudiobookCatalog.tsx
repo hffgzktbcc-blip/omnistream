@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Audiobook, AudioTrack, AudiobookListeningProgress } from '../../types/audiobook';
 import { audiobookStorage } from '../../services/audiobookStorage';
+import { api } from '../../services/api';
 
 interface AudiobookCatalogProps {
   onSelectBook: (book: Audiobook) => void;
@@ -83,48 +84,60 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
     try {
       if (sourceType === 'webtorrent') {
         const q = searchQuery || (activeGenre ? `${activeGenre} audiobook` : 'audiobook bestsellers');
-        const res = await fetch(`/api/audiobooks/torrent/search?q=${encodeURIComponent(q)}`);
-        if (!res.ok) throw new Error('Failed to search WebTorrent swarms');
-        const data = await res.json();
-        setBooks(data.items || []);
+        let loaded: Audiobook[] = [];
+        try {
+          const res = await fetch(`/api/audiobooks/torrent/search?q=${encodeURIComponent(q)}`);
+          if (res.ok) {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const data = await res.json();
+              loaded = data.items || [];
+            }
+          }
+        } catch {}
+        if (loaded.length === 0) {
+          loaded = await api.getPopularAudiobooks(activeGenre);
+        }
+        setBooks(loaded);
         setTotalPages(1);
       } else if (sourceType === 'archive') {
-        const res = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery || 'classic')}&page=${page}`);
-        if (!res.ok) throw new Error('Failed to load archive audiobooks');
-        const data = await res.json();
-        setBooks(data.items || []);
-        setTotalPages(data.totalPages || 1);
+        const data = await api.searchAudiobooks(searchQuery || 'classic');
+        setBooks(data);
+        setTotalPages(1);
       } else if (sourceType === 'youtube') {
-        const res = await fetch(`/api/audiobooks/youtube/search?q=${encodeURIComponent(searchQuery || 'audiobook')}`);
-        if (!res.ok) throw new Error('Failed to load YouTube audiobooks');
-        const data = await res.json();
-        setBooks(data.items || []);
+        const loaded = await api.getPopularAudiobooks(activeGenre);
+        setBooks(loaded);
         setTotalPages(1);
       } else {
-        // Default 'all' or 'audiobay': fetch direct archive or AudioBay
+        let loaded: Audiobook[] = [];
         const endpoint = activeGenre
           ? `/api/audiobooks/category/${activeGenre}?page=${page}`
           : `/api/audiobooks/recent?page=${page}`;
+        try {
+          const res = await fetch(endpoint);
+          if (res.ok) {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const data = await res.json();
+              if (Array.isArray(data.items) && data.items.length > 0) {
+                loaded = data.items;
+                setTotalPages(data.totalPages || 1);
+              }
+            }
+          }
+        } catch {}
 
-        const res = await fetch(endpoint);
-        if (!res.ok) throw new Error('Audiobook network stream issue');
-        const data = await res.json();
-        setBooks(data.items || []);
-        setTotalPages(data.totalPages || 1);
+        if (loaded.length === 0) {
+          loaded = await api.getPopularAudiobooks(activeGenre);
+          setTotalPages(1);
+        }
+        setBooks(loaded);
       }
     } catch (err: any) {
-      console.warn('Audiobooks fetch fallback to archive:', err);
-      // Fallback to Internet Archive so user always sees playable audiobooks
-      try {
-        const fallbackRes = await fetch(`/api/audiobooks/archive/search?q=Sherlock&page=1`);
-        if (fallbackRes.ok) {
-          const fbData = await fallbackRes.json();
-          setBooks(fbData.items || []);
-          setTotalPages(fbData.totalPages || 1);
-        }
-      } catch {
-        setErrorMsg('Failed to reach audiobook server. Click retry to reconnect.');
-      }
+      console.warn('Audiobooks fetch fallback to curated/archive:', err);
+      const fallback = await api.getPopularAudiobooks(activeGenre);
+      setBooks(fallback);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -144,19 +157,29 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
 
     try {
       if (sourceType === 'webtorrent') {
-        const res = await fetch(`/api/audiobooks/torrent/search?q=${encodeURIComponent(searchQuery.trim())}`);
-        const data = await res.json();
-        setBooks(data.items || []);
+        let loaded: Audiobook[] = [];
+        try {
+          const res = await fetch(`/api/audiobooks/torrent/search?q=${encodeURIComponent(searchQuery.trim())}`);
+          if (res.ok) {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const data = await res.json();
+              loaded = data.items || [];
+            }
+          }
+        } catch {}
+        if (loaded.length === 0) {
+          loaded = await api.searchAudiobooks(searchQuery.trim());
+        }
+        setBooks(loaded);
         setTotalPages(1);
       } else if (sourceType === 'archive') {
-        const res = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
-        const data = await res.json();
-        setBooks(data.items || []);
-        setTotalPages(data.totalPages || 1);
+        const data = await api.searchAudiobooks(searchQuery.trim());
+        setBooks(data);
+        setTotalPages(1);
       } else if (sourceType === 'youtube') {
-        const res = await fetch(`/api/audiobooks/youtube/search?q=${encodeURIComponent(searchQuery.trim())}`);
-        const data = await res.json();
-        setBooks(data.items || []);
+        const loaded = await api.searchAudiobooks(searchQuery.trim());
+        setBooks(loaded);
         setTotalPages(1);
       } else {
         // Universal search: AudiobookBay with WebTorrent Swarm and Archive fallbacks
@@ -166,45 +189,29 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
         try {
           const res = await fetch(`/api/audiobooks/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
           if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data.items) && data.items.length > 0) {
-              foundBooks = data.items;
-              pages = data.totalPages || 1;
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const data = await res.json();
+              if (Array.isArray(data.items) && data.items.length > 0) {
+                foundBooks = data.items;
+                pages = data.totalPages || 1;
+              }
             }
           }
         } catch {}
 
-        // If AudiobookBay had 0 results or timed out, query WebTorrent Swarms
+        // Fallback to client-side search if server returned 0 or failed
         if (foundBooks.length === 0) {
-          try {
-            const tRes = await fetch(`/api/audiobooks/torrent/search?q=${encodeURIComponent(searchQuery.trim())}`);
-            if (tRes.ok) {
-              const tData = await tRes.json();
-              if (Array.isArray(tData.items) && tData.items.length > 0) {
-                foundBooks = tData.items;
-                pages = 1;
-              }
-            }
-          } catch {}
-        }
-
-        // If still empty, query Internet Archive
-        if (foundBooks.length === 0) {
-          try {
-            const aRes = await fetch(`/api/audiobooks/archive/search?q=${encodeURIComponent(searchQuery.trim())}&page=1`);
-            if (aRes.ok) {
-              const aData = await aRes.json();
-              foundBooks = aData.items || [];
-              pages = aData.totalPages || 1;
-            }
-          } catch {}
+          foundBooks = await api.searchAudiobooks(searchQuery.trim());
         }
 
         setBooks(foundBooks);
         setTotalPages(pages);
       }
     } catch (e: any) {
-      setErrorMsg('Audiobook search failed: ' + e.message);
+      console.warn('Audiobook search error, using client fallback:', e);
+      const fallback = await api.searchAudiobooks(searchQuery.trim());
+      setBooks(fallback);
     } finally {
       setLoading(false);
     }

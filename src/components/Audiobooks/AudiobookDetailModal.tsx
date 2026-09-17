@@ -36,20 +36,82 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
   }, [isOpen, book]);
 
   const loadBookDetails = async (targetBook: Audiobook) => {
-    // 1. If it's an archive.org book, fetch metadata directly from the archive endpoint
+    // 0. If book already has a direct audioUrl, provide track immediately
+    if (targetBook.audioUrl) {
+      setTracks([
+        {
+          index: 0,
+          name: targetBook.title,
+          path: 'audio.mp3',
+          length: targetBook.durationSeconds || 3600,
+          sizeFormatted: targetBook.size || 'Audio Stream',
+          streamUrl: targetBook.audioUrl,
+          downloadUrl: targetBook.audioUrl
+        }
+      ]);
+      return;
+    }
+
+    // 1. If it's an archive.org book, fetch metadata directly from archive
     if (targetBook.id.startsWith('ia_') || (targetBook as any).source === 'archive') {
       setLoadingMetadata(true);
       setLoadingTracks(true);
       try {
         const cleanId = targetBook.id.replace(/^ia_/, '');
-        const res = await fetch(`/api/audiobooks/archive/book/${cleanId}`);
-        if (!res.ok) throw new Error('Could not fetch LibriVox stream details');
-        const data = await res.json();
-        setDetails((prev) => ({ ...(prev || targetBook), ...data }));
-        setTracks(data.tracks || []);
+        let loaded = false;
+        try {
+          const res = await fetch(`/api/audiobooks/archive/book/${cleanId}`);
+          if (res.ok) {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const data = await res.json();
+              if (data.tracks && data.tracks.length > 0) {
+                setDetails((prev) => ({ ...(prev || targetBook), ...data }));
+                setTracks(data.tracks || []);
+                loaded = true;
+              }
+            }
+          }
+        } catch {}
+
+        if (!loaded) {
+          // Direct Archive.org metadata API fallback for Cloudflare Pages / Static
+          const iaRes = await fetch(`https://archive.org/metadata/${cleanId}`);
+          if (iaRes.ok) {
+            const iaData = await iaRes.json();
+            const files = iaData.files || [];
+            const mp3s = files.filter((f: any) => f.name && (f.name.endsWith('.mp3') || f.format?.includes('MP3')));
+            const audioTracks: AudioTrack[] = mp3s.map((f: any, idx: number) => ({
+              index: idx,
+              name: f.title || f.name.replace(/\.mp3$/i, ''),
+              path: f.name,
+              length: Math.round(Number(f.length || 600)),
+              sizeFormatted: f.size ? `${(Number(f.size) / (1024 * 1024)).toFixed(1)} MB` : 'MP3 Audio',
+              streamUrl: `https://archive.org/download/${cleanId}/${encodeURIComponent(f.name)}`,
+              downloadUrl: `https://archive.org/download/${cleanId}/${encodeURIComponent(f.name)}`
+            }));
+            setDetails((prev) => ({
+              ...(prev || targetBook),
+              title: iaData.metadata?.title || targetBook.title,
+              author: iaData.metadata?.creator || targetBook.author,
+              description: typeof iaData.metadata?.description === 'string' ? iaData.metadata.description : targetBook.description
+            }));
+            setTracks(audioTracks.length > 0 ? audioTracks : [
+              {
+                index: 0,
+                name: targetBook.title,
+                path: 'audio.mp3',
+                length: targetBook.durationSeconds || 3600,
+                sizeFormatted: 'Audio Stream',
+                streamUrl: targetBook.audioUrl || `https://archive.org/download/${cleanId}`,
+                downloadUrl: targetBook.audioUrl || `https://archive.org/download/${cleanId}`
+              }
+            ]);
+          }
+        }
       } catch (e: any) {
         console.warn('Archive book detail error:', e);
-        setErrorMsg(e.message || 'Error loading audio stream');
+        provideFallbackTrack(targetBook);
       } finally {
         setLoadingMetadata(false);
         setLoadingTracks(false);

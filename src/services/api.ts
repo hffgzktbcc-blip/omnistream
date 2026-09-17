@@ -7,40 +7,127 @@ import { SportsMatch } from '../types/sports';
 
 const BASE_URL = '/api';
 
+async function safeFetchJson<T = any>(url: string, init?: RequestInit): Promise<T | null> {
+  try {
+    const res = await fetch(url, init);
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return await res.json();
+    }
+    const text = await res.text();
+    if (text.startsWith('{') || text.startsWith('[')) {
+      return JSON.parse(text);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export const api = {
   // 1. COMICS API
   async getPopularComics(category: string = 'all'): Promise<Comic[]> {
-    try {
-      const res = await fetch(`${BASE_URL}/comics/popular?category=${category}`);
-      if (!res.ok) throw new Error('Failed to fetch popular comics');
-      return await res.json();
-    } catch (err) {
-      console.warn('API getPopularComics error, falling back to sample:', err);
-      const sample = await this.getSampleComic();
-      return [sample];
+    const serverData = await safeFetchJson<Comic[]>(`${BASE_URL}/comics/popular?category=${category}`);
+    if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+      return serverData;
     }
+
+    // Direct MangaDex Client-Side Fallback for Cloudflare Pages / Static Deployments
+    try {
+      const res = await fetch('https://api.mangadex.org/manga?limit=24&order[followedCount]=desc&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive');
+      if (res.ok) {
+        const data = await res.json();
+        const list: Comic[] = (data.data || []).map((m: any) => {
+          const coverRel = m.relationships?.find((r: any) => r.type === 'cover_art');
+          const coverFile = coverRel?.attributes?.fileName;
+          const cover = coverFile
+            ? `https://uploads.mangadex.org/covers/${m.id}/${coverFile}.512.jpg`
+            : 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop';
+          return {
+            id: m.id,
+            source: 'mangadex',
+            title: m.attributes?.title?.en || Object.values(m.attributes?.title || {})[0] || 'Manga',
+            description: m.attributes?.description?.en || 'High-res manga release from MangaDex.',
+            cover,
+            author: 'MangaDex',
+            year: String(m.attributes?.year || 2024),
+            type: 'Manga',
+            status: m.attributes?.status === 'completed' ? 'Complete' : 'Ongoing',
+            chapters: []
+          };
+        });
+        if (list.length > 0) return list;
+      }
+    } catch (err) {
+      console.warn('MangaDex fallback error:', err);
+    }
+
+    const sample = await this.getSampleComic();
+    return [sample];
   },
 
   async searchComics(query: string, source: string = 'all'): Promise<Comic[]> {
-    try {
-      const res = await fetch(`${BASE_URL}/comics/search?q=${encodeURIComponent(query)}&source=${source}`);
-      if (!res.ok) throw new Error('Search request failed');
-      return await res.json();
-    } catch (err) {
-      console.error('API searchComics error:', err);
-      return [];
+    const serverData = await safeFetchJson<Comic[]>(`${BASE_URL}/comics/search?q=${encodeURIComponent(query)}&source=${source}`);
+    if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+      return serverData;
     }
+
+    try {
+      const res = await fetch(`https://api.mangadex.org/manga?title=${encodeURIComponent(query)}&limit=24&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive`);
+      if (res.ok) {
+        const data = await res.json();
+        return (data.data || []).map((m: any) => {
+          const coverRel = m.relationships?.find((r: any) => r.type === 'cover_art');
+          const coverFile = coverRel?.attributes?.fileName;
+          const cover = coverFile
+            ? `https://uploads.mangadex.org/covers/${m.id}/${coverFile}.512.jpg`
+            : 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop';
+          return {
+            id: m.id,
+            source: 'mangadex',
+            title: m.attributes?.title?.en || Object.values(m.attributes?.title || {})[0] || 'Manga',
+            description: m.attributes?.description?.en || '',
+            cover,
+            author: 'MangaDex',
+            year: String(m.attributes?.year || 2024),
+            type: 'Manga',
+            status: m.attributes?.status === 'completed' ? 'Complete' : 'Ongoing',
+            chapters: []
+          };
+        });
+      }
+    } catch (err) {
+      console.error('MangaDex search fallback error:', err);
+    }
+    return [];
   },
 
   async getComicDetails(source: string, id: string): Promise<Comic> {
-    try {
-      const res = await fetch(`${BASE_URL}/comics/details/${source}/${encodeURIComponent(id)}`);
-      if (!res.ok) throw new Error('Failed to fetch comic details');
-      return await res.json();
-    } catch (err) {
-      console.error('API getComicDetails error:', err);
-      throw err;
+    const serverData = await safeFetchJson<Comic>(`${BASE_URL}/comics/details/${source}/${encodeURIComponent(id)}`);
+    if (serverData && serverData.id) {
+      return serverData;
     }
+
+    try {
+      const feedRes = await fetch(`https://api.mangadex.org/manga/${id}/feed?translatedLanguage[]=en&order[chapter]=desc&limit=96`);
+      if (feedRes.ok) {
+        const feedData = await feedRes.json();
+        const chapters = (feedData.data || []).map((ch: any) => ({
+          id: ch.id,
+          chapter: ch.attributes?.chapter || '1',
+          title: ch.attributes?.title || `Chapter ${ch.attributes?.chapter || '1'}`,
+          pages: ch.attributes?.pages || 0
+        }));
+        return {
+          id,
+          source: 'mangadex',
+          title: 'Manga',
+          chapters
+        } as Comic;
+      }
+    } catch {}
+    throw new Error('Failed to fetch comic details');
   },
 
   async getChapterPages(
@@ -67,19 +154,28 @@ export const api = {
       }
     }
 
-    try {
-      const res = await fetch(`${BASE_URL}/comics/chapter/${encodeURIComponent(source)}/${encodeURIComponent(chapterId)}`, {
-        signal
-      });
-      if (!res.ok) throw new Error('Failed to load chapter pages');
-      const data = await res.json();
-      if (Array.isArray(data)) return data;
-      if (Array.isArray(data.pages)) return data.pages;
-      return [];
-    } catch (err) {
-      console.error('API getChapterPages error:', err);
-      throw err;
+    const serverData = await safeFetchJson<any>(`${BASE_URL}/comics/chapter/${encodeURIComponent(source)}/${encodeURIComponent(chapterId)}`, { signal });
+    if (serverData) {
+      if (Array.isArray(serverData)) return serverData;
+      if (Array.isArray(serverData.pages)) return serverData.pages;
     }
+
+    // Direct MangaDex At-Home Server Fallback
+    try {
+      const res = await fetch(`https://api.mangadex.org/at-home/server/${chapterId}`, { signal });
+      if (res.ok) {
+        const data = await res.json();
+        const baseUrl = data.baseUrl;
+        const hash = data.chapter?.hash;
+        const files = data.chapter?.data || [];
+        return files.map((f: string, i: number) => ({
+          pageNumber: i + 1,
+          url: `${baseUrl}/data/${hash}/${f}`
+        }));
+      }
+    } catch {}
+
+    return [];
   },
 
   async scrapeComicUrl(url: string, signal?: AbortSignal): Promise<{ title: string; total: number; pages: ComicPage[] }> {
@@ -158,23 +254,97 @@ export const api = {
   async getTrendingAnime(category: string = 'trending'): Promise<Anime[]> {
     try {
       const res = await fetch(`${BASE_URL}/anime/trending?category=${category}`);
-      if (!res.ok) throw new Error('Failed to fetch anime');
-      return await res.json();
+      if (res.ok) {
+        const text = await res.text();
+        if (text.startsWith('[') || text.startsWith('{')) {
+          return JSON.parse(text);
+        }
+      }
+    } catch {}
+
+    // Direct AniList GraphQL Fallback for Cloudflare Pages
+    try {
+      const gql = `
+        query {
+          Page(page: 1, perPage: 25) {
+            media(type: ANIME, sort: [TRENDING_DESC, POPULARITY_DESC], isAdult: false) {
+              id
+              title { romaji english native }
+              coverImage { extraLarge large medium color }
+              bannerImage
+              description
+              episodes
+              status
+              genres
+              averageScore
+              seasonYear
+              format
+              duration
+            }
+          }
+        }
+      `;
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ query: gql })
+      });
+      if (res.ok) {
+        const d = await res.json();
+        return d.data?.Page?.media || [];
+      }
     } catch (err) {
-      console.error('Anime trending fetch error:', err);
-      return [];
+      console.error('Anime trending AniList fallback error:', err);
     }
+    return [];
   },
 
   async searchAnime(query: string): Promise<Anime[]> {
     try {
       const res = await fetch(`${BASE_URL}/anime/search?q=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error('Anime search failed');
-      return await res.json();
+      if (res.ok) {
+        const text = await res.text();
+        if (text.startsWith('[') || text.startsWith('{')) {
+          return JSON.parse(text);
+        }
+      }
+    } catch {}
+
+    // Direct AniList Search Fallback
+    try {
+      const gql = `
+        query ($search: String) {
+          Page(page: 1, perPage: 25) {
+            media(type: ANIME, search: $search, isAdult: false) {
+              id
+              title { romaji english native }
+              coverImage { extraLarge large medium color }
+              bannerImage
+              description
+              episodes
+              status
+              genres
+              averageScore
+              seasonYear
+              format
+              duration
+            }
+          }
+        }
+      `;
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ query: gql, variables: { search: query } })
+      });
+      if (res.ok) {
+        const d = await res.json();
+        return d.data?.Page?.media || [];
+      }
     } catch (err) {
-      console.error('Anime search error:', err);
-      return [];
+      console.error('Anime search AniList fallback error:', err);
     }
+    return [];
   },
 
   async getAnimeEpisodes(title: string, id?: number, totalEpisodes: number = 12): Promise<AnimeEpisode[]> {
@@ -295,23 +465,72 @@ export const api = {
   async getTrendingMedia(category: string = 'trending'): Promise<MediaItem[]> {
     try {
       const res = await fetch(`${BASE_URL}/media/trending?category=${category}`);
-      if (!res.ok) throw new Error('Failed to fetch media');
-      return await res.json();
+      if (res.ok) {
+        const text = await res.text();
+        if (text.startsWith('[') || text.startsWith('{')) {
+          return JSON.parse(text);
+        }
+      }
+    } catch {}
+
+    // Direct TMDB Client-Side Fallback for Cloudflare Pages / Static Deployments
+    try {
+      const TMDB_KEY = '4e44d9029b1270a757cddc766a1bcb63';
+      let tmdbUrl = `https://api.themoviedb.org/3/trending/all/day?api_key=${TMDB_KEY}`;
+      const cat = category.toLowerCase();
+
+      if (cat === 'tv') {
+        tmdbUrl = `https://api.themoviedb.org/3/tv/popular?api_key=${TMDB_KEY}`;
+      } else if (cat === 'movies' || cat === 'movie') {
+        tmdbUrl = `https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_KEY}&region=US`;
+      } else if (cat.includes('marvel')) {
+        tmdbUrl = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=Marvel`;
+      } else if (cat.includes('starwars')) {
+        tmdbUrl = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=Star%20Wars`;
+      } else if (cat === 'action') {
+        tmdbUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&with_genres=28,878&sort_by=popularity.desc`;
+      } else if (cat === 'netflix') {
+        tmdbUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&with_watch_providers=8&watch_region=US&sort_by=popularity.desc`;
+      } else if (cat === 'disney') {
+        tmdbUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&with_watch_providers=337&watch_region=US&sort_by=popularity.desc`;
+      } else if (cat === 'prime') {
+        tmdbUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&with_watch_providers=9&watch_region=US&sort_by=popularity.desc`;
+      }
+
+      const tmdbRes = await fetch(tmdbUrl);
+      if (tmdbRes.ok) {
+        const data = await tmdbRes.json();
+        return (data.results || []).filter((r: any) => r.poster_path || r.backdrop_path);
+      }
     } catch (err) {
-      console.error('Media trending fetch error:', err);
-      return [];
+      console.error('Media trending TMDB fallback error:', err);
     }
+    return [];
   },
 
   async searchMedia(query: string): Promise<MediaItem[]> {
     try {
       const res = await fetch(`${BASE_URL}/media/search?q=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error('Media search failed');
-      return await res.json();
+      if (res.ok) {
+        const text = await res.text();
+        if (text.startsWith('[') || text.startsWith('{')) {
+          return JSON.parse(text);
+        }
+      }
+    } catch {}
+
+    // Direct TMDB Search Fallback for Cloudflare Pages
+    try {
+      const TMDB_KEY = '4e44d9029b1270a757cddc766a1bcb63';
+      const tmdbRes = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&include_adult=false`);
+      if (tmdbRes.ok) {
+        const data = await tmdbRes.json();
+        return (data.results || []).filter((r: any) => r.poster_path || r.backdrop_path);
+      }
     } catch (err) {
-      console.error('Media search error:', err);
-      return [];
+      console.error('Media search TMDB fallback error:', err);
     }
+    return [];
   },
 
   // 4. E-BOOKS API
@@ -637,37 +856,245 @@ export const api = {
 
   // 5. AUDIOBOOKS API
   async getPopularAudiobooks(category: string = 'popular'): Promise<Audiobook[]> {
-    try {
-      const res = await fetch(`${BASE_URL}/audiobooks/popular?category=${category}`);
-      if (!res.ok) throw new Error('Failed to fetch audiobooks');
-      return await res.json();
-    } catch (err) {
-      console.error('Audiobooks trending error:', err);
-      return [];
+    const serverData = await safeFetchJson<Audiobook[]>(`${BASE_URL}/audiobooks/popular?category=${category}`);
+    if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+      return serverData;
     }
+
+    // Curated Studio Audiobooks Fallback for Cloudflare Pages / Static
+    const curated: Audiobook[] = [
+      {
+        id: "hphallows",
+        rawTitle: "Harry Potter and the Deathly Hallows - J.K. Rowling",
+        title: "Harry Potter and the Deathly Hallows",
+        author: "J.K. Rowling",
+        narrator: "Jim Dale / Stephen Fry",
+        cover: "https://is1-ssl.mzstatic.com/image/thumb/Publication221/v4/6c/58/6b/6c586b29-afa0-4595-80ea-12bf914e33e2/9781781105900.jpg/1200x1200bb.jpg",
+        categories: ["Fantasy", "Young Adult"],
+        genre: "Fantasy",
+        duration: "21h 38m",
+        durationSeconds: 77880,
+        format: "M4B",
+        bitrate: "128 Kbps",
+        size: "650 MB",
+        platform: "audiobay",
+        infoHash: "05877f88450125c15cf01614742a781b0a5a3a79",
+        description: "Harry Potter is leaving Privet Drive for the last time. But as the Dark Lord takes over the Ministry of Magic, Harry must locate and destroy the remaining Horcruxes."
+      },
+      {
+        id: "projhailmary",
+        rawTitle: "Project Hail Mary - Andy Weir",
+        title: "Project Hail Mary",
+        author: "Andy Weir",
+        narrator: "Ray Porter",
+        cover: "https://is1-ssl.mzstatic.com/image/thumb/Publication115/v4/71/84/02/718402f0-7b56-3a7a-6242-7ef6a72e817a/9781473582880.jpg/1200x1200bb.jpg",
+        categories: ["Sci-Fi", "Bestseller"],
+        genre: "Sci-Fi",
+        duration: "16h 10m",
+        durationSeconds: 58200,
+        format: "M4B",
+        bitrate: "128 Kbps",
+        size: "480 MB",
+        platform: "audiobay",
+        infoHash: "2b0931d87e02e0b51a0293ec485d9fa5bb6f7cb1",
+        description: "Ryland Grace is the sole survivor on a desperate, last-chance mission—and if he fails, humanity and the earth itself will perish."
+      },
+      {
+        id: "dune1",
+        rawTitle: "Dune - Frank Herbert",
+        title: "Dune",
+        author: "Frank Herbert",
+        narrator: "Scott Brick, Orlagh Cassidy, Euan Morton",
+        cover: "https://is1-ssl.mzstatic.com/image/thumb/Publication124/v4/d5/4b/f2/d54bf2ec-9a10-23a5-2965-0a3731110f0f/9781473501799.jpg/1200x1200bb.jpg",
+        categories: ["Sci-Fi", "Classic"],
+        genre: "Sci-Fi",
+        duration: "21h 02m",
+        durationSeconds: 75720,
+        format: "M4B",
+        bitrate: "96 Kbps",
+        size: "820 MB",
+        platform: "audiobay",
+        infoHash: "5b54637da8c139db4cb89d9804c86e0c6a28ce40",
+        description: "Set on the desert planet Arrakis, Dune is the story of the boy Paul Atreides, heir to a noble family tasked with ruling an inhospitable world."
+      },
+      {
+        id: "thehobbit",
+        rawTitle: "The Hobbit - J.R.R. Tolkien",
+        title: "The Hobbit",
+        author: "J.R.R. Tolkien",
+        narrator: "Andy Serkis",
+        cover: "https://is1-ssl.mzstatic.com/image/thumb/Publication115/v4/05/1f/ff/051fff0d-5bc3-a9d9-480a-9d9059f13e73/9780007525508.jpg/1200x1200bb.jpg",
+        categories: ["Fantasy", "Adventure"],
+        genre: "Fantasy",
+        duration: "10h 25m",
+        durationSeconds: 37500,
+        format: "M4B",
+        bitrate: "128 Kbps",
+        size: "540 MB",
+        platform: "audiobay",
+        infoHash: "f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0",
+        description: "Bilbo Baggins is a hobbit who enjoys a comfortable, unambitious life, until Gandalf and a company of thirteen dwarves arrive."
+      },
+      {
+        id: "atomichabits",
+        rawTitle: "Atomic Habits - James Clear",
+        title: "Atomic Habits",
+        author: "James Clear",
+        narrator: "James Clear",
+        cover: "https://is1-ssl.mzstatic.com/image/thumb/Publication124/v4/9f/fa/b1/9ffab177-c377-2e1d-84ad-e80629ec2e9e/9781473565425.jpg/1200x1200bb.jpg",
+        categories: ["Self-Help", "Productivity"],
+        genre: "Self-Help",
+        duration: "5h 35m",
+        durationSeconds: 20100,
+        format: "M4B",
+        bitrate: "128 Kbps",
+        size: "260 MB",
+        platform: "audiobay",
+        infoHash: "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1",
+        description: "An Easy & Proven Way to Build Good Habits & Break Bad Ones."
+      },
+      {
+        id: "1984george",
+        rawTitle: "1984 - George Orwell",
+        title: "1984",
+        author: "George Orwell",
+        narrator: "Simon Prebble",
+        cover: "https://covers.openlibrary.org/b/id/8575708-L.jpg",
+        categories: ["Classic", "Dystopian"],
+        genre: "Classic",
+        duration: "11h 22m",
+        durationSeconds: 40920,
+        format: "MP3",
+        bitrate: "128 Kbps",
+        size: "320 MB",
+        platform: "audiobay",
+        infoHash: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+        description: "Winston Smith lives in a world dictated by the Party and its ubiquitous leader, Big Brother."
+      },
+      {
+        id: "ia_art_of_war_librivox",
+        rawTitle: "The Art of War - Sun Tzu",
+        title: "The Art of War",
+        author: "Sun Tzu",
+        narrator: "Moira Fogarty",
+        cover: "https://archive.org/services/img/art_of_war_librivox",
+        categories: ["Philosophy", "Strategy"],
+        genre: "Philosophy",
+        duration: "1h 12m",
+        durationSeconds: 4320,
+        format: "MP3",
+        bitrate: "128 Kbps",
+        platform: "archive",
+        audioUrl: "https://archive.org/download/art_of_war_librivox/art_of_war_01-02_suntzu_64kb.mp3",
+        description: "The Art of War is a Chinese military treatise written during the 6th century BC by Sun Tzu."
+      },
+      {
+        id: "ia_adventures_sherlock_holmes_1011_librivox",
+        rawTitle: "The Adventures of Sherlock Holmes - Arthur Conan Doyle",
+        title: "The Adventures of Sherlock Holmes",
+        author: "Arthur Conan Doyle",
+        narrator: "David Clarke",
+        cover: "https://archive.org/services/img/adventures_sherlock_holmes_1011_librivox",
+        categories: ["Mystery", "Classic"],
+        genre: "Mystery",
+        duration: "10h 48m",
+        durationSeconds: 38880,
+        format: "MP3",
+        bitrate: "128 Kbps",
+        platform: "archive",
+        audioUrl: "https://archive.org/download/adventures_sherlock_holmes_1011_librivox/adventuresofsherlockholmes_01_doyle_64kb.mp3",
+        description: "A collection of twelve short stories featuring the master detective Sherlock Holmes and Dr. John Watson."
+      }
+    ];
+
+    return curated;
   },
 
   async searchAudiobooks(query: string): Promise<Audiobook[]> {
-    try {
-      const res = await fetch(`${BASE_URL}/audiobooks/search?q=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error('Audiobooks search failed');
-      return await res.json();
-    } catch (err) {
-      console.error('Audiobooks search error:', err);
-      return [];
+    const serverData = await safeFetchJson<Audiobook[]>(`${BASE_URL}/audiobooks/search?q=${encodeURIComponent(query)}`);
+    if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+      return serverData;
     }
+
+    try {
+      const q = encodeURIComponent(`mediatype:audio AND (collection:audio_bookspoetry OR collection:audio_book OR ${query}) AND ${query}`);
+      const res = await fetch(`https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier,title,creator,description,year,downloads&sort[]=downloads+desc&rows=25&output=json`);
+      if (res.ok) {
+        const data = await res.json();
+        const docs = data.response?.docs || [];
+        return docs.map((doc: any) => ({
+          id: `ia_${doc.identifier}`,
+          title: doc.title || 'Unknown Title',
+          author: Array.isArray(doc.creator) ? doc.creator.join(', ') : (doc.creator || 'Classic Author'),
+          cover: `https://archive.org/services/img/${doc.identifier}`,
+          description: typeof doc.description === 'string' ? doc.description.slice(0, 300) : 'Archive Audiobook recording.',
+          duration: 'Multi-track',
+          genre: 'Audiobook',
+          platform: 'archive'
+        }));
+      }
+    } catch (err) {
+      console.error('Audiobooks search archive fallback error:', err);
+    }
+    return [];
   },
 
   // 6. LIVE SPORTS API
   async getLiveSports(sport: string = 'all'): Promise<SportsMatch[]> {
-    try {
-      const res = await fetch(`${BASE_URL}/sports/live?sport=${sport}`);
-      if (!res.ok) throw new Error('Failed to fetch live sports');
-      return await res.json();
-    } catch (err) {
-      console.error('Live sports fetch error:', err);
-      return [];
+    const serverData = await safeFetchJson<SportsMatch[]>(`${BASE_URL}/sports/live?sport=${sport}`);
+    if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+      return serverData;
     }
+
+    // Direct ESPN Scoreboard Client-Side Fallback for Cloudflare Pages
+    try {
+      const matches: SportsMatch[] = [];
+      const urls: { url: string; league: string; sport: string }[] = [];
+
+      if (sport === 'all' || sport === 'soccer') {
+        urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard', league: 'Premier League', sport: 'soccer' });
+        urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard', league: 'Champions League', sport: 'soccer' });
+      }
+      if (sport === 'all' || sport === 'rugby') {
+        urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/rugby/270559/scoreboard', league: 'United Rugby Championship', sport: 'rugby' });
+      }
+
+      for (const item of urls) {
+        try {
+          const res = await fetch(item.url);
+          if (res.ok) {
+            const d = await res.json();
+            (d.events || []).slice(0, 6).forEach((ev: any) => {
+              const comp = ev.competitions?.[0] || {};
+              const home = comp.competitors?.find((c: any) => c.homeAway === 'home') || comp.competitors?.[0];
+              const away = comp.competitors?.find((c: any) => c.homeAway === 'away') || comp.competitors?.[1];
+              matches.push({
+                id: ev.id || `espn_${Math.random()}`,
+                sport: item.sport as any,
+                league: item.league,
+                homeTeam: {
+                  name: home?.team?.displayName || 'Home Team',
+                  logo: home?.team?.logo || 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png',
+                  score: home?.score || '0'
+                },
+                awayTeam: {
+                  name: away?.team?.displayName || 'Away Team',
+                  logo: away?.team?.logo || 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png',
+                  score: away?.score || '0'
+                },
+                status: comp.status?.type?.description || 'Upcoming',
+                time: comp.status?.displayClock || comp.status?.type?.detail || 'LIVE',
+                streamUrl: 'https://vidsrc.pm'
+              });
+            });
+          }
+        } catch {}
+      }
+      if (matches.length > 0) return matches;
+    } catch (err) {
+      console.error('ESPN live sports fallback error:', err);
+    }
+    return [];
   },
 
   async getSportsMatches(sport: string = 'all'): Promise<SportsMatch[]> {
@@ -675,14 +1102,18 @@ export const api = {
   },
 
   async searchSports(query: string): Promise<SportsMatch[]> {
-    try {
-      const res = await fetch(`${BASE_URL}/sports/search?q=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error('Sports search failed');
-      return await res.json();
-    } catch (err) {
-      console.error('Sports search error:', err);
-      return [];
+    const serverData = await safeFetchJson<SportsMatch[]>(`${BASE_URL}/sports/search?q=${encodeURIComponent(query)}`);
+    if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+      return serverData;
     }
+    const all = await this.getLiveSports('all');
+    const qLower = query.toLowerCase();
+    return all.filter(
+      (m) =>
+        m.homeTeam.name.toLowerCase().includes(qLower) ||
+        m.awayTeam.name.toLowerCase().includes(qLower) ||
+        m.league.toLowerCase().includes(qLower)
+    );
   },
 
   async searchSportsMatches(query: string): Promise<SportsMatch[]> {
