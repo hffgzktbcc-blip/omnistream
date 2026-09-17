@@ -64,6 +64,14 @@ const isAndroidTVDevice = (): boolean => {
   );
 };
 
+const isIOSDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+};
+
 export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   session,
   onClose,
@@ -71,9 +79,11 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   onOpenTorrent
 }) => {
   const isTV = isAndroidTVDevice();
+  const isIOS = isIOSDevice();
+  const [iosFullscreen, setIosFullscreen] = useState<boolean>(false);
   const [selectedServerIndex, setSelectedServerIndex] = useState<number>(0);
   const [audioType, setAudioType] = useState<'sub' | 'dub'>(() => animeStorage.getAudioPreference());
-  const [theaterMode, setTheaterMode] = useState<boolean>(() => isAndroidTVDevice());
+  const [theaterMode, setTheaterMode] = useState<boolean>(() => isAndroidTVDevice() || isIOSDevice());
   const [showCastModal, setShowCastModal] = useState<boolean>(false);
   const [showEpisodeDrawer, setShowEpisodeDrawer] = useState<boolean>(false);
   const [loadingServer, setLoadingServer] = useState<boolean>(true);
@@ -343,14 +353,22 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   };
 
   const toggleFullscreen = () => {
+    if (isIOS) {
+      setIosFullscreen((prev) => !prev);
+      return;
+    }
     const elem = playerContainerRef.current as any;
     if (!elem) return;
     const isFullscreen = document.fullscreenElement || (document as any).webkitFullscreenElement;
     if (!isFullscreen) {
       if (elem.requestFullscreen) {
-        elem.requestFullscreen().catch(() => {});
+        elem.requestFullscreen().catch(() => {
+          setIosFullscreen(true);
+        });
       } else if (elem.webkitRequestFullscreen) {
         elem.webkitRequestFullscreen();
+      } else {
+        setIosFullscreen(true);
       }
     } else {
       if (document.exitFullscreen) {
@@ -358,6 +376,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
       } else if ((document as any).webkitExitFullscreen) {
         (document as any).webkitExitFullscreen();
       }
+      setIosFullscreen(false);
     }
   };
 
@@ -455,7 +474,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   };
 
   const totalEpisodes = session.totalEpisodes || (session.animeData?.episodes) || 24;
-  const isEdgeToEdge = isTV || theaterMode;
+  const isEdgeToEdge = isTV || theaterMode || isIOS || iosFullscreen;
 
   return (
     <div
@@ -467,7 +486,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
         ref={playerContainerRef}
         className={`relative w-full ${
           isEdgeToEdge
-            ? 'w-screen h-screen max-w-none max-h-none rounded-none border-0'
+            ? 'w-full h-full max-w-none max-h-none rounded-none border-0'
             : `${theaterMode ? 'max-w-7xl' : 'max-w-6xl'} h-[92vh] max-h-[95vh] rounded-3xl border border-slate-800 shadow-2xl`
         } bg-slate-950 overflow-hidden flex flex-col`}
         onClick={(e) => {
@@ -478,7 +497,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
       >
         {/* Top Header */}
         <div
-          className={`p-3 sm:p-4 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between gap-3 transition-all duration-300 z-30 ${
+          className={`p-3 sm:p-4 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between gap-3 transition-all duration-300 z-30 pt-[max(env(safe-area-inset-top),0.75rem)] pl-[max(env(safe-area-inset-left),0.75rem)] pr-[max(env(safe-area-inset-right),0.75rem)] ${
             showControls ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-full pointer-events-none'
           }`}
         >
@@ -714,6 +733,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                   allowFullScreen
                   referrerPolicy="no-referrer"
+                  {...{ playsinline: 'true', 'webkit-playsinline': 'true' }}
                   onLoad={handleIframeLoaded}
                   className="w-full h-full border-0 absolute inset-0 z-10"
                 />

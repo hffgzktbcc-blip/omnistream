@@ -103,36 +103,40 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
     let isMounted = true;
     setIsBuffering(true);
 
-    const setupStream = async () => {
-      // 1. Fast-path: check offline cache
-      const offlineBlob = await getOfflineAudioUrl(trackId);
-      if (offlineBlob && isMounted) {
+    // Synchronous source assignment ensures iOS Safari retains user-gesture activation
+    audio.src = currentTrack.streamUrl;
+    audio.playbackRate = speeds[speedIdx];
+    audio.volume = isMuted ? 0 : volume;
+    audio.load();
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          if (initialTime > 0) audio.currentTime = initialTime;
+          if (isMounted) {
+            setIsPlaying(true);
+            setIsBuffering(false);
+          }
+        })
+        .catch((err) => {
+          console.warn('Audio auto-play waiting for user click:', err);
+          if (isMounted) {
+            setIsPlaying(false);
+            setIsBuffering(false);
+          }
+        });
+    }
+
+    // Check offline cached audio in background without blocking immediate playback
+    getOfflineAudioUrl(trackId).then((offlineBlob) => {
+      if (offlineBlob && isMounted && audio && audio.src !== offlineBlob) {
+        const curr = audio.currentTime;
         audio.src = offlineBlob;
-      } else if (isMounted) {
-        audio.src = currentTrack.streamUrl;
+        audio.currentTime = curr;
+        if (isPlaying) audio.play().catch(() => {});
       }
-
-      audio.playbackRate = speeds[speedIdx];
-      audio.volume = isMuted ? 0 : volume;
-      audio.load();
-
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            if (initialTime > 0) audio.currentTime = initialTime;
-            if (isMounted) {
-              setIsPlaying(true);
-              setIsBuffering(false);
-            }
-          })
-          .catch(() => {
-            if (isMounted) setIsBuffering(false);
-          });
-      }
-    };
-
-    setupStream();
+    }).catch(() => {});
 
     return () => {
       isMounted = false;
@@ -455,11 +459,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
     return `${mins}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  const coverUrl = book.cover
-    ? book.cover.startsWith("http")
-      ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(book.cover)}`
-      : book.cover
-    : "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300";
+  const coverUrl = book.cover || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300";
 
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -467,6 +467,8 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
     <>
       <audio
         ref={audioRef}
+        playsInline
+        preload="auto"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => {
           if (audioRef.current) setDuration(audioRef.current.duration);

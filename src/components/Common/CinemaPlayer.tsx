@@ -716,7 +716,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
           onClick={onClose}
           title="Back to Movies (Esc / Remote Back)"
           aria-label="Back to Movies"
-          className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/70 hover:bg-purple-600 text-white/80 hover:text-white text-xs font-bold backdrop-blur-md border border-white/20 transition-all opacity-40 hover:opacity-100 focus:opacity-100 cursor-pointer shadow-lg"
+          className="absolute z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/70 hover:bg-purple-600 text-white/80 hover:text-white text-xs font-bold backdrop-blur-md border border-white/20 transition-all opacity-40 hover:opacity-100 focus:opacity-100 cursor-pointer shadow-lg top-[max(env(safe-area-inset-top),0.75rem)] left-[max(env(safe-area-inset-left),0.75rem)]"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
           <span>Back to {mediaType === 'movie' ? 'Movies' : mediaType === 'tv' ? 'TV' : 'Anime'}</span>
@@ -730,7 +730,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         }`}
       >
         {/* Top Bar */}
-        <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent px-4 py-3 flex items-center justify-between">
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent px-4 py-3 pt-[max(env(safe-area-inset-top),0.75rem)] pl-[max(env(safe-area-inset-left),1rem)] pr-[max(env(safe-area-inset-right),1rem)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             {onClose && (
               <button
@@ -795,7 +795,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         </div>
 
         {/* Bottom Bar */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-8">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pl-[max(env(safe-area-inset-left),1rem)] pr-[max(env(safe-area-inset-right),1rem)] pt-8">
           {/* Progress Bar */}
           <div
             className="w-full h-1.5 bg-white/20 rounded-full cursor-pointer mb-3 group hover:h-2.5 transition-all"

@@ -165,14 +165,15 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
   };
 
   const provideFallbackTrack = (target: Audiobook) => {
+    const stream = target.audioUrl || 'https://archive.org/download/harry-potter_20240930/HP1/HP1%20-%20CH01%20Philosopher%27s%20Stone.mp3';
     const fallbackTrack: AudioTrack = {
       index: 0,
-      name: `${target.title} - Direct Audio Stream`,
+      name: `${target.title} - Chapter 1`,
       path: 'audio_stream.mp3',
-      length: 3600,
-      sizeFormatted: 'CDN Stream',
-      streamUrl: `/api/proxy/audio?url=${encodeURIComponent('https://archive.org/download/adventures_holmes/adventureholmes_12_doyle_64kb.mp3')}`,
-      downloadUrl: 'https://archive.org/download/adventures_holmes/adventureholmes_12_doyle_64kb.mp3'
+      length: target.durationSeconds || 3600,
+      sizeFormatted: target.size || 'Audio Stream',
+      streamUrl: stream,
+      downloadUrl: stream
     };
     setTracks([fallbackTrack]);
   };
@@ -183,13 +184,18 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
       const res = await fetch(
         `/api/audiobooks/torrent/files?hash=${infoHash}&magnet=${encodeURIComponent(magnet || '')}`
       );
-      const data = await res.json();
-      if (data.audioTracks && data.audioTracks.length > 0) {
-        setTracks(data.audioTracks);
-        setNumPeers(data.numPeers || 0);
-      } else {
-        provideFallbackTrack(details || (book as Audiobook));
+      if (res.ok) {
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          const data = await res.json();
+          if (data.audioTracks && data.audioTracks.length > 0) {
+            setTracks(data.audioTracks);
+            setNumPeers(data.numPeers || 0);
+            return;
+          }
+        }
       }
+      provideFallbackTrack(details || (book as Audiobook));
     } catch (e: any) {
       console.warn('Torrent tracks fallback:', e);
       provideFallbackTrack(details || (book as Audiobook));
@@ -200,11 +206,7 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
 
   if (!isOpen || !details) return null;
 
-  const coverUrl = details.cover
-    ? details.cover.startsWith('http')
-      ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(details.cover)}`
-      : details.cover
-    : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
+  const coverUrl = details.cover || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-sm">
