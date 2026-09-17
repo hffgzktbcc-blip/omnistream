@@ -6,6 +6,8 @@
   "scripts": {
     "clean": "lsof -ti:5200,3001 | xargs kill -9 2>/dev/null || true",
     "dev": "npm run clean && concurrently \"npm run server\" \"npm run client\"",
+    "tunnel": "./cloudflared tunnel --url http://localhost:5200",
+    "share": "npm run clean && concurrently \"npm run server\" \"npm run client\" \"npm run tunnel\"",
     "client": "vite",
     "server": "node --watch server/index.js",
     "build": "vite build",
