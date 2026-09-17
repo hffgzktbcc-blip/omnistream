@@ -8,6 +8,8 @@
     "dev": "npm run clean && concurrently \"npm run server\" \"npm run client\"",
     "tunnel": "./cloudflared tunnel --url http://localhost:5200",
     "share": "npm run clean && concurrently \"npm run server\" \"npm run client\" \"npm run tunnel\"",
+    "deploy": "npm run deploy:cf",
+    "ship": "npm run check && git add -A && git commit -m 'update: sync with cloudflare' && git push origin main",
     "deploy:cf": "npm run build && bunx wrangler pages deploy dist --project-name=omnistream --commit-dirty=true",
     "client": "vite",
     "server": "node --watch server/index.js",
