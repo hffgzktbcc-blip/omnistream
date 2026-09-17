@@ -221,23 +221,81 @@ export async function resolveFromTorrentSwarm(type, queryTitle, season, episode)
     });
     clearTimeout(timeout);
 
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0 || data[0].id === '0') return null;
+    let data = null;
+    if (res.ok) {
+      data = await res.json().catch(() => null);
+    }
+    let best = null;
 
-    // Filter video torrents (category 200..299) with seeders >= 2
-    const videoTorrents = data.filter((t) => {
-      const cat = parseInt(t.category, 10) || 0;
-      const seeders = parseInt(t.seeders, 10) || 0;
-      return cat >= 200 && cat < 300 && seeders >= 2;
-    });
+    if (Array.isArray(data) && data.length > 0 && data[0].id !== '0') {
+      // Filter video torrents (category 200..299) with seeders >= 2
+      const videoTorrents = data.filter((t) => {
+        const cat = parseInt(t.category, 10) || 0;
+        const seeders = parseInt(t.seeders, 10) || 0;
+        return cat >= 200 && cat < 300 && seeders >= 2;
+      });
+      if (videoTorrents.length > 0) {
+        videoTorrents.sort((a, b) => parseInt(b.seeders, 10) - parseInt(a.seeders, 10));
+        best = {
+          infoHash: videoTorrents[0].info_hash.toLowerCase(),
+          seeders: videoTorrents[0].seeders,
+          name: videoTorrents[0].name
+        };
+      }
+    }
 
-    if (videoTorrents.length === 0) return null;
+    // Engine 2: YTS (for movies)
+    if (!best && type === 'movie') {
+      try {
+        const ytsRes = await fetch(`https://yts.bz/api/v2/list_movies.json?query_term=${encodeURIComponent(cleanTitle)}`, {
+          signal: AbortSignal.timeout(3500)
+        });
+        if (ytsRes.ok) {
+          const ytsData = await ytsRes.json();
+          const movies = ytsData?.data?.movies;
+          if (movies && movies.length > 0) {
+            const m = movies[0];
+            const tors = (m.torrents || []).filter(t => t.hash);
+            if (tors.length > 0) {
+              tors.sort((a, b) => (b.seeds || 0) - (a.seeds || 0));
+              best = {
+                infoHash: tors[0].hash.toLowerCase(),
+                seeders: tors[0].seeds || 1,
+                name: `${m.title} [${tors[0].quality}]`
+              };
+            }
+          }
+        }
+      } catch (ytsErr) {
+        // Continue to fallback
+      }
+    }
 
-    // Sort by seeders descending
-    videoTorrents.sort((a, b) => parseInt(b.seeders, 10) - parseInt(a.seeders, 10));
-    const best = videoTorrents[0];
-    const infoHash = best.info_hash.toLowerCase();
+    // Engine 3: EZTV (for TV shows)
+    if (!best && type === 'tv') {
+      try {
+        const eztvRes = await fetch(`https://eztvx.to/api/get-torrents?search=${encodeURIComponent(searchQuery)}`, {
+          signal: AbortSignal.timeout(3500)
+        });
+        if (eztvRes.ok) {
+          const eztvData = await eztvRes.json();
+          const tors = eztvData?.torrents;
+          if (Array.isArray(tors) && tors.length > 0) {
+            tors.sort((a, b) => (b.seeds || 0) - (a.seeds || 0));
+            best = {
+              infoHash: tors[0].hash.toLowerCase(),
+              seeders: tors[0].seeds || 1,
+              name: tors[0].title
+            };
+          }
+        }
+      } catch (eztvErr) {
+        // Continue
+      }
+    }
+
+    if (!best || !best.infoHash) return null;
+    const infoHash = best.infoHash;
 
     // Add to active WebTorrent client in background
     let torrent = client.torrents.find((t) => t.infoHash.toLowerCase() === infoHash);

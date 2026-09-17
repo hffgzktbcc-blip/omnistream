@@ -429,6 +429,31 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     }
   };
 
+  const handleOpenVlc = () => {
+    const rawUrl = directStream?.streamUrl || streamUrl;
+    const absoluteUrl = rawUrl.startsWith('http') ? rawUrl : `${window.location.origin}${rawUrl}`;
+    
+    // 1. Download quick .m3u playlist file (universal double-click opens VLC / IINA / PotPlayer)
+    const titleClean = (session.title || 'OmniStream').replace(/[^\w\s-]/g, '');
+    const m3uContent = `#EXTM3U\n#EXTINF:-1,${session.title || 'OmniStream'}\n${absoluteUrl}\n`;
+    const blob = new Blob([m3uContent], { type: 'application/x-mpegurl' });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `${titleClean}.m3u`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+
+    // 2. Also trigger deep-link vlc://
+    try {
+      window.location.href = `vlc://${absoluteUrl}`;
+    } catch {
+      // Ignored
+    }
+  };
+
   const totalEpisodes = session.totalEpisodes || (session.animeData?.episodes) || 24;
   const isEdgeToEdge = isTV || theaterMode;
 
@@ -550,6 +575,15 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
               })}
             </div>
 
+
+            <button
+              onClick={handleOpenVlc}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-xs font-bold transition-all shadow-sm"
+              title="Open in VLC / External Player (vlc:// or .m3u)"
+            >
+              <span className="text-sm">📙</span>
+              <span className="hidden sm:inline">VLC</span>
+            </button>
 
             <button
               onClick={handlePopout}

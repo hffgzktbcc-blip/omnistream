@@ -221,74 +221,120 @@ router.get('/stream/:infoHash/:fileIndex', (req, res) => {
   const hash = req.params.infoHash.toLowerCase();
   const fileIndex = parseInt(req.params.fileIndex, 10);
 
-  const t = client.torrents.find((tor) => tor.infoHash.toLowerCase() === hash);
-  if (!t || !t.files || !t.files[fileIndex]) {
-    return res.status(404).send('File not found in active swarm');
+  let t = client.torrents.find((tor) => tor.infoHash.toLowerCase() === hash);
+  if (!t) {
+    try {
+      t = client.add(hash, { path: cacheDir, announce: DEFAULT_TRACKERS });
+    } catch (e) {
+      return res.status(404).send('Torrent not found or invalid');
+    }
   }
 
-  const file = t.files[fileIndex];
+  const sendFileResponse = (file) => {
+    if (!file) {
+      return res.status(404).send('File not found in active swarm');
+    }
 
-  // Prioritize pieces for this specific video file
-  if (typeof file.select === 'function') {
-    file.select();
-  }
+    // Prioritize pieces for this specific video file
+    if (typeof file.select === 'function') {
+      file.select();
+    }
 
-  const ext = path.extname(file.name).toLowerCase();
-  const mimeTypes = {
-    '.mp4': 'video/mp4',
-    '.mkv': 'video/webm',
-    '.webm': 'video/webm',
-    '.avi': 'video/x-msvideo',
-    '.mov': 'video/quicktime',
-    '.mp3': 'audio/mpeg',
-    '.m4a': 'audio/mp4',
-    '.m4b': 'audio/mp4'
+    const ext = path.extname(file.name).toLowerCase();
+    const mimeTypes = {
+      '.mp4': 'video/mp4',
+      '.mkv': 'video/webm',
+      '.webm': 'video/webm',
+      '.avi': 'video/x-msvideo',
+      '.mov': 'video/quicktime',
+      '.mp3': 'audio/mpeg',
+      '.m4a': 'audio/mp4',
+      '.m4b': 'audio/mp4'
+    };
+    const contentType = mimeTypes[ext] || 'video/mp4';
+
+    const total = file.length;
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+      const chunkSize = end - start + 1;
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${total}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': contentType,
+        'Access-Control-Allow-Origin': '*'
+      });
+
+      const stream = file.createReadStream({ start, end });
+      pump(stream, res);
+
+      req.on('close', () => {
+        if (stream && typeof stream.destroy === 'function') {
+          stream.destroy();
+        }
+      });
+    } else {
+      res.writeHead(200, {
+        'Content-Length': total,
+        'Content-Type': contentType,
+        'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': '*'
+      });
+
+      const stream = file.createReadStream();
+      pump(stream, res);
+
+      req.on('close', () => {
+        if (stream && typeof stream.destroy === 'function') {
+          stream.destroy();
+        }
+      });
+    }
   };
-  const contentType = mimeTypes[ext] || 'video/mp4';
 
-  const total = file.length;
-  const range = req.headers.range;
+  const executeStream = () => {
+    if (!t.files || t.files.length === 0) {
+      return res.status(404).send('No files found in torrent');
+    }
+    const targetFile = t.files[fileIndex] || t.files.find(f => {
+      const vExts = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.mp3', '.m4b'];
+      return vExts.some(ext => f.name.toLowerCase().endsWith(ext));
+    }) || t.files[0];
 
-  if (range) {
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
-    const chunkSize = end - start + 1;
+    sendFileResponse(targetFile);
+  };
 
-    res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${total}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunkSize,
-      'Content-Type': contentType,
-      'Access-Control-Allow-Origin': '*'
-    });
+  if (!t.files || t.files.length === 0) {
+    const readyTimer = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(504).send('Swarm connecting timeout - please retry');
+      }
+    }, 15000);
 
-    const stream = file.createReadStream({ start, end });
-    pump(stream, res);
-
-    req.on('close', () => {
-      if (stream && typeof stream.destroy === 'function') {
-        stream.destroy();
+    t.once('ready', () => {
+      clearTimeout(readyTimer);
+      if (!res.headersSent) {
+        executeStream();
       }
     });
-  } else {
-    res.writeHead(200, {
-      'Content-Length': total,
-      'Content-Type': contentType,
-      'Accept-Ranges': 'bytes',
-      'Access-Control-Allow-Origin': '*'
-    });
 
-    const stream = file.createReadStream();
-    pump(stream, res);
-
-    req.on('close', () => {
-      if (stream && typeof stream.destroy === 'function') {
-        stream.destroy();
+    t.once('error', (err) => {
+      clearTimeout(readyTimer);
+      if (!res.headersSent) {
+        res.status(500).send(err.message);
       }
     });
+    return;
   }
+
+  executeStream();
 });
+
 
 // ── 6. Remove / Clean up Torrent ──────────────────────────────────────────────
 router.delete('/remove/:infoHash', (req, res) => {
