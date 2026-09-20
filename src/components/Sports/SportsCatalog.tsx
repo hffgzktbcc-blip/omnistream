@@ -51,32 +51,32 @@ const SUPERSPORT_CATEGORIES = [
 
 const SUPERSPORT_247_FEEDS = [
   {
+    id: 'feed_cbs_golazo',
+    name: 'CBS Sports Golazo HD',
+    badge: '⚽ 720p 60fps HLS',
+    sport: 'soccer',
+    icon: '⚽',
+    desc: 'Official 24/7 UEFA Champions League, European Football, Serie A & studio coverage (Google CDN)',
+    url: 'https://dai.google.com/linear/hls/event/7f3Wv6f7QEKfQna22jHqLQ/master.m3u8',
+    gradient: 'from-blue-600/30 via-[#00173d] to-[#000c1e] border-blue-400/40 text-blue-300'
+  },
+  {
     id: 'feed_redbull_tv',
     name: 'Red Bull TV HD',
-    badge: '🏎️ 1080p Native HLS',
+    badge: '🏎️ 1080p 60fps HLS',
     sport: 'f1',
     icon: '🏎️',
-    desc: 'Official 24/7 Red Bull Motorsport, Formula 1 paddock & extreme sports live feed',
+    desc: 'Official 24/7 Red Bull Motorsport, Formula 1 paddock & extreme sports live feed (Akamai CDN)',
     url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
     gradient: 'from-red-600/30 via-[#00173d] to-[#000c1e] border-red-400/40 text-red-300'
   },
   {
-    id: 'feed_fifa_plus',
-    name: 'FIFA+ Official Live',
-    badge: '⚽ 720p Native HLS',
-    sport: 'soccer',
-    icon: '⚽',
-    desc: 'Official FIFA live tournaments, World Cup archives, documentaries and global leagues',
-    url: 'https://fifa-fifaplus-1-us.samsung.wurl.tv/playlist.m3u8',
-    gradient: 'from-blue-600/30 via-[#00173d] to-[#000c1e] border-blue-400/40 text-blue-300'
-  },
-  {
     id: 'feed_sportsgrid',
-    name: 'SportsGrid 24/7 Live Network',
-    badge: '🏆 Live Satellite HLS',
+    name: 'SportsGrid 24/7 HD',
+    badge: '🏆 1080p Match Center',
     sport: 'all',
     icon: '🏆',
-    desc: '24/7 real-time sports odds, match analysis, live scores and commentary',
+    desc: '24/7 real-time sports odds, match analysis, live scores, and expert commentary',
     url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
     gradient: 'from-amber-500/30 via-[#00173d] to-[#000c1e] border-amber-400/40 text-amber-300'
   },
@@ -91,23 +91,23 @@ const SUPERSPORT_247_FEEDS = [
     gradient: 'from-emerald-600/30 via-[#00173d] to-[#000c1e] border-emerald-400/40 text-emerald-300'
   },
   {
-    id: 'feed_fight_network',
-    name: 'Fight Network HD',
-    badge: '🥊 1080p MMA & Pro',
-    sport: 'mma',
-    icon: '🥊',
-    desc: '24/7 combat sports, professional wrestling, kickboxing, and mixed martial arts',
-    url: 'https://antennatv-fightnetwork-1-us.samsung.wurl.tv/playlist.m3u8',
+    id: 'feed_acc_network',
+    name: 'ACC Sports Network HD',
+    badge: '🏀 1080p Live Sports',
+    sport: 'all',
+    icon: '🏀',
+    desc: '24/7 championship college football, basketball tournaments, and studio analysis',
+    url: 'https://raycom-accdn-firetv.amagi.tv/playlist.m3u8',
     gradient: 'from-purple-600/30 via-[#00173d] to-[#000c1e] border-purple-400/40 text-purple-300'
   },
   {
-    id: 'feed_fubo_sports',
-    name: 'fubo Sports Network',
-    badge: '📡 1080p Live Sports',
-    sport: 'all',
+    id: 'feed_africa24_sport',
+    name: 'Africa 24 Sport HD',
+    badge: '📡 1080p Football & Pro',
+    sport: 'soccer',
     icon: '📡',
-    desc: 'Award-winning live events, football, basketball tournaments, and studio analysis',
-    url: 'https://fubotv-fubosportsnetwork-1-us.samsung.wurl.tv/playlist.m3u8',
+    desc: 'International football, African championships, athletics, and global tournaments',
+    url: 'https://africa24.vedge.infomaniak.com/livecast/ik:africa24sport/manifest.m3u8',
     gradient: 'from-indigo-600/30 via-[#00173d] to-[#000c1e] border-indigo-400/40 text-indigo-300'
   }
 ];
@@ -212,7 +212,12 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       },
       status: 'FINISHED',
       statusText: 'Final Result (24-18) • Ellis Park Replay',
-      servers: []
+      servers: [
+        { name: '🏆 SportsGrid 24/7 HD (Match Center & Analysis)', url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8' },
+        { name: '⚡ VIPLeague Live Rugby Stream', url: 'https://www.vipleague.lc' },
+        { name: '🏏 CricHD SuperSport Rugby Feed', url: 'https://crichd.com' },
+        { name: '📊 FlashScore Rugby Real-Time Tracker', url: 'https://www.flashscore.com' }
+      ]
     },
     {
       id: 'sport_epl_liverpool_ipswich',
@@ -230,7 +235,12 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       },
       status: 'UPCOMING',
       statusText: 'Friday • 21:00 Kickoff CAT',
-      servers: []
+      servers: [
+        { name: '⚽ CBS Sports Golazo HD (UCL & Football 24/7)', url: 'https://dai.google.com/linear/hls/event/7f3Wv6f7QEKfQna22jHqLQ/master.m3u8' },
+        { name: '⚽ Africa 24 Sport HD (Live Football)', url: 'https://africa24.vedge.infomaniak.com/livecast/ik:africa24sport/manifest.m3u8' },
+        { name: '⚡ VIPLeague Premier League Stream', url: 'https://www.vipleague.lc' },
+        { name: '⚽ FootyBite Match Hub', url: 'https://footybite.to' }
+      ]
     },
     {
       id: 'sport_ucl_villa_brugge',
@@ -248,7 +258,11 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       },
       status: 'UPCOMING',
       statusText: 'Tuesday, Sep 8 • 18:45 Kickoff CAT',
-      servers: []
+      servers: [
+        { name: '⚽ CBS Sports Golazo HD (UCL & Football 24/7)', url: 'https://dai.google.com/linear/hls/event/7f3Wv6f7QEKfQna22jHqLQ/master.m3u8' },
+        { name: '⚡ VIPLeague UCL Live Stream', url: 'https://www.vipleague.lc' },
+        { name: '⚽ FootyBite Match Hub', url: 'https://footybite.to' }
+      ]
     },
     {
       id: 'sport_f1_monza',
@@ -266,7 +280,11 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       },
       status: 'UPCOMING',
       statusText: 'Friday • 15:00 Practice / Quali',
-      servers: []
+      servers: [
+        { name: '🏎️ Red Bull TV HD (F1, Paddock & Motorsport)', url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8' },
+        { name: '🏎️ ACI Sport TV HD (Circuit Racing)', url: 'https://webstream.multistream.it/memfs/e2cb3629-c1a2-495b-b43a-9eb386f04ed8.m3u8' },
+        { name: '⚡ VIPLeague F1 Live Stream', url: 'https://www.vipleague.lc' }
+      ]
     },
     {
       id: 'sport_ufc_dricus',
@@ -284,7 +302,11 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       },
       status: 'UPCOMING',
       statusText: 'Saturday • 04:00 CAT Main Card',
-      servers: []
+      servers: [
+        { name: '🥊 DAZN Combat HD (Live Boxing & MMA)', url: 'https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8' },
+        { name: '🥊 Bellator MMA World Series', url: 'https://jmp2.uk/plu-5ebc8688f3697d00072f7cf8.m3u8' },
+        { name: '⚡ VIPLeague UFC Live Stream', url: 'https://www.vipleague.lc' }
+      ]
     }
   ];
 

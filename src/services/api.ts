@@ -15,6 +15,9 @@ async function safeFetchJson<T = any>(url: string, init?: RequestInit): Promise<
     if (contentType.includes('application/json')) {
       return await res.json();
     }
+    if (contentType.includes('text/html')) {
+      return null;
+    }
     const text = await res.text();
     if (text.startsWith('{') || text.startsWith('[')) {
       return JSON.parse(text);
@@ -1030,50 +1033,127 @@ export const api = {
       return serverData;
     }
 
-    // Direct ESPN Scoreboard Client-Side Fallback for Cloudflare Pages
+    // Direct ESPN Scoreboard Client-Side Fallback for Cloudflare Pages (Parallel & Fast)
     try {
-      const matches: SportsMatch[] = [];
       const urls: { url: string; league: string; sport: string }[] = [];
 
       if (sport === 'all' || sport === 'soccer') {
         urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard', league: 'Premier League', sport: 'soccer' });
         urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard', league: 'Champions League', sport: 'soccer' });
+        urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard', league: 'La Liga', sport: 'soccer' });
+      }
+      if (sport === 'all' || sport === 'f1') {
+        urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/racing/f1/scoreboard', league: 'Formula 1', sport: 'f1' });
+      }
+      if (sport === 'all' || sport === 'mma') {
+        urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard', league: 'UFC Championship', sport: 'mma' });
+      }
+      if (sport === 'all' || sport === 'basketball') {
+        urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard', league: 'NBA Basketball', sport: 'basketball' });
       }
       if (sport === 'all' || sport === 'rugby') {
         urls.push({ url: 'https://site.api.espn.com/apis/site/v2/sports/rugby/270559/scoreboard', league: 'United Rugby Championship', sport: 'rugby' });
       }
 
-      for (const item of urls) {
-        try {
-          const res = await fetch(item.url);
-          if (res.ok) {
-            const d = await res.json();
-            (d.events || []).slice(0, 6).forEach((ev: any) => {
-              const comp = ev.competitions?.[0] || {};
-              const home = comp.competitors?.find((c: any) => c.homeAway === 'home') || comp.competitors?.[0];
-              const away = comp.competitors?.find((c: any) => c.homeAway === 'away') || comp.competitors?.[1];
-              matches.push({
-                id: ev.id || `espn_${Math.random()}`,
-                sport: item.sport as any,
-                league: item.league,
-                homeTeam: {
-                  name: home?.team?.displayName || 'Home Team',
-                  logo: home?.team?.logo || 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png',
-                  score: home?.score || '0'
-                },
-                awayTeam: {
-                  name: away?.team?.displayName || 'Away Team',
-                  logo: away?.team?.logo || 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png',
-                  score: away?.score || '0'
-                },
-                status: comp.status?.type?.description || 'Upcoming',
-                time: comp.status?.displayClock || comp.status?.type?.detail || 'LIVE',
-                streamUrl: 'https://vidsrc.pm'
-              });
-            });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+      const responses = await Promise.allSettled(
+        urls.map((u) =>
+          fetch(u.url, { signal: controller.signal })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => ({ ...u, data }))
+            .catch(() => null)
+        )
+      );
+      clearTimeout(timeoutId);
+
+      const matches: SportsMatch[] = [];
+
+      for (const res of responses) {
+        if (res.status !== 'fulfilled' || !res.value?.data) continue;
+        const { sport: itemSport, league: itemLeague, data } = res.value;
+        const events = data.events || [];
+
+        events.slice(0, 8).forEach((ev: any) => {
+          const comp = ev.competitions?.[0] || {};
+          const competitors = comp.competitors || [];
+
+          let homeName = 'Home Team';
+          let homeLogo = 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png';
+          let homeScore = '0';
+
+          let awayName = 'Away Team';
+          let awayLogo = 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png';
+          let awayScore = '0';
+
+          if (itemSport === 'f1') {
+            homeName = ev.name || 'Formula 1 Grand Prix';
+            homeLogo = 'https://a.espncdn.com/combiner/i?img=/i/leaguelogos/racing/500/f1.png';
+            homeScore = 'F1';
+            awayName = comp.venue?.fullName || 'Circuit / Race Day';
+            awayLogo = 'https://a.espncdn.com/i/teamlogos/racing/500/f1.png';
+            awayScore = 'LIVE';
+          } else if (itemSport === 'mma') {
+            const f1 = competitors[0]?.athlete?.displayName || ev.name?.split(' vs ')[0] || 'Challenger 1';
+            const f2 = competitors[1]?.athlete?.displayName || ev.name?.split(' vs ')[1] || 'Challenger 2';
+            homeName = f1;
+            homeLogo = 'https://a.espncdn.com/combiner/i?img=/i/leaguelogos/mma/500/ufc.png';
+            homeScore = competitors[0]?.winner ? 'WIN' : '';
+            awayName = f2;
+            awayLogo = 'https://a.espncdn.com/combiner/i?img=/i/leaguelogos/mma/500/ufc.png';
+            awayScore = competitors[1]?.winner ? 'WIN' : '';
+          } else {
+            const home = competitors.find((c: any) => c.homeAway === 'home') || competitors[0];
+            const away = competitors.find((c: any) => c.homeAway === 'away') || competitors[1];
+            homeName = home?.team?.displayName || 'Home Team';
+            homeLogo = home?.team?.logo || homeLogo;
+            homeScore = home?.score || '0';
+            awayName = away?.team?.displayName || 'Away Team';
+            awayLogo = away?.team?.logo || awayLogo;
+            awayScore = away?.score || '0';
           }
-        } catch {}
+
+          const statusDesc = comp.status?.type?.description || 'Upcoming';
+          const isLiveNow = comp.status?.type?.state === 'in' || statusDesc.toLowerCase().includes('in progress') || statusDesc.toLowerCase().includes('live');
+          const isFinished = comp.status?.type?.state === 'post' || statusDesc.toLowerCase().includes('final');
+
+          matches.push({
+            id: ev.id || `espn_${itemSport}_${Math.random()}`,
+            sport: itemSport as any,
+            league: itemLeague,
+            homeTeam: { name: homeName, logo: homeLogo, score: homeScore },
+            awayTeam: { name: awayName, logo: awayLogo, score: awayScore },
+            status: isLiveNow ? 'LIVE' : isFinished ? 'FINISHED' : 'UPCOMING',
+            time: comp.status?.displayClock || comp.status?.type?.detail || (isLiveNow ? 'LIVE NOW' : 'UPCOMING'),
+            statusText: `${statusDesc} • ${itemLeague}`,
+            servers: [
+              ...(itemSport === 'f1'
+                ? [
+                    { name: '🏎️ Red Bull TV HD (F1 & Motorsport)', url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8' },
+                    { name: '🏎️ ACI Sport TV HD (Circuit Racing)', url: 'https://webstream.multistream.it/memfs/e2cb3629-c1a2-495b-b43a-9eb386f04ed8.m3u8' }
+                  ]
+                : itemSport === 'mma'
+                ? [
+                    { name: '🥊 DAZN Combat HD (Championship Boxing & MMA)', url: 'https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8' },
+                    { name: '🥊 Bellator MMA World Series', url: 'https://jmp2.uk/plu-5ebc8688f3697d00072f7cf8.m3u8' }
+                  ]
+                : itemSport === 'soccer'
+                ? [
+                    { name: '⚽ CBS Sports Golazo HD (UCL & Football 24/7)', url: 'https://dai.google.com/linear/hls/event/7f3Wv6f7QEKfQna22jHqLQ/master.m3u8' },
+                    { name: '⚽ Africa 24 Sport HD (International Football)', url: 'https://africa24.vedge.infomaniak.com/livecast/ik:africa24sport/manifest.m3u8' }
+                  ]
+                : [
+                    { name: '🏆 SportsGrid 24/7 HD (Match Center & Live Odds)', url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8' },
+                    { name: '🏀 ACC Sports Network HD (Live Tournament)', url: 'https://raycom-accdn-firetv.amagi.tv/playlist.m3u8' }
+                  ]),
+              { name: `⚡ VIPLeague Live Match Feed (${homeName} vs ${awayName})`, url: 'https://www.vipleague.lc' },
+              { name: `⚽ FootyBite / Reddit Live Sports (${homeName})`, url: 'https://footybite.to' }
+            ]
+          });
+        });
       }
+
       if (matches.length > 0) return matches;
     } catch (err) {
       console.error('ESPN live sports fallback error:', err);
