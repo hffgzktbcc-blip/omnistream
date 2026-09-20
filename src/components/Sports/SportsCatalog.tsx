@@ -51,16 +51,6 @@ const SUPERSPORT_CATEGORIES = [
 
 const SUPERSPORT_247_FEEDS = [
   {
-    id: 'feed_cbs_golazo',
-    name: 'CBS Sports Golazo HD',
-    badge: '⚽ 720p 60fps HLS',
-    sport: 'soccer',
-    icon: '⚽',
-    desc: 'Official 24/7 UEFA Champions League, European Football, Serie A & studio coverage (Google CDN)',
-    url: 'https://dai.google.com/linear/hls/event/7f3Wv6f7QEKfQna22jHqLQ/master.m3u8',
-    gradient: 'from-blue-600/30 via-[#00173d] to-[#000c1e] border-blue-400/40 text-blue-300'
-  },
-  {
     id: 'feed_redbull_tv',
     name: 'Red Bull TV HD',
     badge: '🏎️ 1080p 60fps HLS',
@@ -71,44 +61,44 @@ const SUPERSPORT_247_FEEDS = [
     gradient: 'from-red-600/30 via-[#00173d] to-[#000c1e] border-red-400/40 text-red-300'
   },
   {
-    id: 'feed_sportsgrid',
-    name: 'SportsGrid 24/7 HD',
+    id: 'feed_draftkings_network',
+    name: 'DraftKings Network HD',
     badge: '🏆 1080p Match Center',
     sport: 'all',
     icon: '🏆',
-    desc: '24/7 real-time sports odds, match analysis, live scores, and expert commentary',
-    url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
+    desc: '24/7 real-time sports odds, match analysis, live scores, and expert studio coverage',
+    url: 'https://na.linear.zype.com/e0bd0e23-a958-4e43-8164-4f2fef8876a8/fd3614bd-90bf-4530-a277-65ae3a1720c8-zype/live.m3u8',
     gradient: 'from-amber-500/30 via-[#00173d] to-[#000c1e] border-amber-400/40 text-amber-300'
   },
   {
-    id: 'feed_dazn_combat',
-    name: 'DAZN Combat HD',
-    badge: '🥊 Native HLS Combat',
-    sport: 'mma',
-    icon: '🥊',
-    desc: 'World championship boxing, MMA bouts, knockout archives & fighter press',
-    url: 'https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8',
+    id: 'feed_cricket_gold',
+    name: 'Cricket Gold HD',
+    badge: '🏏 1080p Cricket HLS',
+    sport: 'cricket',
+    icon: '🏏',
+    desc: '24/7 world cricket championships, classic tests, international matches & highlights',
+    url: 'https://streams2.sofast.tv/ptnr-yupptv/title-cricketgold/v1/master/611d79b11b77e2f571934fd80ca1413453772ac7/b2048bb8-1686-4432-aa50-647245383e0c/manifest.m3u8',
     gradient: 'from-emerald-600/30 via-[#00173d] to-[#000c1e] border-emerald-400/40 text-emerald-300'
   },
   {
-    id: 'feed_acc_network',
-    name: 'ACC Sports Network HD',
-    badge: '🏀 1080p Live Sports',
-    sport: 'all',
-    icon: '🏀',
-    desc: '24/7 championship college football, basketball tournaments, and studio analysis',
-    url: 'https://raycom-accdn-firetv.amagi.tv/playlist.m3u8',
+    id: 'feed_fast_funbox',
+    name: 'Fast&FunBox Action HD',
+    badge: '🏎️ 1080p Extreme HLS',
+    sport: 'f1',
+    icon: '🏎️',
+    desc: 'High adrenaline auto racing, motocross, circuit championships & extreme sports',
+    url: 'https://dash3.antik.sk/live/test_fast_and_funbox_medium_atk/playlist.m3u8',
     gradient: 'from-purple-600/30 via-[#00173d] to-[#000c1e] border-purple-400/40 text-purple-300'
   },
   {
-    id: 'feed_africa24_sport',
-    name: 'Africa 24 Sport HD',
-    badge: '📡 1080p Football & Pro',
-    sport: 'soccer',
-    icon: '📡',
-    desc: 'International football, African championships, athletics, and global tournaments',
-    url: 'https://africa24.vedge.infomaniak.com/livecast/ik:africa24sport/manifest.m3u8',
-    gradient: 'from-indigo-600/30 via-[#00173d] to-[#000c1e] border-indigo-400/40 text-indigo-300'
+    id: 'feed_golf_kingdom',
+    name: '30A Golf Kingdom HD',
+    badge: '⛳ 720p Golf HLS',
+    sport: 'all',
+    icon: '⛳',
+    desc: '24/7 professional golf championships, pro tour highlights, and tournament previews',
+    url: 'https://30a-tv.com/feeds/vidaa/golf.m3u8',
+    gradient: 'from-blue-600/30 via-[#00173d] to-[#000c1e] border-blue-400/40 text-blue-300'
   }
 ];
 
@@ -213,10 +203,10 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       status: 'FINISHED',
       statusText: 'Final Result (24-18) • Ellis Park Replay',
       servers: [
-        { name: '🏆 SportsGrid 24/7 HD (Match Center & Analysis)', url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8' },
-        { name: '⚡ VIPLeague Live Rugby Stream', url: 'https://www.vipleague.lc' },
-        { name: '🏏 CricHD SuperSport Rugby Feed', url: 'https://crichd.com' },
-        { name: '📊 FlashScore Rugby Real-Time Tracker', url: 'https://www.flashscore.com' }
+        { name: '🏆 DraftKings Sports Network HD (Rugby Center & Odds)', url: 'https://na.linear.zype.com/e0bd0e23-a958-4e43-8164-4f2fef8876a8/fd3614bd-90bf-4530-a277-65ae3a1720c8-zype/live.m3u8' },
+        { name: '⚡ StrikeOut Live Rugby Feed', url: 'https://strikeout.im' },
+        { name: '⚡ CricFree Global Sports Feed', url: 'https://cricfree.live' },
+        { name: '⚡ SportLemons Live Rugby Hub', url: 'https://sportlemons.net' }
       ]
     },
     {
@@ -236,10 +226,10 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       status: 'UPCOMING',
       statusText: 'Friday • 21:00 Kickoff CAT',
       servers: [
-        { name: '⚽ CBS Sports Golazo HD (UCL & Football 24/7)', url: 'https://dai.google.com/linear/hls/event/7f3Wv6f7QEKfQna22jHqLQ/master.m3u8' },
-        { name: '⚽ Africa 24 Sport HD (Live Football)', url: 'https://africa24.vedge.infomaniak.com/livecast/ik:africa24sport/manifest.m3u8' },
-        { name: '⚡ VIPLeague Premier League Stream', url: 'https://www.vipleague.lc' },
-        { name: '⚽ FootyBite Match Hub', url: 'https://footybite.to' }
+        { name: '🏆 DraftKings Sports Network HD (Premier League Studio)', url: 'https://na.linear.zype.com/e0bd0e23-a958-4e43-8164-4f2fef8876a8/fd3614bd-90bf-4530-a277-65ae3a1720c8-zype/live.m3u8' },
+        { name: '⚡ StrikeOut Premier League Stream', url: 'https://strikeout.im' },
+        { name: '⚡ CricFree Football Live Feed', url: 'https://cricfree.live' },
+        { name: '⚡ SportLemons Live Match Hub', url: 'https://sportlemons.net' }
       ]
     },
     {
@@ -259,9 +249,10 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       status: 'UPCOMING',
       statusText: 'Tuesday, Sep 8 • 18:45 Kickoff CAT',
       servers: [
-        { name: '⚽ CBS Sports Golazo HD (UCL & Football 24/7)', url: 'https://dai.google.com/linear/hls/event/7f3Wv6f7QEKfQna22jHqLQ/master.m3u8' },
-        { name: '⚡ VIPLeague UCL Live Stream', url: 'https://www.vipleague.lc' },
-        { name: '⚽ FootyBite Match Hub', url: 'https://footybite.to' }
+        { name: '🏆 DraftKings Sports Network HD (Champions League Studio)', url: 'https://na.linear.zype.com/e0bd0e23-a958-4e43-8164-4f2fef8876a8/fd3614bd-90bf-4530-a277-65ae3a1720c8-zype/live.m3u8' },
+        { name: '⚡ StrikeOut UCL Live Stream', url: 'https://strikeout.im' },
+        { name: '⚡ CricFree Global Football Feed', url: 'https://cricfree.live' },
+        { name: '⚡ SportLemons Live Match Hub', url: 'https://sportlemons.net' }
       ]
     },
     {
@@ -282,8 +273,9 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       statusText: 'Friday • 15:00 Practice / Quali',
       servers: [
         { name: '🏎️ Red Bull TV HD (F1, Paddock & Motorsport)', url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8' },
-        { name: '🏎️ ACI Sport TV HD (Circuit Racing)', url: 'https://webstream.multistream.it/memfs/e2cb3629-c1a2-495b-b43a-9eb386f04ed8.m3u8' },
-        { name: '⚡ VIPLeague F1 Live Stream', url: 'https://www.vipleague.lc' }
+        { name: '🏎️ Fast&FunBox Action HD (Extreme Circuit Racing)', url: 'https://dash3.antik.sk/live/test_fast_and_funbox_medium_atk/playlist.m3u8' },
+        { name: '⚡ StrikeOut F1 Live Stream', url: 'https://strikeout.im' },
+        { name: '⚡ SportLemons Live Racing Feed', url: 'https://sportlemons.net' }
       ]
     },
     {
@@ -303,9 +295,10 @@ export const SportsCatalog: React.FC<SportsCatalogProps> = ({
       status: 'UPCOMING',
       statusText: 'Saturday • 04:00 CAT Main Card',
       servers: [
-        { name: '🥊 DAZN Combat HD (Live Boxing & MMA)', url: 'https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8' },
-        { name: '🥊 Bellator MMA World Series', url: 'https://jmp2.uk/plu-5ebc8688f3697d00072f7cf8.m3u8' },
-        { name: '⚡ VIPLeague UFC Live Stream', url: 'https://www.vipleague.lc' }
+        { name: '🏆 DraftKings Sports Network HD (UFC Fight Center)', url: 'https://na.linear.zype.com/e0bd0e23-a958-4e43-8164-4f2fef8876a8/fd3614bd-90bf-4530-a277-65ae3a1720c8-zype/live.m3u8' },
+        { name: '🏎️ Fast&FunBox Action HD (Combat & Adrenaline)', url: 'https://dash3.antik.sk/live/test_fast_and_funbox_medium_atk/playlist.m3u8' },
+        { name: '⚡ StrikeOut UFC Live Stream', url: 'https://strikeout.im' },
+        { name: '⚡ SportLemons Combat Hub', url: 'https://sportlemons.net' }
       ]
     }
   ];

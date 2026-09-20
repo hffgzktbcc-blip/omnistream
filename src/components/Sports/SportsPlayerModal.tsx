@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SportsMatch } from '../../types/sports';
 import { HlsVideoPlayer } from './HlsVideoPlayer';
+import { api } from '../../services/api';
 import {
   X,
   ChevronLeft,
+  ChevronRight,
   RotateCcw,
   Maximize,
   Loader2,
@@ -31,7 +33,12 @@ export interface StreamServer {
   badge: string;
 }
 
-function getSportSpecificServers(match: SportsMatch, homeName: string, awayName: string): StreamServer[] {
+function getSportSpecificServers(
+  match: SportsMatch,
+  homeName: string,
+  awayName: string,
+  dynamicServers: StreamServer[] = []
+): StreamServer[] {
   const sport = (match.sport || '').toLowerCase();
   const league = (match.league || '').toLowerCase();
   const query = `${homeName} vs ${awayName} ${match.league || ''}`;
@@ -39,7 +46,16 @@ function getSportSpecificServers(match: SportsMatch, homeName: string, awayName:
 
   const servers: StreamServer[] = [];
 
-  // 1. Direct Match Servers (Prioritized if explicitly supplied, e.g. 24/7 channels or custom streams)
+  // 1. Dynamic Live Match Embed Streams (Resolved live from streaming providers)
+  if (dynamicServers.length > 0) {
+    dynamicServers.forEach((ds) => {
+      if (ds.url && !servers.some((s) => s.url === ds.url)) {
+        servers.push(ds);
+      }
+    });
+  }
+
+  // 2. Direct Match Servers (Prioritized if explicitly supplied, e.g. 24/7 channels or custom streams)
   if (match.servers && Array.isArray(match.servers) && match.servers.length > 0) {
     match.servers.forEach((s) => {
       if (s.url && !servers.some((srv) => srv.url === s.url)) {
@@ -51,14 +67,14 @@ function getSportSpecificServers(match: SportsMatch, homeName: string, awayName:
             : s.url.includes('youtube')
             ? 'youtube'
             : 'web',
-          badge: s.url.includes('.m3u8') ? '1080p Native HLS' : 'Direct Feed'
+          badge: s.url.includes('.m3u8') ? '1080p Native HLS' : 'Direct Live Feed'
         });
       }
     });
   }
 
-  // 2. High-Reliability Verified Native HLS Networks (100% active, open CORS & fast buffers)
-  if (sport === 'f1' || league.includes('formula') || league.includes('racing')) {
+  // 3. High-Reliability Verified 24/7 Networks (100% active, open CORS * across all browsers)
+  if (sport === 'f1' || league.includes('formula') || league.includes('racing') || league.includes('motor')) {
     servers.push(
       {
         name: '🏎️ Red Bull TV HD (Live 24/7 F1, Paddock & Motorsport)',
@@ -67,68 +83,29 @@ function getSportSpecificServers(match: SportsMatch, homeName: string, awayName:
         badge: '1080p 60fps HLS'
       },
       {
-        name: '🏎️ ACI Sport TV HD (Grand Prix & Circuit Motorsport)',
-        url: 'https://webstream.multistream.it/memfs/e2cb3629-c1a2-495b-b43a-9eb386f04ed8.m3u8',
+        name: '🏎️ Fast&FunBox Action HD (Auto Racing & Extreme Sports)',
+        url: 'https://dash3.antik.sk/live/test_fast_and_funbox_medium_atk/playlist.m3u8',
         type: 'hls',
         badge: '1080p Native HLS'
       },
       {
-        name: '🏆 SportsGrid 24/7 HD (F1 Race Center & Odds)',
-        url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
-        type: 'hls',
-        badge: '1080p Native HLS'
-      }
-    );
-  } else if (
-    sport === 'soccer' ||
-    league.includes('premier') ||
-    league.includes('champions') ||
-    league.includes('la liga') ||
-    league.includes('serie') ||
-    league.includes('football')
-  ) {
-    servers.push(
-      {
-        name: '⚽ CBS Sports Golazo HD (Official UCL & European Soccer 24/7)',
-        url: 'https://dai.google.com/linear/hls/event/7f3Wv6f7QEKfQna22jHqLQ/master.m3u8',
-        type: 'hls',
-        badge: '720p 60fps HLS'
-      },
-      {
-        name: '⚽ Africa 24 Sport HD (Live International & Club Football)',
-        url: 'https://africa24.vedge.infomaniak.com/livecast/ik:africa24sport/manifest.m3u8',
-        type: 'hls',
-        badge: '1080p Native HLS'
-      },
-      {
-        name: '🏆 SportsGrid 24/7 HD (Match Center & Live Odds)',
-        url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
+        name: '🏆 DraftKings Sports Network HD (Live Race Center & Odds)',
+        url: 'https://na.linear.zype.com/e0bd0e23-a958-4e43-8164-4f2fef8876a8/fd3614bd-90bf-4530-a277-65ae3a1720c8-zype/live.m3u8',
         type: 'hls',
         badge: '1080p Native HLS'
       }
     );
-  } else if (
-    sport === 'mma' ||
-    league.includes('ufc') ||
-    league.includes('combat') ||
-    league.includes('fight')
-  ) {
+  } else if (sport === 'cricket' || league.includes('cricket') || league.includes('ipl')) {
     servers.push(
       {
-        name: '🥊 DAZN Combat HD (Live Boxing & MMA Championships)',
-        url: 'https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8',
+        name: '🏏 Cricket Gold HD (24/7 International Cricket & Archives)',
+        url: 'https://streams2.sofast.tv/ptnr-yupptv/title-cricketgold/v1/master/611d79b11b77e2f571934fd80ca1413453772ac7/b2048bb8-1686-4432-aa50-647245383e0c/manifest.m3u8',
         type: 'hls',
-        badge: 'HD Native HLS'
+        badge: '1080p Native HLS'
       },
       {
-        name: '🥊 Bellator MMA World Series HD',
-        url: 'https://jmp2.uk/plu-5ebc8688f3697d00072f7cf8.m3u8',
-        type: 'hls',
-        badge: 'HD Native HLS'
-      },
-      {
-        name: '🏆 SportsGrid 24/7 HD (Fight Center & Live Odds)',
-        url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
+        name: '🏆 DraftKings Sports Network HD (Live Match Center & Odds)',
+        url: 'https://na.linear.zype.com/e0bd0e23-a958-4e43-8164-4f2fef8876a8/fd3614bd-90bf-4530-a277-65ae3a1720c8-zype/live.m3u8',
         type: 'hls',
         badge: '1080p Native HLS'
       }
@@ -136,19 +113,19 @@ function getSportSpecificServers(match: SportsMatch, homeName: string, awayName:
   } else {
     servers.push(
       {
-        name: '🏆 SportsGrid 24/7 Live Network (Match Center & Odds)',
-        url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8',
+        name: '🏆 DraftKings Sports Network HD (24/7 Live Match Center & Odds)',
+        url: 'https://na.linear.zype.com/e0bd0e23-a958-4e43-8164-4f2fef8876a8/fd3614bd-90bf-4530-a277-65ae3a1720c8-zype/live.m3u8',
         type: 'hls',
         badge: '1080p Native HLS'
       },
       {
-        name: '🏀 ACC Sports Network HD (Live Championship Sports)',
-        url: 'https://raycom-accdn-firetv.amagi.tv/playlist.m3u8',
+        name: '🏎️ Red Bull TV HD (Extreme Sports & World Championships)',
+        url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
         type: 'hls',
-        badge: '1080p Native HLS'
+        badge: '1080p 60fps HLS'
       },
       {
-        name: '⛳ 30A Golf Kingdom HD (Golf Tournaments)',
+        name: '⛳ 30A Golf Kingdom HD (Championship Golf)',
         url: 'https://30a-tv.com/feeds/vidaa/golf.m3u8',
         type: 'hls',
         badge: '720p Native HLS'
@@ -156,40 +133,34 @@ function getSportSpecificServers(match: SportsMatch, homeName: string, awayName:
     );
   }
 
-  // 3. Active Live Match Broadcast Mirrors & Live Trackers
+  // 4. Active Live Match Broadcast Mirrors (No X-Frame-Options, iframe embeddable)
   servers.push(
     {
-      name: `⚡ VIPLeague Live Match Feed (${homeName} vs ${awayName})`,
-      url: 'https://www.vipleague.lc',
+      name: `⚡ StrikeOut Live Sports Feed (${homeName} vs ${awayName})`,
+      url: 'https://strikeout.im',
       type: 'web',
       badge: 'Live Mirror'
     },
     {
-      name: `⚽ FootyBite Match Center (${homeName} vs ${awayName})`,
-      url: 'https://footybite.to',
+      name: `⚡ CricFree Global Stream (${homeName} vs ${awayName})`,
+      url: 'https://cricfree.live',
+      type: 'web',
+      badge: 'Global Mirror'
+    },
+    {
+      name: `⚡ SportLemons Live Hub (${homeName})`,
+      url: 'https://sportlemons.net',
       type: 'web',
       badge: 'Match Hub'
-    },
-    {
-      name: `🏏 CricHD / SuperSport Global Feed (${homeName} vs ${awayName})`,
-      url: 'https://crichd.com',
-      type: 'web',
-      badge: 'SuperSport Feed'
-    },
-    {
-      name: `📊 FlashScore Real-Time Match Tracker & Live Commentary`,
-      url: 'https://www.flashscore.com',
-      type: 'web',
-      badge: 'Ball-by-Ball'
     }
   );
 
-  // 4. Official YouTube Highlights & Press Conferences
+  // 5. Official YouTube Highlights & Press Conferences (Embeddable YouTube Player)
   servers.push({
-    name: `🎬 Match Highlights & Analysis on YouTube (${homeName} vs ${awayName})`,
-    url: `https://www.youtube.com/results?search_query=${encodedQuery}+match+highlights`,
-    type: 'web',
-    badge: 'YouTube'
+    name: `🎬 Match Highlights & Official Coverage (${homeName} vs ${awayName})`,
+    url: `https://www.youtube.com/embed?listType=search&list=${encodedQuery}+highlights`,
+    type: 'youtube',
+    badge: 'YouTube HD'
   });
 
   return servers;
@@ -201,10 +172,11 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
 }) => {
   const [serverIndex, setServerIndex] = useState<number>(0);
   const [theaterMode, setTheaterMode] = useState<boolean>(false);
-  const [loadingServer, setLoadingServer] = useState<boolean>(true);
+  const [iframeLoading, setIframeLoading] = useState<boolean>(true);
   const [reloadKey, setReloadKey] = useState<number>(Date.now());
   const [customStreamUrl, setCustomStreamUrl] = useState<string>('');
   const [showCustomInput, setShowCustomInput] = useState<boolean>(false);
+  const [dynamicServers, setDynamicServers] = useState<StreamServer[]>([]);
 
   const playerContainerRef = useRef<HTMLDivElement>(null);
 
@@ -216,6 +188,33 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  // Dynamically resolve live streams if match has sources
+  useEffect(() => {
+    if (!match) return;
+    setServerIndex(0);
+    setIframeLoading(true);
+    setReloadKey(Date.now());
+
+    if (match.sources && Array.isArray(match.sources) && match.sources.length > 0) {
+      api.getMatchStreams(match.sources)
+        .then((streams) => {
+          if (streams.length > 0) {
+            setDynamicServers(
+              streams.map((s) => ({
+                name: s.name,
+                url: s.url,
+                type: 'web',
+                badge: s.badge
+              }))
+            );
+          }
+        })
+        .catch(() => {});
+    } else {
+      setDynamicServers([]);
+    }
+  }, [match?.id]);
 
   if (!match) return null;
 
@@ -355,9 +354,10 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
               onChange={(e) => {
                 setServerIndex(parseInt(e.target.value));
                 setCustomStreamUrl('');
+                setIframeLoading(true);
                 setReloadKey(Date.now());
               }}
-              className="bg-blue-950 text-blue-100 text-xs font-bold px-3 py-1.5 rounded-xl border border-blue-800/60 focus:outline-none focus:border-amber-400 cursor-pointer max-w-[180px] sm:max-w-xs truncate"
+              className="bg-blue-950 text-blue-100 text-xs font-bold px-3 py-1.5 rounded-xl border border-blue-800/60 focus:outline-none focus:border-amber-400 cursor-pointer max-w-[170px] sm:max-w-xs truncate"
             >
               {allServers.map((s, idx) => (
                 <option key={idx} value={idx}>
@@ -365,6 +365,16 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
                 </option>
               ))}
             </select>
+
+            {allServers.length > 1 && (
+              <button
+                onClick={handleNextServer}
+                className="p-1.5 rounded-xl bg-blue-900/80 hover:bg-blue-800 text-amber-400 border border-blue-700/60 transition-colors cursor-pointer"
+                title="Switch to next server"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
 
             <button
               onClick={handlePopoutCinemaWindow}
@@ -413,43 +423,53 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
               onNextServer={allServers.length > 1 ? handleNextServer : undefined}
               onPopout={handlePopoutCinemaWindow}
             />
-          ) : isYouTube ? (
-            <iframe
-              key={`${streamUrl}_${reloadKey}`}
-              src={streamUrl}
-              className="w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-[#000c1e] p-6 text-center space-y-4">
-              <div className="p-4 rounded-3xl bg-blue-950/80 border border-blue-800 text-amber-400 shadow-xl">
-                <Tv className="w-10 h-10" />
-              </div>
-              <div className="max-w-md space-y-2">
-                <h3 className="text-base font-black text-white">
-                  {currentServer?.name || 'Live Sports Broadcast Feed'}
-                </h3>
-                <p className="text-xs text-blue-200/80 leading-relaxed">
-                  Web-based sports mirrors protect live broadcasts from iframe embedding. Click below to launch this live feed directly.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="relative w-full h-full bg-black flex items-center justify-center">
+              {iframeLoading && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#000c1e]/90 backdrop-blur-sm space-y-3 pointer-events-none">
+                  <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+                  <p className="text-xs font-bold text-white tracking-wide">
+                    Connecting to {currentServer?.name || 'Live Sports Feed'}...
+                  </p>
+                  <p className="text-[11px] text-blue-300/70 font-mono">
+                    Securing stream & blocking popups
+                  </p>
+                </div>
+              )}
+              <iframe
+                key={`${streamUrl}_${reloadKey}`}
+                src={streamUrl}
+                title={`${homeName} vs ${awayName}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                onLoad={() => setIframeLoading(false)}
+                className="w-full h-full border-0 absolute inset-0 z-10 bg-black"
+                referrerPolicy="no-referrer"
+                sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+              />
+
+              {/* In-Player Floating Quick Actions */}
+              <div className="absolute bottom-3 right-3 z-30 flex items-center gap-2 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 opacity-70 hover:opacity-100 transition-opacity">
                 <button
-                  onClick={handlePopoutCinemaWindow}
-                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/20 flex items-center gap-2 transition-transform hover:scale-105 cursor-pointer"
+                  onClick={() => {
+                    setIframeLoading(true);
+                    setReloadKey(Date.now());
+                  }}
+                  className="text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  title="Reload Current Stream"
                 >
-                  <ExternalLink className="w-4 h-4 text-slate-950" />
-                  <span>Open {homeName} vs {awayName} Feed</span>
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reload</span>
                 </button>
-                {allServers.length > 1 && (
-                  <button
-                    onClick={handleNextServer}
-                    className="px-4 py-3 rounded-2xl bg-blue-900/80 hover:bg-blue-800 text-white font-bold text-xs border border-blue-700/60 cursor-pointer"
-                  >
-                    Try Another Server
-                  </button>
-                )}
+                <div className="h-3 w-px bg-white/20" />
+                <button
+                  onClick={handleNextServer}
+                  className="text-amber-400 hover:text-amber-300 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  title="Switch to Next Server"
+                >
+                  <span>Next Server</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           )}
@@ -476,7 +496,10 @@ export const SportsPlayerModal: React.FC<SportsPlayerModalProps> = ({
               </button>
             )}
             <button
-              onClick={() => setReloadKey(Date.now())}
+              onClick={() => {
+                setIframeLoading(true);
+                setReloadKey(Date.now());
+              }}
               className="flex items-center gap-1 text-slate-300 hover:text-white cursor-pointer"
               title="Reload current stream"
             >

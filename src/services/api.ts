@@ -1033,7 +1033,87 @@ export const api = {
       return serverData;
     }
 
-    // Direct ESPN Scoreboard Client-Side Fallback for Cloudflare Pages (Parallel & Fast)
+    const matches: SportsMatch[] = [];
+
+    // 1. Direct Streamed.pk Global Live Matches API (Open CORS *, 100% working live streams)
+    try {
+      const categoryMap: Record<string, string[]> = {
+        all: ['football', 'motor-sports', 'fight', 'basketball', 'rugby', 'cricket', 'american-football', 'tennis', 'hockey', 'golf'],
+        soccer: ['football'],
+        f1: ['motor-sports'],
+        mma: ['fight'],
+        basketball: ['basketball'],
+        rugby: ['rugby'],
+        cricket: ['cricket'],
+        tennis: ['tennis'],
+        football: ['american-football']
+      };
+
+      const targetCategories = categoryMap[sport] || [sport];
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+      const spkRes = await fetch('https://streamed.pk/api/matches/all', {
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (spkRes.ok) {
+        const spkData = await spkRes.json();
+        if (Array.isArray(spkData)) {
+          const filteredSpk = spkData.filter((m: any) =>
+            sport === 'all' ? true : targetCategories.includes(m.category)
+          );
+
+          filteredSpk.forEach((m: any) => {
+            const homeName = m.teams?.home?.name || m.title?.split(' vs ')[0] || m.title || 'Home Team';
+            const awayName = m.teams?.away?.name || m.title?.split(' vs ')[1] || 'Away Team';
+            const homeLogo = m.teams?.home?.badge ? `https://streamed.pk${m.teams.home.badge.startsWith('/') ? '' : '/'}${m.teams.home.badge}` : undefined;
+            const awayLogo = m.teams?.away?.badge ? `https://streamed.pk${m.teams.away.badge.startsWith('/') ? '' : '/'}${m.teams.away.badge}` : undefined;
+
+            let mappedSport = 'soccer';
+            if (m.category === 'motor-sports') mappedSport = 'f1';
+            else if (m.category === 'fight') mappedSport = 'mma';
+            else if (m.category === 'basketball') mappedSport = 'basketball';
+            else if (m.category === 'rugby') mappedSport = 'rugby';
+            else if (m.category === 'cricket') mappedSport = 'cricket';
+            else if (m.category === 'tennis') mappedSport = 'tennis';
+            else if (m.category === 'american-football') mappedSport = 'football';
+
+            const isUpcoming = m.date && Date.now() < m.date;
+            const statusDesc = isUpcoming ? 'Scheduled Broadcast' : 'LIVE Broadcasting';
+
+            const defaultServers = [];
+            if (Array.isArray(m.sources) && m.sources.length > 0) {
+              const mainSrc = m.sources[0];
+              defaultServers.push(
+                { name: `⚡ Stream 1 (1080p HD • Main Live Feed)`, url: `https://embed.st/embed/${mainSrc.source}/${mainSrc.id}/1` },
+                { name: `⚡ Stream 2 (HD • Backup Feed)`, url: `https://embed.st/embed/${mainSrc.source}/${mainSrc.id}/2` }
+              );
+            }
+
+            matches.push({
+              id: `spk_${m.id}`,
+              sport: mappedSport as any,
+              league: m.category === 'motor-sports' ? 'Formula 1 / Motorsport' : m.category === 'football' ? 'Premier League / European Football' : m.category.toUpperCase(),
+              homeTeam: { name: homeName, logo: homeLogo, score: isUpcoming ? undefined : 'LIVE' },
+              awayTeam: { name: awayName, logo: awayLogo, score: isUpcoming ? undefined : 'LIVE' },
+              status: isUpcoming ? 'UPCOMING' : 'LIVE',
+              time: m.date ? new Date(m.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (isUpcoming ? 'UPCOMING' : 'LIVE NOW'),
+              statusText: m.popular ? `🔥 Featured Live Stream • ${statusDesc}` : `HD Live Broadcast • ${statusDesc}`,
+              poster: m.poster ? `https://streamed.pk${m.poster.startsWith('/') ? '' : '/'}${m.poster}` : undefined,
+              sources: m.sources,
+              servers: defaultServers
+            });
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Streamed.pk sports fetch failed, falling back to ESPN scoreboard:', e);
+    }
+
+    // 2. Direct ESPN Scoreboard Client-Side Fallback for Extra Fixtures & Real-Time Scores
     try {
       const urls: { url: string; league: string; sport: string }[] = [];
 
@@ -1056,7 +1136,7 @@ export const api = {
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
 
       const responses = await Promise.allSettled(
         urls.map((u) =>
@@ -1068,14 +1148,12 @@ export const api = {
       );
       clearTimeout(timeoutId);
 
-      const matches: SportsMatch[] = [];
-
       for (const res of responses) {
         if (res.status !== 'fulfilled' || !res.value?.data) continue;
         const { sport: itemSport, league: itemLeague, data } = res.value;
         const events = data.events || [];
 
-        events.slice(0, 8).forEach((ev: any) => {
+        events.slice(0, 6).forEach((ev: any) => {
           const comp = ev.competitions?.[0] || {};
           const competitors = comp.competitors || [];
 
@@ -1118,47 +1196,64 @@ export const api = {
           const isLiveNow = comp.status?.type?.state === 'in' || statusDesc.toLowerCase().includes('in progress') || statusDesc.toLowerCase().includes('live');
           const isFinished = comp.status?.type?.state === 'post' || statusDesc.toLowerCase().includes('final');
 
-          matches.push({
-            id: ev.id || `espn_${itemSport}_${Math.random()}`,
-            sport: itemSport as any,
-            league: itemLeague,
-            homeTeam: { name: homeName, logo: homeLogo, score: homeScore },
-            awayTeam: { name: awayName, logo: awayLogo, score: awayScore },
-            status: isLiveNow ? 'LIVE' : isFinished ? 'FINISHED' : 'UPCOMING',
-            time: comp.status?.displayClock || comp.status?.type?.detail || (isLiveNow ? 'LIVE NOW' : 'UPCOMING'),
-            statusText: `${statusDesc} • ${itemLeague}`,
-            servers: [
-              ...(itemSport === 'f1'
-                ? [
-                    { name: '🏎️ Red Bull TV HD (F1 & Motorsport)', url: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8' },
-                    { name: '🏎️ ACI Sport TV HD (Circuit Racing)', url: 'https://webstream.multistream.it/memfs/e2cb3629-c1a2-495b-b43a-9eb386f04ed8.m3u8' }
-                  ]
-                : itemSport === 'mma'
-                ? [
-                    { name: '🥊 DAZN Combat HD (Championship Boxing & MMA)', url: 'https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8' },
-                    { name: '🥊 Bellator MMA World Series', url: 'https://jmp2.uk/plu-5ebc8688f3697d00072f7cf8.m3u8' }
-                  ]
-                : itemSport === 'soccer'
-                ? [
-                    { name: '⚽ CBS Sports Golazo HD (UCL & Football 24/7)', url: 'https://dai.google.com/linear/hls/event/7f3Wv6f7QEKfQna22jHqLQ/master.m3u8' },
-                    { name: '⚽ Africa 24 Sport HD (International Football)', url: 'https://africa24.vedge.infomaniak.com/livecast/ik:africa24sport/manifest.m3u8' }
-                  ]
-                : [
-                    { name: '🏆 SportsGrid 24/7 HD (Match Center & Live Odds)', url: 'https://sportsgrid-klowdtv.amagi.tv/playlist.m3u8' },
-                    { name: '🏀 ACC Sports Network HD (Live Tournament)', url: 'https://raycom-accdn-firetv.amagi.tv/playlist.m3u8' }
-                  ]),
-              { name: `⚡ VIPLeague Live Match Feed (${homeName} vs ${awayName})`, url: 'https://www.vipleague.lc' },
-              { name: `⚽ FootyBite / Reddit Live Sports (${homeName})`, url: 'https://footybite.to' }
-            ]
-          });
+          // Only add if not duplicate with streamed.pk match
+          const alreadyHas = matches.some((m) =>
+            m.homeTeam.name.toLowerCase().includes(homeName.toLowerCase()) ||
+            homeName.toLowerCase().includes(m.homeTeam.name.toLowerCase())
+          );
+
+          if (!alreadyHas) {
+            matches.push({
+              id: ev.id || `espn_${itemSport}_${Math.random()}`,
+              sport: itemSport as any,
+              league: itemLeague,
+              homeTeam: { name: homeName, logo: homeLogo, score: homeScore },
+              awayTeam: { name: awayName, logo: awayLogo, score: awayScore },
+              status: isLiveNow ? 'LIVE' : isFinished ? 'FINISHED' : 'UPCOMING',
+              time: comp.status?.displayClock || comp.status?.type?.detail || (isLiveNow ? 'LIVE NOW' : 'UPCOMING'),
+              statusText: `${statusDesc} • ${itemLeague}`,
+              servers: [
+                { name: `⚡ StrikeOut Live Match Feed (${homeName} vs ${awayName})`, url: 'https://strikeout.im' },
+                { name: `⚡ CricFree Global Stream (${homeName})`, url: 'https://cricfree.live' },
+                { name: `⚡ SportLemons Live Feed`, url: 'https://sportlemons.net' }
+              ]
+            });
+          }
         });
       }
-
-      if (matches.length > 0) return matches;
     } catch (err) {
       console.error('ESPN live sports fallback error:', err);
     }
-    return [];
+
+    return matches;
+  },
+
+  async getMatchStreams(sources: { source: string; id: string }[]): Promise<{ name: string; url: string; badge: string }[]> {
+    const streams: { name: string; url: string; badge: string }[] = [];
+    if (!sources || !Array.isArray(sources) || sources.length === 0) return streams;
+
+    try {
+      for (const src of sources.slice(0, 3)) {
+        const res = await fetch(`https://streamed.pk/api/stream/${src.source}/${src.id}`);
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list)) {
+            list.forEach((item: any, idx: number) => {
+              if (item.embedUrl) {
+                streams.push({
+                  name: `⚡ Stream ${item.streamNo || idx + 1} (${item.hd ? '1080p HD' : 'SD'} • ${item.language || 'Main Feed'})`,
+                  url: item.embedUrl,
+                  badge: item.hd ? '1080p HD' : 'Live Stream'
+                });
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching stream embed URLs:', e);
+    }
+    return streams;
   },
 
   async getSportsMatches(sport: string = 'all'): Promise<SportsMatch[]> {
