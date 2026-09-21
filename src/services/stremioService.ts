@@ -16,6 +16,7 @@ export interface StremioStream {
   name: string;
   title: string;
   url?: string;
+  magnet?: string;
   infoHash?: string;
   fileIdx?: number;
   quality?: string;
@@ -46,13 +47,6 @@ const DEFAULT_ADDONS: StremioAddon[] = [
     name: 'MediaFusion',
     url: 'https://mediafusion.elfhosted.com',
     description: 'Multi-source movies, TV series, anime & live sports',
-    enabled: true
-  },
-  {
-    id: 'cyberflix',
-    name: 'CyberFlix',
-    url: 'https://cyberflix.elfhosted.com',
-    description: 'Comprehensive streaming media aggregator',
     enabled: true
   }
 ];
@@ -248,11 +242,16 @@ class StremioService {
               const seedMatch = rawTitle.match(/👤\s*(\d+)/);
               const seeders = seedMatch ? parseInt(seedMatch[1]) : undefined;
 
+              const magnet = s.infoHash
+                ? `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(rawTitle || 'Stream')}`
+                : undefined;
+
               streams.push({
                 id: `${addon.id}_${idx}_${Date.now()}`,
                 name: s.name || addon.name,
                 title: rawTitle,
                 url: s.url,
+                magnet,
                 infoHash: s.infoHash,
                 fileIdx: s.fileIdx,
                 quality,

@@ -111,6 +111,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   const [loadingStremio, setLoadingStremio] = useState<boolean>(false);
   const [activeStremioStream, setActiveStremioStream] = useState<StremioStream | null>(null);
   const [showStremioModal, setShowStremioModal] = useState<boolean>(false);
+  const [torrentModalStream, setTorrentModalStream] = useState<StremioStream | null>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const watchdogRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -645,32 +646,40 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
             </button>
 
             <div className="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl border border-slate-700/80 overflow-x-auto scrollbar-none max-w-[200px] sm:max-w-md">
-              {/* Playable Stremio / Debrid Direct Streams */}
-              {stremioStreams.filter((s) => s.url).slice(0, 4).map((s) => {
+              {/* Stremio / Torrentio / Debrid Streams */}
+              {stremioStreams.slice(0, 4).map((s) => {
                 const isSelected = activeStremioStream?.id === s.id && cinemaMode === 'cinema';
                 return (
                   <button
                     key={s.id}
                     onClick={() => {
-                      setActiveStremioStream(s);
-                      setDirectStream({
-                        success: true,
-                        streamUrl: s.url!,
-                        qualities: [{ quality: s.quality || 'Direct', url: s.url! }],
-                        provider: s.addonName
-                      });
-                      setCinemaFailed(false);
-                      setCinemaMode('cinema');
+                      if (s.url) {
+                        setActiveStremioStream(s);
+                        setDirectStream({
+                          success: true,
+                          streamUrl: s.url,
+                          qualities: [{ quality: s.quality || 'Direct', url: s.url }],
+                          provider: s.addonName
+                        });
+                        setCinemaFailed(false);
+                        setCinemaMode('cinema');
+                      } else {
+                        // Torrent without Debrid - open quick options modal (WVC, VLC, or Free TorBox)
+                        setTorrentModalStream(s);
+                      }
                     }}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
                       isSelected
                         ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/30 ring-1 ring-amber-300'
-                        : 'text-amber-300/90 hover:text-white hover:bg-slate-700/60'
+                        : s.url
+                        ? 'text-amber-300 hover:text-white hover:bg-slate-700/60'
+                        : 'text-purple-300 hover:text-white hover:bg-slate-700/60 border border-purple-500/30'
                     }`}
                     title={s.title || s.name}
                   >
-                    <span>⚡ {s.quality || '4K'}</span>
+                    <span>{s.url ? '⚡' : '🧲'} {s.quality || '4K'}</span>
                     {s.isDebrid && <span className="text-[9px] bg-black/40 text-amber-200 px-1 rounded">RD</span>}
+                    {!s.url && s.seeders ? <span className="text-[9px] text-purple-300/80">({s.seeders})</span> : null}
                     {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />}
                   </button>
                 );
@@ -954,6 +963,87 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
           setReloadKey(Date.now());
         }}
       />
+
+      {/* Torrent Stream Quick Action Modal (No Debrid) */}
+      {torrentModalStream && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-md bg-slate-900 border border-purple-500/40 rounded-2xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2 text-amber-400">
+                <span className="text-xl">🧲</span>
+                <h3 className="text-sm font-bold text-white">Torrentio Stream Options</h3>
+              </div>
+              <button
+                onClick={() => setTorrentModalStream(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+              <p className="font-bold text-white line-clamp-2">{torrentModalStream.title || torrentModalStream.name}</p>
+              <div className="flex items-center gap-3 text-slate-400 text-[11px]">
+                <span>Quality: <strong className="text-amber-300">{torrentModalStream.quality || 'HD'}</strong></span>
+                {torrentModalStream.size && <span>Size: <strong className="text-white">{torrentModalStream.size}</strong></span>}
+                {torrentModalStream.seeders && <span>Seeds: <strong className="text-emerald-400">{torrentModalStream.seeders}</strong></span>}
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Standard web browsers cannot stream peer-to-peer BitTorrent directly without Debrid. Choose how you'd like to play:
+            </p>
+
+            <div className="space-y-2 pt-1">
+              <button
+                onClick={() => {
+                  if (torrentModalStream.magnet) {
+                    window.location.href = `wvc-x-callback://open?url=${encodeURIComponent(torrentModalStream.magnet)}&secure_uri=true`;
+                  }
+                  setTorrentModalStream(null);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
+              >
+                <span>📺 Cast to TV via Web Video Caster (WVC)</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (torrentModalStream.magnet) {
+                    window.location.href = `vlc://${torrentModalStream.magnet}`;
+                  }
+                  setTorrentModalStream(null);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-700"
+              >
+                <span>📙 Open in VLC Media Player</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setTorrentModalStream(null);
+                  setShowStremioModal(true);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-purple-500/40"
+              >
+                <span>⚡ Connect Free TorBox / Real-Debrid for In-Browser 4K</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setTorrentModalStream(null);
+                  setSelectedServerIndex(0);
+                  setCinemaMode('iframe');
+                  setReloadKey(Date.now());
+                }}
+                className="w-full py-2 text-center text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                Switch to Free Web Mirror (Videasy / VidLink)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
