@@ -43,6 +43,7 @@ interface HeaderProps {
   onOpenStats: () => void;
   onOpenCommandPalette: () => void;
   onOpenAndroidTV: () => void;
+  onOpenStremioSettings?: () => void;
   onSelectComic?: (comic: Comic) => void;
   onSelectAnime?: (anime: Anime) => void;
   onSelectMedia?: (media: MediaItem) => void;
@@ -83,6 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenStats,
   onOpenCommandPalette,
   onOpenAndroidTV,
+  onOpenStremioSettings,
   onSelectComic,
   onSelectAnime,
   onSelectMedia,
@@ -585,6 +587,17 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Action Tools */}
         <div className="flex items-center gap-1.5 text-slate-300">
+          {onOpenStremioSettings && (
+            <button
+              onClick={onOpenStremioSettings}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 font-bold text-xs transition-colors cursor-pointer shadow-sm shadow-purple-600/10"
+              title="Stremio Addons & Real-Debrid 4K Configuration"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden md:inline">Stremio & Debrid</span>
+            </button>
+          )}
+
           <button
             onClick={onOpenAndroidTV}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/50 text-amber-300 font-bold text-xs transition-colors cursor-pointer shadow-sm shadow-amber-400/10"

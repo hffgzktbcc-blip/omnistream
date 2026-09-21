@@ -4,7 +4,9 @@ import { MediaItem } from '../../types/media';
 import { STREAM_SERVERS, StreamServer, measureServerPing, ANIME_TMDB_MAP, resolveDirectStream, DirectStreamResponse } from '../../services/streamingService';
 import { animeStorage } from '../../services/animeStorage';
 import { watchHistoryService } from '../../services/watchHistoryService';
+import { stremioService, StremioStream } from '../../services/stremioService';
 import { CinemaPlayer } from './CinemaPlayer';
+import { StremioSettingsModal } from './StremioSettingsModal';
 import {
   X,
   ChevronLeft,
@@ -24,7 +26,8 @@ import {
   Play,
   Pause,
   Radio,
-  Sparkles
+  Sparkles,
+  Settings
 } from 'lucide-react';
 import { CastModal } from './CastModal';
 
@@ -104,6 +107,10 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
 
   const [directStream, setDirectStream] = useState<DirectStreamResponse | null>(null);
   const [cinemaFailed, setCinemaFailed] = useState(false);
+  const [stremioStreams, setStremioStreams] = useState<StremioStream[]>([]);
+  const [loadingStremio, setLoadingStremio] = useState<boolean>(false);
+  const [activeStremioStream, setActiveStremioStream] = useState<StremioStream | null>(null);
+  const [showStremioModal, setShowStremioModal] = useState<boolean>(false);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const watchdogRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -282,6 +289,51 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
       }
     }).catch(() => {});
   }, [session, resolvedTmdbId, audioType, cinemaFailed, reloadKey]);
+
+  // ─── Stremio & Real-Debrid Background Resolution ────────────────
+  useEffect(() => {
+    if (!session || cinemaFailed) return;
+
+    const effectiveTmdb = resolvedTmdbId || session.tmdbId || (session.type === 'anime' ? session.animeData?.id : session.mediaData?.id);
+    if (!effectiveTmdb) return;
+
+    let isMounted = true;
+    setLoadingStremio(true);
+
+    stremioService.getStreams({
+      type: session.type,
+      tmdbId: effectiveTmdb,
+      season: session.season || 1,
+      episode: session.episode || 1,
+    }).then((streams) => {
+      if (!isMounted) return;
+      setStremioStreams(streams);
+      setLoadingStremio(false);
+
+      // Auto-promote to direct debrid stream if user has configured key
+      const debridKey = stremioService.getDebridKey();
+      if (debridKey && streams.length > 0) {
+        const topDirect = streams.find((s) => s.url && s.isDebrid) || streams.find((s) => s.url);
+        if (topDirect && topDirect.url) {
+          setActiveStremioStream(topDirect);
+          setDirectStream({
+            success: true,
+            streamUrl: topDirect.url,
+            qualities: [{ quality: topDirect.quality || 'Auto', url: topDirect.url }],
+            provider: topDirect.addonName
+          });
+          setCinemaMode('cinema');
+        }
+      }
+    }).catch((err) => {
+      console.warn('Failed to load Stremio streams:', err);
+      if (isMounted) setLoadingStremio(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session, resolvedTmdbId, reloadKey, cinemaFailed]);
 
 
   if (!session) return null;
@@ -473,6 +525,17 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     }
   };
 
+  const handleOpenWvc = () => {
+    const rawUrl = directStream?.streamUrl || streamUrl;
+    const absoluteUrl = rawUrl.startsWith('http') ? rawUrl : `${window.location.origin}${rawUrl}`;
+    const wvcUrl = `wvc-x-callback://open?url=${encodeURIComponent(absoluteUrl)}&secure_uri=true`;
+    try {
+      window.location.href = wvcUrl;
+    } catch {
+      // Ignored
+    }
+  };
+
   const totalEpisodes = session.totalEpisodes || (session.animeData?.episodes) || 24;
   const isEdgeToEdge = isTV || theaterMode || isIOS || iosFullscreen;
 
@@ -569,14 +632,60 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
               <RotateCcw className="w-4 h-4" />
             </button>
 
+            <button
+              onClick={() => setShowStremioModal(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-500/40 text-xs font-bold transition-all shadow-sm cursor-pointer"
+              title="Configure Stremio Addons & Real-Debrid"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Stremio</span>
+              {stremioService.getDebridKey() && (
+                <span className="px-1 py-0.2 bg-emerald-500/30 text-emerald-300 text-[9px] rounded font-mono font-bold border border-emerald-500/40">RD+</span>
+              )}
+            </button>
+
             <div className="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl border border-slate-700/80 overflow-x-auto scrollbar-none max-w-[200px] sm:max-w-md">
-              {STREAM_SERVERS.map((s, idx) => {
-                const isSelected = selectedServerIndex === idx;
+              {/* Playable Stremio / Debrid Direct Streams */}
+              {stremioStreams.filter((s) => s.url).slice(0, 4).map((s) => {
+                const isSelected = activeStremioStream?.id === s.id && cinemaMode === 'cinema';
                 return (
                   <button
                     key={s.id}
                     onClick={() => {
+                      setActiveStremioStream(s);
+                      setDirectStream({
+                        success: true,
+                        streamUrl: s.url!,
+                        qualities: [{ quality: s.quality || 'Direct', url: s.url! }],
+                        provider: s.addonName
+                      });
+                      setCinemaFailed(false);
+                      setCinemaMode('cinema');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/30 ring-1 ring-amber-300'
+                        : 'text-amber-300/90 hover:text-white hover:bg-slate-700/60'
+                    }`}
+                    title={s.title || s.name}
+                  >
+                    <span>⚡ {s.quality || '4K'}</span>
+                    {s.isDebrid && <span className="text-[9px] bg-black/40 text-amber-200 px-1 rounded">RD</span>}
+                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />}
+                  </button>
+                );
+              })}
+
+              {/* Standard Web Mirrors */}
+              {STREAM_SERVERS.map((s, idx) => {
+                const isSelected = selectedServerIndex === idx && cinemaMode !== 'cinema';
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setActiveStremioStream(null);
                       setSelectedServerIndex(idx);
+                      setCinemaMode('iframe');
                       setExhaustedServers(false);
                       setServersTried(0);
                       setReloadKey(Date.now());
@@ -594,6 +703,14 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
               })}
             </div>
 
+            <button
+              onClick={handleOpenWvc}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-xs font-bold transition-all shadow-sm cursor-pointer"
+              title="Cast via Web Video Caster (wvc-x-callback://)"
+            >
+              <span>📺</span>
+              <span className="hidden sm:inline">WVC</span>
+            </button>
 
             <button
               onClick={handleOpenVlc}
@@ -827,6 +944,15 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
         onClose={() => setShowCastModal(false)}
         mediaTitle={session.title}
         mediaType={session.type}
+      />
+
+      {/* Stremio & Real-Debrid Settings Modal */}
+      <StremioSettingsModal
+        isOpen={showStremioModal}
+        onClose={() => {
+          setShowStremioModal(false);
+          setReloadKey(Date.now());
+        }}
       />
     </div>
   );

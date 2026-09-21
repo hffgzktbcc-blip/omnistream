@@ -431,7 +431,10 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
       if (['input', 'textarea', 'select'].includes(tag)) return;
 
       // Android / TV remote Back button (KeyCode 4), Escape (27), Tizen Return (10009), webOS Back (461)
-      if ([4, 27, 10009, 461].includes(e.keyCode)) {
+      if (
+        [4, 27, 10009, 461].includes(e.keyCode) ||
+        ['Escape', 'GoBack', 'Back', 'BrowserBack'].includes(e.key)
+      ) {
         e.preventDefault();
         e.stopPropagation();
         if (showDrawer) {
@@ -442,68 +445,78 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         return;
       }
 
-      switch (e.key) {
-        case 'ArrowLeft':
-        case 'Left':
-          e.preventDefault();
-          seek(-10);
-          break;
-        case 'ArrowRight':
-        case 'Right':
-          e.preventDefault();
-          seek(10);
-          break;
-        case 'ArrowUp':
-        case 'Up':
-          e.preventDefault();
-          if (showDrawer) {
-            // Close drawer if user presses UP
-            setShowDrawer(null);
-          } else {
-            // Show HUD on TV
-            showHudTemporarily();
-          }
-          break;
-        case 'ArrowDown':
-        case 'Down':
-          e.preventDefault();
-          if (showDrawer) {
-            setShowDrawer(null);
-          } else {
-            showHudTemporarily();
-          }
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          if (showDrawer) {
-            setShowDrawer(null);
-          } else {
-            togglePlay();
-          }
-          break;
-        case 'Escape':
-        case 'GoBack':
-        case 'Back':
-        case 'BrowserBack':
-          e.preventDefault();
-          e.stopPropagation();
-          if (showDrawer) {
-            setShowDrawer(null);
-          } else {
-            onClose?.();
-          }
-          break;
-        case 'f':
-        case 'F':
-          e.preventDefault();
-          toggleFullscreen();
-          break;
-        case 'm':
-        case 'M':
-          e.preventDefault();
-          toggleMute();
-          break;
+      const keyCode = e.keyCode;
+      const key = e.key;
+
+      // DPAD_LEFT (21) or ArrowLeft
+      if (keyCode === 21 || key === 'ArrowLeft' || key === 'Left') {
+        e.preventDefault();
+        seek(-10);
+        return;
+      }
+
+      // DPAD_RIGHT (22) or ArrowRight
+      if (keyCode === 22 || key === 'ArrowRight' || key === 'Right') {
+        e.preventDefault();
+        seek(10);
+        return;
+      }
+
+      // DPAD_UP (19) or ArrowUp
+      if (keyCode === 19 || key === 'ArrowUp' || key === 'Up') {
+        e.preventDefault();
+        if (showDrawer) {
+          setShowDrawer(null);
+        } else {
+          showHudTemporarily();
+        }
+        return;
+      }
+
+      // DPAD_DOWN (20) or ArrowDown
+      if (keyCode === 20 || key === 'ArrowDown' || key === 'Down') {
+        e.preventDefault();
+        if (showDrawer) {
+          setShowDrawer(null);
+        } else {
+          showHudTemporarily();
+        }
+        return;
+      }
+
+      // DPAD_CENTER (23), ENTER (66), Select, Space, MediaPlayPause (85), MediaPlay (126), MediaPause (127)
+      if (
+        keyCode === 23 ||
+        keyCode === 66 ||
+        keyCode === 85 ||
+        keyCode === 126 ||
+        keyCode === 127 ||
+        key === 'Enter' ||
+        key === ' ' ||
+        key === 'Select' ||
+        key === 'MediaPlayPause' ||
+        key === 'MediaPlay' ||
+        key === 'MediaPause'
+      ) {
+        e.preventDefault();
+        if (showDrawer) {
+          setShowDrawer(null);
+        } else {
+          togglePlay();
+        }
+        return;
+      }
+
+      if (key === 'f' || key === 'F') {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
+      }
+
+      if (key === 'm' || key === 'M') {
+        e.preventDefault();
+        toggleMute();
+        return;
       }
     };
 
@@ -763,6 +776,17 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Web Video Caster */}
+            <button
+              onClick={() => {
+                const wvcUrl = `wvc-x-callback://open?url=${encodeURIComponent(streamUrl)}&secure_uri=true`;
+                window.location.href = wvcUrl;
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-[10px] font-bold transition-all shadow-sm cursor-pointer"
+              title="Cast via Web Video Caster app (wvc-x-callback://)"
+            >
+              <span>📺 WVC</span>
+            </button>
             {/* PiP */}
             {'pictureInPictureEnabled' in document && (
               <button onClick={togglePiP} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="Picture-in-Picture">

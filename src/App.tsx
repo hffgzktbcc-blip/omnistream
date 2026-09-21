@@ -30,6 +30,7 @@ import { GlobalDropzone } from './components/Common/GlobalDropzone';
 import { HomeDashboard } from './components/Home/HomeDashboard';
 import { offlineStorage } from './services/offlineStorage';
 import { AndroidTVModal } from './components/Common/AndroidTVModal';
+import { StremioSettingsModal } from './components/Common/StremioSettingsModal';
 import { TVRemoteHelper } from './components/Common/TVRemoteHelper';
 import { MobileBottomNav } from './components/Common/MobileBottomNav';
 import { tvNavigation } from './services/tvNavigation';
@@ -95,6 +96,7 @@ const AppContent: React.FC = () => {
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
   const [showAndroidTVModal, setShowAndroidTVModal] = useState<boolean>(false);
+  const [showStremioModal, setShowStremioModal] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState<boolean>(false);
   const [loadingTitle, setLoadingTitle] = useState<string>('Loading...');
 
@@ -596,6 +598,7 @@ const AppContent: React.FC = () => {
         onOpenStats={() => setShowStatsModal(true)}
         onOpenCommandPalette={() => setShowCommandPalette(true)}
         onOpenAndroidTV={() => setShowAndroidTVModal(true)}
+        onOpenStremioSettings={() => setShowStremioModal(true)}
         onSelectComic={(c) => setSelectedComic(c)}
         onSelectAnime={(a) => setSelectedAnime(a)}
         onSelectMedia={(m) => setSelectedMedia(m)}
@@ -813,6 +816,12 @@ const AppContent: React.FC = () => {
       <AndroidTVModal
         isOpen={showAndroidTVModal}
         onClose={() => setShowAndroidTVModal(false)}
+      />
+
+      {/* Stremio Addon Protocol & Real-Debrid Settings Modal */}
+      <StremioSettingsModal
+        isOpen={showStremioModal}
+        onClose={() => setShowStremioModal(false)}
       />
 
       {/* ──── AUDIOBOOK MODALS & PLAYER (AudioBay + Shelf) ──── */}

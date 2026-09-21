@@ -176,6 +176,17 @@ export const AndroidTVModal: React.FC<AndroidTVModalProps> = ({ isOpen, onClose 
                   Click Chrome/Brave menu → <strong>Cast</strong> to instantly cast your browser tab to your Android TV or Hisense TV.
                 </p>
               </div>
+
+              {/* Option D */}
+              <div className="p-4 rounded-2xl bg-[#00173d] border border-blue-900/60 space-y-2">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <Tv className="w-4 h-4 text-amber-400" />
+                  <span>4. Web Video Caster (1-Click)</span>
+                </div>
+                <p className="text-[11px] text-blue-100/80 leading-relaxed">
+                  Install <strong>Web Video Caster (WVC)</strong> on your phone and TV. Tap the <strong>📺 WVC</strong> button on any movie/show to cast 4K streams with zero latency.
+                </p>
+              </div>
             </div>
           </div>
 
