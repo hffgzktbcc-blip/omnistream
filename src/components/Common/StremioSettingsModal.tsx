@@ -14,6 +14,8 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
+  Loader2,
   Eye,
   EyeOff
 } from 'lucide-react';
