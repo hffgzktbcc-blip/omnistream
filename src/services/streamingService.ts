@@ -58,6 +58,27 @@ export const ANIME_TMDB_MAP: Record<number, number> = {
   4935: 4935      // Howl's Moving Castle (Movie)
 };
 
+export interface StreamServerHealth {
+  id: string;
+  name: string;
+  status: 'online' | 'degraded' | 'offline';
+  pingMs: number;
+  statusCode: number;
+  quality: string;
+  badge: string;
+  isPrimary?: boolean;
+}
+
+export interface StreamHealthReport {
+  updatedAt: string;
+  status: 'operational' | 'degraded' | 'down';
+  onlineCount: number;
+  totalCount: number;
+  averagePingMs: number;
+  bestServer: string;
+  servers: StreamServerHealth[];
+}
+
 export const STREAM_SERVERS: StreamServer[] = [
   {
     id: 'vidlink-pro',
@@ -65,7 +86,7 @@ export const STREAM_SERVERS: StreamServer[] = [
     quality: '4K Ultra HD',
     badge: '4K HDR ⚡',
     isPrimary: true,
-    pingMs: 20,
+    pingMs: 25,
     getMovieUrl: (id: number) =>
       `https://vidlink.pro/movie/${id}?primaryColor=6366f1&autoplay=true&title=true&poster=true`,
     getTvUrl: (id: number, s: number, e: number) =>
@@ -74,58 +95,110 @@ export const STREAM_SERVERS: StreamServer[] = [
       `https://vidlink.pro/tv/${id}/1/${ep}?primaryColor=a855f7&autoplay=true&title=true&poster=true`
   },
   {
-    id: 'superembed',
-    name: 'SuperEmbed Multi-Server',
+    id: 'videasy-4k',
+    name: 'Videasy 4K Ultra',
+    quality: '4K Cinema',
+    badge: 'Zero-Ad 4K 💎',
+    pingMs: 30,
+    getMovieUrl: (id: number) =>
+      `https://player.videasy.to/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) =>
+      `https://player.videasy.to/tv/${id}/${s}/${e}`,
+    getAnimeUrl: (id: number, ep: number) =>
+      `https://player.videasy.to/tv/${id}/1/${ep}`
+  },
+  {
+    id: 'autoembed',
+    name: 'AutoEmbed Ultra',
     quality: '1080p Ultra',
-    badge: 'High Speed 🚀',
-    pingMs: 25,
+    badge: 'Ultra Fast 🚀',
+    pingMs: 28,
+    getMovieUrl: (id: number) =>
+      `https://autoembed.co/movie/tmdb/${id}`,
+    getTvUrl: (id: number, s: number, e: number) =>
+      `https://autoembed.co/tv/tmdb/${id}-${s}-${e}`,
+    getAnimeUrl: (id: number, ep: number) =>
+      `https://autoembed.co/tv/tmdb/${id}-1-${ep}`
+  },
+  {
+    id: 'vidsrc-to',
+    name: 'VidSrc TO Pro',
+    quality: '1080p HD',
+    badge: 'Fast Mirror 🛡️',
+    pingMs: 35,
+    getMovieUrl: (id: number) =>
+      `https://vidsrc.to/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) =>
+      `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
+    getAnimeUrl: (id: number, ep: number) =>
+      `https://vidsrc.to/embed/tv/${id}/1/${ep}`
+  },
+  {
+    id: 'superembed',
+    name: 'SuperEmbed Multi',
+    quality: '1080p HD',
+    badge: 'Multi-Audio 🌐',
+    pingMs: 40,
     getMovieUrl: (id: number) =>
       `https://multiembed.mov/?video_id=${id}&tmdb=1&autoplay=1`,
     getTvUrl: (id: number, s: number, e: number) =>
       `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}&autoplay=1`,
     getAnimeUrl: (id: number, ep: number) =>
       `https://multiembed.mov/?video_id=${id}&tmdb=1&s=1&e=${ep}&autoplay=1`
-  },
-  {
-    id: 'vidsrc-pm',
-    name: 'VidSrc Direct Pro',
-    quality: '1080p Ultra',
-    badge: 'Fast HD 🛡️',
-    pingMs: 28,
-    getMovieUrl: (id: number) =>
-      `https://vidsrc.pm/embed/movie/${id}`,
-    getTvUrl: (id: number, s: number, e: number) =>
-      `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`,
-    getAnimeUrl: (id: number, ep: number) =>
-      `https://vidsrc.pm/embed/tv/${id}/1/${ep}`
-  },
-  {
-    id: 'smashystream',
-    name: 'SmashyStream HD',
-    quality: '1080p HD',
-    badge: 'No-Ad Mirror 🎬',
-    pingMs: 32,
-    getMovieUrl: (id: number) =>
-      `https://embed.smashystream.com/playere.php?tmdb=${id}`,
-    getTvUrl: (id: number, s: number, e: number) =>
-      `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}`,
-    getAnimeUrl: (id: number, ep: number) =>
-      `https://embed.smashystream.com/playere.php?tmdb=${id}&season=1&episode=${ep}`
-  },
-  {
-    id: '2embed',
-    name: '2Embed Cinema',
-    quality: '1080p HD',
-    badge: 'Multi-Audio 🌐',
-    pingMs: 35,
-    getMovieUrl: (id: number) =>
-      `https://www.2embed.cc/embed/${id}`,
-    getTvUrl: (id: number, s: number, e: number) =>
-      `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
-    getAnimeUrl: (id: number, ep: number) =>
-      `https://www.2embed.cc/embedtv/${id}&s=1&e=${ep}`
   }
 ];
+
+let cachedStreamHealth: StreamHealthReport | null = null;
+let lastHealthFetch = 0;
+
+export async function fetchStreamHealth(): Promise<StreamHealthReport | null> {
+  const now = Date.now();
+  if (cachedStreamHealth && now - lastHealthFetch < 60000) {
+    return cachedStreamHealth;
+  }
+
+  try {
+    // 1. Try local bundled data
+    let res = await fetch('/data/stream-health.json', { cache: 'no-store' });
+    if (!res.ok) {
+      // 2. Fallback to GitHub raw live telemetry
+      res = await fetch('https://raw.githubusercontent.com/hffgzktbcc-blip/omnistream/main/public/data/stream-health.json');
+    }
+    if (res.ok) {
+      const data: StreamHealthReport = await res.json();
+      cachedStreamHealth = data;
+      lastHealthFetch = now;
+      return data;
+    }
+  } catch (err) {
+    console.warn('Could not fetch stream health telemetry:', err);
+  }
+  return cachedStreamHealth;
+}
+
+export async function getHealthyStreamServers(): Promise<StreamServer[]> {
+  const health = await fetchStreamHealth();
+  if (!health || !Array.isArray(health.servers) || health.servers.length === 0) {
+    return STREAM_SERVERS;
+  }
+
+  const healthMap = new Map<string, StreamServerHealth>();
+  health.servers.forEach((s) => healthMap.set(s.id, s));
+
+  // Sort servers: online first, then lowest pingMs, then offline last
+  return [...STREAM_SERVERS].sort((a, b) => {
+    const hA = healthMap.get(a.id);
+    const hB = healthMap.get(b.id);
+    if (!hA && !hB) return 0;
+    if (!hA) return 1;
+    if (!hB) return -1;
+
+    if (hA.status === 'online' && hB.status !== 'online') return -1;
+    if (hB.status === 'online' && hA.status !== 'online') return 1;
+
+    return (hA.pingMs || 999) - (hB.pingMs || 999);
+  });
+}
 
 export function resolveAnimeTmdbId(anilistId: number): number {
   return ANIME_TMDB_MAP[anilistId] || anilistId;

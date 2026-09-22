@@ -1,0 +1,70 @@
+{
+  "updatedAt": "2026-09-22T06:18:55.826Z",
+  "status": "operational",
+  "onlineCount": 6,
+  "totalCount": 6,
+  "averagePingMs": 704,
+  "bestServer": "torrentio",
+  "servers": [
+    {
+      "id": "vidlink-pro",
+      "name": "VidLink 4K Pro",
+      "status": "online",
+      "pingMs": 593,
+      "statusCode": 200,
+      "quality": "4K Ultra HD",
+      "badge": "4K HDR ⚡",
+      "isPrimary": true
+    },
+    {
+      "id": "videasy-4k",
+      "name": "Videasy 4K Ultra",
+      "status": "online",
+      "pingMs": 755,
+      "statusCode": 200,
+      "quality": "4K Cinema",
+      "badge": "Zero-Ad 4K 💎",
+      "isPrimary": false
+    },
+    {
+      "id": "autoembed",
+      "name": "AutoEmbed High Speed",
+      "status": "online",
+      "pingMs": 758,
+      "statusCode": 200,
+      "quality": "1080p Ultra",
+      "badge": "Ultra Fast 🚀",
+      "isPrimary": false
+    },
+    {
+      "id": "vidsrc-to",
+      "name": "VidSrc TO Pro",
+      "status": "online",
+      "pingMs": 751,
+      "statusCode": 200,
+      "quality": "1080p HD",
+      "badge": "Fast Mirror 🛡️",
+      "isPrimary": false
+    },
+    {
+      "id": "superembed",
+      "name": "SuperEmbed Multi",
+      "status": "online",
+      "pingMs": 928,
+      "statusCode": 200,
+      "quality": "1080p HD",
+      "badge": "Multi-Audio 🌐",
+      "isPrimary": false
+    },
+    {
+      "id": "torrentio",
+      "name": "Torrentio RD Engine",
+      "status": "online",
+      "pingMs": 438,
+      "statusCode": 200,
+      "quality": "4K UHD / BluRay",
+      "badge": "Stremio RD+ ⚡",
+      "isPrimary": false
+    }
+  ]
+}

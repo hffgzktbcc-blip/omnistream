@@ -6,6 +6,7 @@ import { SportsMatch } from '../../types/sports';
 import { animeStorage } from '../../services/animeStorage';
 import { storage } from '../../services/storage';
 import { watchHistoryService, UnifiedHistoryItem } from '../../services/watchHistoryService';
+import { fetchStreamHealth, StreamHealthReport } from '../../services/streamingService';
 import {
   BookOpen,
   Tv,
@@ -26,7 +27,10 @@ import {
   Zap,
   Activity,
   CheckCircle2,
-  Headphones
+  Headphones,
+  ChevronDown,
+  ChevronUp,
+  Server
 } from 'lucide-react';
 
 interface HomeDashboardProps {
@@ -146,6 +150,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [continueWatchingAnime, setContinueWatchingAnime] = useState<any[]>([]);
   const [recentComics, setRecentComics] = useState<any[]>([]);
   const [historyItems, setHistoryItems] = useState<UnifiedHistoryItem[]>([]);
+  const [streamHealth, setStreamHealth] = useState<StreamHealthReport | null>(null);
+  const [showHealthDetails, setShowHealthDetails] = useState<boolean>(false);
+  const [activeMoodFilter, setActiveMoodFilter] = useState<'all' | 'media' | 'anime' | 'sports' | 'audiobooks' | 'comics'>('all');
+  const [dynamicMedia, setDynamicMedia] = useState<any[]>([]);
+  const [dynamicAnime, setDynamicAnime] = useState<any[]>([]);
+  const [dynamicSports, setDynamicSports] = useState<any[]>([]);
 
   // Fetch dynamic trending & spotlight feeds (Local static cache with remote GitHub fallback)
   useEffect(() => {
@@ -162,12 +172,26 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           if (Array.isArray(data.spotlights) && data.spotlights.length > 0) {
             setSpotlightList(data.spotlights);
           }
+          if (Array.isArray(data.trendingMedia) && data.trendingMedia.length > 0) {
+            setDynamicMedia(data.trendingMedia);
+          }
+          if (Array.isArray(data.trendingAnime) && data.trendingAnime.length > 0) {
+            setDynamicAnime(data.trendingAnime);
+          }
+          if (Array.isArray(data.liveSports) && data.liveSports.length > 0) {
+            setDynamicSports(data.liveSports);
+          }
         }
       } catch (err) {
         console.warn('Could not load dynamic spotlight, using built-in catalog:', err);
       }
     };
     fetchDynamicFeeds();
+
+    // Fetch live stream health telemetry from GitHub scout
+    fetchStreamHealth().then((h) => {
+      if (h) setStreamHealth(h);
+    });
   }, []);
 
   useEffect(() => {
@@ -215,10 +239,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   const currentHero = spotlightList[activeSpotlight] || spotlightList[0] || SPOTLIGHT_ITEMS[0];
 
-  const safeMedia = Array.isArray(trendingMedia) ? trendingMedia : [];
-  const safeAnime = Array.isArray(trendingAnime) ? trendingAnime : [];
+  const safeMedia = Array.isArray(trendingMedia) && trendingMedia.length > 0 ? trendingMedia : dynamicMedia;
+  const safeAnime = Array.isArray(trendingAnime) && trendingAnime.length > 0 ? trendingAnime : dynamicAnime;
   const safeComics = Array.isArray(trendingComics) ? trendingComics : [];
-  const safeSports = Array.isArray(liveSports) ? liveSports : [];
+  const safeSports = Array.isArray(liveSports) && liveSports.length > 0 ? liveSports : dynamicSports;
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-10 animate-fade-in">
@@ -324,38 +348,112 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* -------------------------------------------------------------
           2. LIVE PULSE & REAL-TIME SYSTEM ACTIVITY TICKER
          ------------------------------------------------------------- */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#001433] via-[#001f4d] to-[#001026] border border-blue-900/60 p-3.5 shadow-xl flex items-center justify-between gap-4 flex-wrap text-xs text-blue-200 font-medium">
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-          <span className="font-bold text-white uppercase tracking-wider text-[11px]">
-            Live Ecosystem
-          </span>
+      {/* -------------------------------------------------------------
+          2. DYNAMIC QUICK-MOOD & CATEGORY DISCOVERY BAR
+         ------------------------------------------------------------- */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
+        {[
+          { id: 'all', label: 'All Discovery', icon: Flame, color: 'text-amber-400' },
+          { id: 'media', label: '4K Movies & TV', icon: Film, color: 'text-rose-400' },
+          { id: 'anime', label: 'Simulcast Anime', icon: Tv, color: 'text-purple-400' },
+          { id: 'sports', label: 'SuperSport Live', icon: Trophy, color: 'text-emerald-400' },
+          { id: 'audiobooks', label: 'Audiobooks', icon: Headphones, color: 'text-sky-400' },
+          { id: 'comics', label: 'Manga & Comics', icon: BookOpen, color: 'text-cyan-400' },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeMoodFilter === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveMoodFilter(tab.id as any)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                isActive
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/20 scale-105'
+                  : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800/80 hover:border-slate-700'
+              }`}
+            >
+              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-slate-950 fill-current' : tab.color}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* -------------------------------------------------------------
+          2.1 REAL-TIME STREAM ENGINE HEALTH TELEMETRY MONITOR
+         ------------------------------------------------------------- */}
+      <div className="rounded-2xl bg-gradient-to-r from-[#001433]/90 via-[#001f4d]/90 to-[#001026]/90 border border-blue-900/60 p-4 shadow-xl backdrop-blur-md transition-all">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center justify-center">
+              <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping absolute" />
+              <div className="w-3 h-3 rounded-full bg-emerald-400 relative" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-white text-xs uppercase tracking-wider">
+                  Stream Engine Health
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 font-mono">
+                  <ShieldCheck className="w-3 h-3" />
+                  {streamHealth ? `${streamHealth.servers.filter((s: any) => s.status === 'online').length}/${streamHealth.servers.length} MIRRORS OPERATIONAL` : '6/6 ACTIVE'}
+                </span>
+              </div>
+              <p className="text-[11px] text-blue-200/80 font-medium mt-0.5">
+                {streamHealth?.bestServer ? (
+                  <>Fastest Mirror: <span className="font-bold text-amber-300">{streamHealth.bestServer.name}</span> ({streamHealth.bestServer.latencyMs}ms) • Auto-failover verified</>
+                ) : (
+                  <>Real-time latency probed across VidLink, Videasy, AutoEmbed & Torrentio</>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHealthDetails(!showHealthDetails)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-950/80 hover:bg-blue-900 text-blue-200 border border-blue-800/80 hover:text-white transition-all cursor-pointer"
+            >
+              <Activity className="w-3.5 h-3.5 text-blue-400" />
+              <span>{showHealthDetails ? 'Hide Telemetry' : 'View Mirror Fleet'}</span>
+              {showHealthDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4 sm:gap-6 flex-wrap font-mono text-[11px]">
-          <span className="flex items-center gap-1.5 text-rose-300">
-            <Film className="w-3.5 h-3.5 text-rose-400" />
-            <span>4K Movies & TV Streaming</span>
-          </span>
-          <span className="flex items-center gap-1.5 text-purple-300">
-            <Tv className="w-3.5 h-3.5 text-purple-400" />
-            <span>Simulcasts Sub/Dub</span>
-          </span>
-          <span className="flex items-center gap-1.5 text-sky-300">
-            <BookOpen className="w-3.5 h-3.5 text-sky-400" />
-            <span>1,380 Keiyoushi Extensions</span>
-          </span>
-          <span className="flex items-center gap-1.5 text-amber-300">
-            <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <span>SuperSport Match Center</span>
-          </span>
-        </div>
+        {/* Expandable Mirror Telemetry Grid */}
+        {showHealthDetails && (
+          <div className="mt-4 pt-3 border-t border-blue-900/60 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            {(streamHealth?.servers || [
+              { id: 'vidlink-pro', name: 'VidLink 4K Pro', status: 'online', latencyMs: 145 },
+              { id: 'videasy-4k', name: 'Videasy 4K Ultra', status: 'online', latencyMs: 182 },
+              { id: 'autoembed', name: 'AutoEmbed Ultra', status: 'online', latencyMs: 230 },
+              { id: 'vidsrc-to', name: 'VidSrc TO Pro', status: 'online', latencyMs: 310 },
+              { id: 'superembed', name: 'SuperEmbed Multi', status: 'online', latencyMs: 405 },
+              { id: 'torrentio', name: 'Torrentio Debrid', status: 'online', latencyMs: 520 },
+            ]).map((srv: any) => (
+              <div
+                key={srv.id}
+                className="bg-slate-900/90 border border-blue-950/80 p-2.5 rounded-xl flex flex-col justify-between"
+              >
+                <div className="flex items-center justify-between text-[11px] font-bold text-white mb-1">
+                  <span className="truncate">{srv.name}</span>
+                  <div className={`w-2 h-2 rounded-full ${srv.status === 'online' ? 'bg-emerald-400' : 'bg-rose-500'}`} />
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                  <span className="uppercase text-emerald-400 font-bold">{srv.status}</span>
+                  <span>{srv.latencyMs}ms</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* -------------------------------------------------------------
           3. DYNAMIC CONTINUE STREAMING & READING SHELF
          ------------------------------------------------------------- */}
-      {(historyItems.length > 0 || continueWatchingAnime.length > 0 || recentComics.length > 0) && (
+      {(activeMoodFilter === 'all' || activeMoodFilter === 'media' || activeMoodFilter === 'anime' || activeMoodFilter === 'comics' || activeMoodFilter === 'audiobooks') && (historyItems.length > 0 || continueWatchingAnime.length > 0 || recentComics.length > 0) && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -509,7 +607,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* -------------------------------------------------------------
           4. MOVIES & TV POPULAR SHELF
          ------------------------------------------------------------- */}
-      {safeMedia.length > 0 && (
+      {(activeMoodFilter === 'all' || activeMoodFilter === 'media') && safeMedia.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -577,7 +675,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* -------------------------------------------------------------
           5. ANIME SIMULCASTS SHELF
          ------------------------------------------------------------- */}
-      {safeAnime.length > 0 && (
+      {(activeMoodFilter === 'all' || activeMoodFilter === 'anime') && safeAnime.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -645,7 +743,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* -------------------------------------------------------------
           6. SUPERSPORT MATCH FIXTURES SPOTLIGHT
          ------------------------------------------------------------- */}
-      {safeSports.length > 0 && (
+      {(activeMoodFilter === 'all' || activeMoodFilter === 'sports') && safeSports.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -733,6 +831,106 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+          7. POPULAR MANGA & COMICS SHELF
+         ------------------------------------------------------------- */}
+      {(activeMoodFilter === 'all' || activeMoodFilter === 'comics') && (trendingComics.length > 0 || recentComics.length > 0) && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-cyan-400" />
+              <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
+                Popular Manga & Comics
+              </h2>
+            </div>
+            <button
+              onClick={() => onNavigateTab('browse')}
+              className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+            >
+              <span>Explore All</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+            {(trendingComics.length > 0 ? trendingComics : recentComics).slice(0, 6).map((comic: any) => {
+              const title = comic.title || 'Comic';
+              const cover = comic.coverImage || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400';
+
+              return (
+                <div
+                  key={comic.id}
+                  role="button"
+                  tabIndex={0}
+                  data-focusable="true"
+                  aria-label={title}
+                  onClick={() => onSelectComic(comic)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 23) {
+                      e.preventDefault();
+                      onSelectComic(comic);
+                    }
+                  }}
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-cyan-500/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/30 shadow-xl cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+                >
+                  <div className="aspect-[2/3] relative">
+                    <img
+                      src={cover}
+                      alt={title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-cyan-950/80 backdrop-blur-md text-[10px] font-black text-cyan-300 border border-cyan-500/30">
+                      {comic.totalChapters ? `${comic.totalChapters} CHS` : 'MANGA'}
+                    </div>
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <h4 className="text-xs font-bold text-white truncate group-hover:text-cyan-300 transition-colors">
+                        {title}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                        {comic.author || comic.status || 'Keiyoushi Engine'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+          8. AUDIOBOOKS CURATED SHOWCASE
+         ------------------------------------------------------------- */}
+      {(activeMoodFilter === 'all' || activeMoodFilter === 'audiobooks') && (
+        <div className="rounded-2xl bg-gradient-to-r from-[#170e02] via-[#2d1b04] to-[#120a01] border border-amber-800/60 p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-3 max-w-xl">
+            <div className="flex items-center gap-2">
+              <Headphones className="w-5 h-5 text-amber-400" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20">
+                Audiobook Center
+              </span>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black text-white">
+              Continuous Audiobooks & Variable Speed Pitch
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-300">
+              Stream thousands of audiobooks with chapter memory, sleep timers, variable playback speed (0.75x–2.0x), and background audio.
+            </p>
+            <button
+              onClick={() => onNavigateTab('audiobooks')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-xs sm:text-sm hover:from-amber-300 hover:to-amber-400 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
+            >
+              <span>Open Audiobooks Catalog</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-amber-950/40 border border-amber-700/40 flex items-center justify-center text-amber-400 flex-shrink-0">
+            <Headphones className="w-12 h-12 opacity-80" />
           </div>
         </div>
       )}

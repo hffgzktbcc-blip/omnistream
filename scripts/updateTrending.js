@@ -14,7 +14,7 @@ async function fetchJson(url, timeoutMs = 8000) {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'OmniStream-Bot/1.0',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)',
         'Accept': 'application/json'
       }
     });
@@ -25,19 +25,133 @@ async function fetchJson(url, timeoutMs = 8000) {
   }
 }
 
+// -------------------------------------------------------------
+// 1. Live Stream Mirrors Benchmark & Health Monitor
+// -------------------------------------------------------------
+const STREAM_CANDIDATES = [
+  {
+    id: 'vidlink-pro',
+    name: 'VidLink 4K Pro',
+    url: 'https://vidlink.pro',
+    quality: '4K Ultra HD',
+    badge: '4K HDR ⚡',
+    isPrimary: true
+  },
+  {
+    id: 'videasy-4k',
+    name: 'Videasy 4K Ultra',
+    url: 'https://player.videasy.to',
+    quality: '4K Cinema',
+    badge: 'Zero-Ad 4K 💎'
+  },
+  {
+    id: 'autoembed',
+    name: 'AutoEmbed High Speed',
+    url: 'https://autoembed.co',
+    quality: '1080p Ultra',
+    badge: 'Ultra Fast 🚀'
+  },
+  {
+    id: 'vidsrc-to',
+    name: 'VidSrc TO Pro',
+    url: 'https://vidsrc.to',
+    quality: '1080p HD',
+    badge: 'Fast Mirror 🛡️'
+  },
+  {
+    id: 'superembed',
+    name: 'SuperEmbed Multi',
+    url: 'https://multiembed.mov',
+    quality: '1080p HD',
+    badge: 'Multi-Audio 🌐'
+  },
+  {
+    id: 'torrentio',
+    name: 'Torrentio RD Engine',
+    url: 'https://torrentio.strem.fun/manifest.json',
+    quality: '4K UHD / BluRay',
+    badge: 'Stremio RD+ ⚡'
+  }
+];
+
+async function checkServerHealth(srv) {
+  const t0 = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch(srv.url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    clearTimeout(timer);
+    const pingMs = Date.now() - t0;
+    const isOk = res.status >= 200 && res.status < 400;
+    return {
+      id: srv.id,
+      name: srv.name,
+      status: isOk ? 'online' : 'degraded',
+      pingMs,
+      statusCode: res.status,
+      quality: srv.quality,
+      badge: srv.badge,
+      isPrimary: srv.isPrimary || false
+    };
+  } catch (err) {
+    clearTimeout(timer);
+    return {
+      id: srv.id,
+      name: srv.name,
+      status: 'offline',
+      pingMs: 9999,
+      statusCode: 0,
+      quality: srv.quality,
+      badge: srv.badge,
+      isPrimary: false,
+      error: err.message
+    };
+  }
+}
+
+async function benchmarkAllStreamServers() {
+  console.log('🩺 Pinging and benchmarking video streaming servers...');
+  const results = await Promise.all(STREAM_CANDIDATES.map(checkServerHealth));
+  const onlineServers = results.filter(r => r.status === 'online');
+  onlineServers.sort((a, b) => a.pingMs - b.pingMs);
+
+  const bestServer = onlineServers.length > 0 ? onlineServers[0].id : 'vidlink-pro';
+  const averagePing = onlineServers.length > 0
+    ? Math.round(onlineServers.reduce((acc, s) => acc + s.pingMs, 0) / onlineServers.length)
+    : 0;
+
+  return {
+    updatedAt: new Date().toISOString(),
+    status: onlineServers.length >= 3 ? 'operational' : onlineServers.length > 0 ? 'degraded' : 'down',
+    onlineCount: onlineServers.length,
+    totalCount: STREAM_CANDIDATES.length,
+    averagePingMs: averagePing,
+    bestServer,
+    servers: results
+  };
+}
+
+// -------------------------------------------------------------
+// 2. Dynamic Trending Content Scout
+// -------------------------------------------------------------
 async function getTrendingMoviesAndTV() {
   try {
     const url = `https://api.themoviedb.org/3/trending/all/day?api_key=${TMDB_API_KEY}&language=en-US`;
     const data = await fetchJson(url);
     if (!data.results) return [];
-    return data.results.slice(0, 15).map(item => ({
+    return data.results.slice(0, 18).map(item => ({
       id: item.id,
       title: item.title || item.name || 'Featured Title',
       overview: item.overview || '',
       poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '',
       backdrop_path: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : '',
       media_type: item.media_type || (item.title ? 'movie' : 'tv'),
-      vote_average: item.vote_average || 8.0,
+      vote_average: item.vote_average ? Math.round(item.vote_average * 10) / 10 : 8.2,
       release_date: item.release_date || item.first_air_date || '2026'
     }));
   } catch (err) {
@@ -48,7 +162,7 @@ async function getTrendingMoviesAndTV() {
 
 async function getTrendingAnime() {
   try {
-    const url = 'https://kitsu.io/api/edge/trending/anime?limit=10';
+    const url = 'https://kitsu.io/api/edge/trending/anime?limit=12';
     const data = await fetchJson(url);
     if (!data.data) return [];
     return data.data.map(item => {
@@ -62,7 +176,7 @@ async function getTrendingAnime() {
         description: attr.synopsis || '',
         coverImage: poster,
         bannerImage: cover,
-        averageScore: Math.round(parseFloat(attr.averageRating || '80')),
+        averageScore: Math.round(parseFloat(attr.averageRating || '82')),
         status: attr.status === 'current' ? 'RELEASING' : 'FINISHED',
         year: attr.startDate ? attr.startDate.slice(0, 4) : '2026',
         genres: ['Action', 'Fantasy']
@@ -76,7 +190,7 @@ async function getTrendingAnime() {
 
 async function getTrendingManga() {
   try {
-    const url = 'https://api.mangadex.org/manga?limit=10&order[followedCount]=desc&hasAvailableChapters=true&contentRating[]=safe&contentRating[]=suggestive&includes[]=cover_art';
+    const url = 'https://api.mangadex.org/manga?limit=12&order[followedCount]=desc&hasAvailableChapters=true&contentRating[]=safe&contentRating[]=suggestive&includes[]=cover_art';
     const data = await fetchJson(url);
     if (!data.data) return [];
     return data.data.map(item => {
@@ -99,18 +213,48 @@ async function getTrendingManga() {
   }
 }
 
+async function getLiveSportsFixtures() {
+  try {
+    const url = 'https://streamed.pk/api/matches/all';
+    const matches = await fetchJson(url, 6000);
+    if (!Array.isArray(matches)) return [];
+    return matches.slice(0, 8).map(m => {
+      const isLive = m.date && Date.now() >= m.date && Date.now() <= m.date + 3 * 3600 * 1000;
+      return {
+        id: m.id,
+        title: m.title,
+        category: m.category || 'football',
+        league: (m.category || 'Live Match').toUpperCase(),
+        homeTeam: { name: m.teams?.home?.name || m.title?.split(' vs ')?.[0] || 'Home Team' },
+        awayTeam: { name: m.teams?.away?.name || m.title?.split(' vs ')?.[1] || 'Away Team' },
+        status: isLive ? 'LIVE' : 'UPCOMING',
+        statusText: isLive ? 'LIVE NOW' : 'TODAY',
+        sources: m.sources || []
+      };
+    });
+  } catch (err) {
+    console.warn('Could not fetch live sports:', err.message);
+    return [];
+  }
+}
+
+// -------------------------------------------------------------
+// 3. Main Orchestrator
+// -------------------------------------------------------------
 async function main() {
-  console.log('🤖 OmniStream GitHub Auto-Scout: Pulling fresh trending titles...');
-  const [moviesAndTv, anime, manga] = await Promise.all([
+  console.log('🤖 OmniStream GitHub Auto-Sync: Initiating stream health & dynamic feeds update...');
+  
+  const [streamHealth, moviesAndTv, anime, manga, sports] = await Promise.all([
+    benchmarkAllStreamServers(),
     getTrendingMoviesAndTV(),
     getTrendingAnime(),
-    getTrendingManga()
+    getTrendingManga(),
+    getLiveSportsFixtures()
   ]);
 
-  // Generate Dynamic Spotlight Billboards based on top items
+  // Generate Dynamic Spotlight Billboards
   const spotlights = [];
 
-  // Top Movie/TV Spotlight
   if (moviesAndTv.length > 0) {
     const topMedia = moviesAndTv[0];
     spotlights.push({
@@ -129,7 +273,6 @@ async function main() {
     });
   }
 
-  // Top Anime Spotlight
   if (anime.length > 0) {
     const topAnime = anime[0];
     spotlights.push({
@@ -148,7 +291,6 @@ async function main() {
     });
   }
 
-  // Second Top Movie/TV Spotlight
   if (moviesAndTv.length > 1) {
     const secMedia = moviesAndTv[1];
     spotlights.push({
@@ -172,31 +314,43 @@ async function main() {
     id: 'supersport_live',
     type: 'sports',
     title: 'SuperSport World of Champions',
-    subtitle: 'Live Sports • Rugby, Premier League, NBA & F1',
+    subtitle: 'Live Sports • Premier League, UEFA, Formula 1, Rugby & UFC',
     tag: 'LIVE SATELLITE',
     tagColor: 'bg-amber-400 text-slate-950 font-black',
     ambientGlow: 'rgba(245, 158, 11, 0.25)',
-    description: 'Stream live Premier League, Springboks Test Rugby, Champions League, Formula 1, and UFC match broadcasts with zero latency.',
+    description: 'Stream verified live Premier League, Champions League, Springboks Rugby, Formula 1, and UFC match broadcasts with zero latency.',
     cover: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1200&auto=format&fit=crop',
     actionText: 'Open Match Center',
     actionTab: 'sports'
   });
 
-  const payload = {
+  const trendingPayload = {
     updatedAt: new Date().toISOString(),
     spotlights,
     trendingMedia: moviesAndTv,
     trendingAnime: anime,
-    trendingManga: manga
+    trendingManga: manga,
+    liveSports: sports
   };
 
-  const outputPath = path.join(__dirname, '../public/data/trending.json');
-  fs.writeFileSync(outputPath, JSON.stringify(payload, null, 2), 'utf8');
-  console.log(`✅ Successfully saved dynamic trending titles to ${outputPath}`);
-  console.log(`   Spotlights: ${spotlights.length} | Media: ${moviesAndTv.length} | Anime: ${anime.length} | Manga: ${manga.length}`);
+  const dataDir = path.join(__dirname, '../public/data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  const trendingPath = path.join(dataDir, 'trending.json');
+  fs.writeFileSync(trendingPath, JSON.stringify(trendingPayload, null, 2), 'utf8');
+
+  const healthPath = path.join(dataDir, 'stream-health.json');
+  fs.writeFileSync(healthPath, JSON.stringify(streamHealth, null, 2), 'utf8');
+
+  console.log(`✅ Saved stream health telemetry to ${healthPath}`);
+  console.log(`   Status: ${streamHealth.status} | Online: ${streamHealth.onlineCount}/${streamHealth.totalCount} | Best: ${streamHealth.bestServer} (${streamHealth.averagePingMs}ms)`);
+  console.log(`✅ Saved dynamic trending payload to ${trendingPath}`);
+  console.log(`   Spotlights: ${spotlights.length} | Media: ${moviesAndTv.length} | Anime: ${anime.length} | Manga: ${manga.length} | Sports: ${sports.length}`);
 }
 
 main().catch(err => {
-  console.error('Fatal error updating trending titles:', err);
+  console.error('Fatal error in dynamic sync:', err);
   process.exit(1);
 });

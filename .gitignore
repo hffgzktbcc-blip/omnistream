@@ -7,8 +7,16 @@ pnpm-debug.log*
 
 node_modules
 .DS_Store
+# Environment & Secrets
 .env
-.env.local
+.env.*
+*.env
+*.token
+*.secret
+*.pem
+*.key
+credentials.json
+*id_rsa*
 
 # Editor files
 .vscode
