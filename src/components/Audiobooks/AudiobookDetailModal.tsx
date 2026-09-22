@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { X, Play, Download, Image as ImageIcon, Bookmark, Loader2, Users, FileAudio, ChevronDown, Zap, Key, ShieldCheck } from 'lucide-react';
+import { X, Play, Download, Image as ImageIcon, Bookmark, Loader2, Users, FileAudio, ChevronDown, Zap, Key, ShieldCheck, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Audiobook, AudioTrack } from '../../types/audiobook';
 import { debridAudioService } from '../../services/debridAudioService';
 import { stremioService } from '../../services/stremioService';
@@ -32,19 +31,58 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
   const [showDebridModal, setShowDebridModal] = useState<boolean>(false);
   const [debridKeyInput, setDebridKeyInput] = useState<string>(() => stremioService.getDebridKey());
   const [debridProviderInput, setDebridProviderInput] = useState<string>(() => stremioService.getDebridProvider());
+  const [testingModalKey, setTestingModalKey] = useState<boolean>(false);
+  const [modalTestResult, setModalTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     if (isOpen && book) {
       setDetails(book);
       setTracks([]);
       setErrorMsg(null);
+      setModalTestResult(null);
       loadBookDetails(book);
     }
   }, [isOpen, book]);
 
+  const handleTestModalKey = async () => {
+    if (!debridKeyInput.trim()) {
+      setModalTestResult({ success: false, message: 'Please paste your API token first.' });
+      return;
+    }
+    setTestingModalKey(true);
+    setModalTestResult(null);
+    try {
+      const res = await fetch('/api/debrid/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: debridKeyInput.trim(), provider: debridProviderInput })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const expStr = data.expiration ? ` • Expires: ${new Date(data.expiration).toLocaleDateString()}` : '';
+        setModalTestResult({
+          success: true,
+          message: `Connected! Account: ${data.username || 'Active'} | ${data.isPremium ? '💎 Premium Active' : '⚠️ Free Account'}${expStr}`
+        });
+      } else {
+        setModalTestResult({
+          success: false,
+          message: data.error || 'Failed to authenticate with provider.'
+        });
+      }
+    } catch (e: any) {
+      setModalTestResult({
+        success: false,
+        message: `Network error: ${e.message}`
+      });
+    } finally {
+      setTestingModalKey(false);
+    }
+  };
+
   const loadBookDetails = async (targetBook: Audiobook) => {
-    // 0. If book already has a direct audioUrl, provide track immediately
-    if (targetBook.audioUrl) {
+    // 0. If book has a direct audioUrl AND no swarm infoHash / url AND user doesn't have debrid, use it
+    if (targetBook.audioUrl && !targetBook.infoHash && !targetBook.url && !debridAudioService.isDebridConfigured()) {
       setTracks([
         {
           index: 0,
@@ -497,30 +535,79 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
                   onChange={(e) => setDebridKeyInput(e.target.value)}
                   className="w-full bg-[#0d0e12] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">
-                  {debridProviderInput === 'torbox'
-                    ? 'Find your token at torbox.app/settings'
-                    : 'Find your token at real-debrid.com/apitoken'}
-                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-[10px] text-slate-500">
+                    {debridProviderInput === 'torbox'
+                      ? 'Find your token at torbox.app/settings'
+                      : 'Find your token at real-debrid.com/apitoken'}
+                  </p>
+                  <a
+                    href={debridProviderInput === 'torbox' ? 'https://torbox.app/settings' : 'https://real-debrid.com/apitoken'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-amber-400 hover:underline flex items-center gap-1 font-bold"
+                  >
+                    <span>Get Token</span>
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </div>
               </div>
+
+              {modalTestResult && (
+                <div
+                  className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
+                    modalTestResult.success
+                      ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                      : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                  }`}
+                >
+                  {modalTestResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  )}
+                  <div className="leading-relaxed font-medium">{modalTestResult.message}</div>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-between gap-3 pt-2 flex-wrap">
               <button
                 type="button"
-                onClick={() => setShowDebridModal(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+                onClick={handleTestModalKey}
+                disabled={testingModalKey || !debridKeyInput.trim()}
+                className="px-3.5 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/40 text-indigo-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
               >
-                Cancel
+                {testingModalKey ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5 text-amber-400 fill-current" />
+                    <span>Test & Verify</span>
+                  </>
+                )}
               </button>
-              <button
-                type="button"
-                onClick={handleSaveDebridKey}
-                disabled={!debridKeyInput.trim()}
-                className="px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl transition shadow-lg shadow-amber-500/20 cursor-pointer"
-              >
-                Save & Stream Swarm
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDebridModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDebridKey}
+                  disabled={!debridKeyInput.trim()}
+                  className="px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl transition shadow-lg shadow-amber-500/20 cursor-pointer"
+                >
+                  Save & Stream Swarm
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Maximize, Minimize,
   Volume2, VolumeX, Subtitles, Music, ChevronUp, ChevronDown,
   Loader2, AlertTriangle, RefreshCw, PictureInPicture2, Airplay,
-  Settings, X, Check, ChevronLeft, ArrowLeft, Tv
+  Settings, X, Check, ChevronLeft, ArrowLeft, Tv, Zap
 } from 'lucide-react';
 import type { DirectStreamSubtitle, DirectStreamAudioTrack } from '../../services/streamingService';
 import { watchHistoryService } from '../../services/watchHistoryService';
@@ -24,6 +24,8 @@ interface CinemaPlayerProps {
   onError?: () => void;        // fallback trigger
   onClose?: () => void;
   onSwitchToMirror?: () => void;
+  onOpenVlc?: () => void;
+  onOpenWvc?: () => void;
 }
 
 type AspectMode = '16:9' | 'fill' | 'original';
@@ -62,6 +64,8 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
   onError,
   onClose,
   onSwitchToMirror,
+  onOpenVlc,
+  onOpenWvc,
 }) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -93,6 +97,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
   const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const isMkv = streamUrl.toLowerCase().includes('.mkv') || streamUrl.toLowerCase().includes('.avi');
 
   // ─── HLS Setup ───────────────────────────────────────────────
   useEffect(() => {
@@ -189,9 +194,13 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
       const onCanPlay = () => setLoading(false);
       const onDirectError = (err: any) => {
         console.warn('[CinemaPlayer] Direct video error:', err);
-        setError('Direct stream failed. Switching to mirror...');
         setLoading(false);
-        setTimeout(() => onError?.(), 2000);
+        if (isMkv) {
+          setError('Web browsers cannot decode MKV or AC3 Dolby audio directly in HTML5.');
+        } else {
+          setError('Direct stream failed to load. Switching to mirror...');
+          setTimeout(() => onError?.(), 2500);
+        }
       };
 
       video.addEventListener('loadedmetadata', onLoadedMetadata);
@@ -672,16 +681,50 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
 
       {/* ─── Error State ────────────────────────────────── */}
       {error && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black/90 text-center p-6">
-          <AlertTriangle className="w-10 h-10 text-amber-400" />
-          <p className="text-sm font-bold text-white">{error}</p>
-          <button
-            onClick={() => { setError(null); setRetryCount(c => c + 1); }}
-            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center gap-2"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Retry
-          </button>
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-black/95 text-center p-6 backdrop-blur-md">
+          <div className="p-3 bg-amber-500/20 border border-amber-500/40 rounded-2xl text-amber-400">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <div className="max-w-md space-y-1.5">
+            <h3 className="text-base font-black text-white">
+              {isMkv ? 'MKV / High-Bitrate Remux Stream' : 'Stream Playback Issue'}
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">{error}</p>
+            {isMkv && (
+              <p className="text-[11px] text-amber-300/80">
+                Torrentio Real-Debrid delivers untouched 4K remuxes. Launch in VLC/IINA for lossless 4K HDR, or switch to Web Mirror to watch inside the browser.
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap justify-center pt-2">
+            {onOpenVlc && (
+              <button
+                onClick={onOpenVlc}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5 fill-current" />
+                Open in VLC / External Player
+              </button>
+            )}
+
+            {onSwitchToMirror && (
+              <button
+                onClick={onSwitchToMirror}
+                className="px-4 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/40 text-purple-200 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <span>Switch to Web Mirror</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => { setError(null); setRetryCount(c => c + 1); }}
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Retry
+            </button>
+          </div>
         </div>
       )}
 

@@ -273,6 +273,58 @@ app.get('/api/proxy/audio', (req, res) => {
     res.status(400).send('Invalid audio URL');
   }
 });
+// -------------------------------------------------------------
+// DEBRID TOKEN VERIFICATION & DIAGNOSTIC ENDPOINT
+// -------------------------------------------------------------
+app.post('/api/debrid/test', async (req, res) => {
+  try {
+    const { apiKey, provider = 'realdebrid' } = req.body;
+    if (!apiKey) {
+      return res.status(400).json({ success: false, error: 'API token is required' });
+    }
+    const cleanKey = apiKey.trim();
+    if (provider === 'torbox') {
+      const tbRes = await fetch('https://api.torbox.app/v1/api/user/me', {
+        headers: { Authorization: `Bearer ${cleanKey}` }
+      });
+      const data = await tbRes.json();
+      if (!tbRes.ok || !data.success) {
+        return res.json({ success: false, error: data.detail || data.error || 'Invalid Torbox token' });
+      }
+      return res.json({
+        success: true,
+        provider: 'torbox',
+        username: data.data?.email || 'Torbox User',
+        isPremium: (data.data?.plan || 0) > 0,
+        accountType: (data.data?.plan || 0) > 0 ? 'Pro / Premium' : 'Free',
+        expiration: data.data?.customer?.subscription?.current_period_end || 'Active'
+      });
+    } else {
+      const rdRes = await fetch('https://api.real-debrid.com/rest/1.0/user', {
+        headers: { Authorization: `Bearer ${cleanKey}` }
+      });
+      const data = await rdRes.json();
+      if (!rdRes.ok || data.error) {
+        const msg = data.error === 'bad_token'
+          ? 'Invalid Real-Debrid API token. Please get your secret token from https://real-debrid.com/apitoken'
+          : (data.error || 'Failed to authenticate with Real-Debrid');
+        return res.json({ success: false, error: msg, raw: data });
+      }
+      return res.json({
+        success: true,
+        provider: 'realdebrid',
+        username: data.username,
+        email: data.email,
+        isPremium: data.type === 'premium',
+        accountType: data.type,
+        expiration: data.expiration,
+        points: data.points
+      });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // -------------------------------------------------------------
 // 1. UNIVERSAL IMAGE PROXY (SSRF-Protected & Validated)

@@ -37,6 +37,8 @@ export const StremioSettingsModal: React.FC<StremioSettingsModalProps> = ({
   const [addonLoading, setAddonLoading] = useState<boolean>(false);
   const [addonError, setAddonError] = useState<string | null>(null);
   const [savedStatus, setSavedStatus] = useState<string | null>(null);
+  const [testingKey, setTestingKey] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -45,8 +47,45 @@ export const StremioSettingsModal: React.FC<StremioSettingsModalProps> = ({
       setAddons(stremioService.getAddons());
       setSavedStatus(null);
       setAddonError(null);
+      setTestResult(null);
     }
   }, [isOpen]);
+
+  const handleTestDebridKey = async () => {
+    if (!debridKey.trim()) {
+      setTestResult({ success: false, message: 'Please paste your API token first.' });
+      return;
+    }
+    setTestingKey(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/debrid/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: debridKey.trim(), provider })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const expStr = data.expiration ? ` • Expires: ${new Date(data.expiration).toLocaleDateString()}` : '';
+        setTestResult({
+          success: true,
+          message: `Connected! Account: ${data.username || 'Active'} | ${data.isPremium ? '💎 Premium Active' : '⚠️ Free Account'}${expStr}`
+        });
+      } else {
+        setTestResult({
+          success: false,
+          message: data.error || 'Failed to authenticate with provider.'
+        });
+      }
+    } catch (e: any) {
+      setTestResult({
+        success: false,
+        message: `Network error testing token: ${e.message}`
+      });
+    } finally {
+      setTestingKey(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -211,6 +250,25 @@ export const StremioSettingsModal: React.FC<StremioSettingsModalProps> = ({
                 </a>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleTestDebridKey}
+                    disabled={testingKey || !debridKey.trim()}
+                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/40 text-indigo-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {testingKey ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-3.5 h-3.5 text-amber-400 fill-current" />
+                        <span>Test & Verify</span>
+                      </>
+                    )}
+                  </button>
+
                   {debridKey && (
                     <button
                       type="button"
@@ -232,6 +290,31 @@ export const StremioSettingsModal: React.FC<StremioSettingsModalProps> = ({
                   </button>
                 </div>
               </div>
+
+              {/* Real-time Token Test Diagnostic Card */}
+              {testResult && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-medium flex items-start gap-2.5 transition-all animate-fade-in ${
+                    testResult.success
+                      ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300'
+                      : 'bg-rose-950/80 border-rose-500/50 text-rose-300'
+                  }`}
+                >
+                  {testResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-400 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-400 mt-0.5" />
+                  )}
+                  <div className="flex-1">
+                    <p className="font-bold">{testResult.message}</p>
+                    {testResult.success && (
+                      <p className="text-[10px] text-emerald-400/80 mt-0.5">
+                        High-speed cloud seedbox streaming active for both 4K movies & audiobooks.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </form>
           </div>
 

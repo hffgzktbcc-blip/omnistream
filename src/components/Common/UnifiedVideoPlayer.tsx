@@ -314,7 +314,17 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
       // Auto-promote to direct debrid stream if user has configured key
       const debridKey = stremioService.getDebridKey();
       if (debridKey && streams.length > 0) {
-        const topDirect = streams.find((s) => s.url && s.isDebrid) || streams.find((s) => s.url);
+        // Prioritize browser-playable streams (mp4, webm, m3u8) over raw mkv containers for in-browser playback
+        const isBrowserPlayable = (url?: string) => {
+          if (!url) return false;
+          const u = url.toLowerCase();
+          return !u.includes('.mkv') && !u.includes('.avi') && !u.includes('.wmv');
+        };
+
+        const topDirect = streams.find((s) => s.url && s.isDebrid && isBrowserPlayable(s.url))
+          || streams.find((s) => s.url && s.isDebrid)
+          || streams.find((s) => s.url);
+
         if (topDirect && topDirect.url) {
           setActiveStremioStream(topDirect);
           setDirectStream({
@@ -847,6 +857,8 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                   setCinemaFailed(true);
                   setCinemaMode('iframe');
                 }}
+                onOpenVlc={handleOpenVlc}
+                onOpenWvc={handleOpenWvc}
                 onClose={onClose}
               />
             ) : (
