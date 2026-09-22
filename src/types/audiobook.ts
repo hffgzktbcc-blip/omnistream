@@ -61,6 +61,7 @@ export interface AudioTrack {
   sizeFormatted: string;
   streamUrl: string;
   downloadUrl: string;
+  isDebrid?: boolean;
 }
 
 export interface Audiobook {

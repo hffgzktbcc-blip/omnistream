@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Play, Download, Image as ImageIcon, Bookmark, Loader2, Users, FileAudio, ChevronDown, Zap } from 'lucide-react';
+import { X, Play, Download, Image as ImageIcon, Bookmark, Loader2, Users, FileAudio, ChevronDown, Zap, Key, ShieldCheck } from 'lucide-react';
 import { Audiobook, AudioTrack } from '../../types/audiobook';
+import { debridAudioService } from '../../services/debridAudioService';
+import { stremioService } from '../../services/stremioService';
 
 interface AudiobookDetailModalProps {
   book: Audiobook | null;
@@ -25,6 +27,11 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
   const [loadingTracks, setLoadingTracks] = useState(false);
   const [numPeers, setNumPeers] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [debridStatus, setDebridStatus] = useState<string | null>(null);
+  const [isDebridActive, setIsDebridActive] = useState<boolean>(false);
+  const [showDebridModal, setShowDebridModal] = useState<boolean>(false);
+  const [debridKeyInput, setDebridKeyInput] = useState<string>(() => stremioService.getDebridKey());
+  const [debridProviderInput, setDebridProviderInput] = useState<string>(() => stremioService.getDebridProvider());
 
   useEffect(() => {
     if (isOpen && book) {
@@ -178,9 +185,45 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
     setTracks([fallbackTrack]);
   };
 
+  const handleSaveDebridKey = async () => {
+    if (!debridKeyInput.trim()) return;
+    stremioService.setDebridConfig(debridKeyInput.trim(), debridProviderInput);
+    setShowDebridModal(false);
+    if (details?.infoHash) {
+      loadTorrentTracks(details.infoHash, details.magnet);
+    }
+  };
+
   const loadTorrentTracks = async (infoHash: string, magnet?: string) => {
     setLoadingTracks(true);
+    setDebridStatus(null);
+    setIsDebridActive(false);
+
     try {
+      // 1. Primary path for Online Playback: Real-Debrid / Torbox Cloud Seedbox Bridge
+      if (debridAudioService.isDebridConfigured()) {
+        const providerName = debridAudioService.getDebridProvider() === 'torbox' ? 'Torbox' : 'Real-Debrid';
+        setDebridStatus(`Connecting to ${providerName} cloud seedbox...`);
+
+        const debridRes = await debridAudioService.resolveAudiobook({
+          infoHash,
+          magnet,
+          title: details?.title || book?.title || 'Audiobook'
+        });
+
+        if (debridRes.success && debridRes.tracks.length > 0) {
+          setTracks(debridRes.tracks);
+          setIsDebridActive(true);
+          setDebridStatus(debridRes.statusText || `⚡ ${providerName} 10Gbps CDN Active`);
+          setNumPeers(99);
+          setLoadingTracks(false);
+          return;
+        } else if (debridRes.statusText) {
+          setDebridStatus(debridRes.statusText);
+        }
+      }
+
+      // 2. Secondary path: Local Node.js WebTorrent Swarm Daemon
       const res = await fetch(
         `/api/audiobooks/torrent/files?hash=${infoHash}&magnet=${encodeURIComponent(magnet || '')}`
       );
@@ -191,10 +234,13 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
           if (data.audioTracks && data.audioTracks.length > 0) {
             setTracks(data.audioTracks);
             setNumPeers(data.numPeers || 0);
+            setLoadingTracks(false);
             return;
           }
         }
       }
+
+      // 3. Fallback preview track
       provideFallbackTrack(details || (book as Audiobook));
     } catch (e: any) {
       console.warn('Torrent tracks fallback:', e);
@@ -288,8 +334,13 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
               <span>Add to Library</span>
             </button>
             
-            <div className="flex items-center gap-2 ml-auto">
-              {numPeers > 0 && (
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              {isDebridActive && (
+                <span className="text-xs text-amber-400 font-bold flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 rounded-full border border-amber-500/30">
+                  <Zap className="w-3.5 h-3.5 fill-current" /> DEBRID 10Gbps CDN
+                </span>
+              )}
+              {numPeers > 0 && !isDebridActive && (
                 <span className="text-sm text-emerald-400 font-bold flex items-center gap-1.5 px-3 py-1.5 bg-emerald-400/10 rounded-full border border-emerald-400/20">
                   <Users className="w-4 h-4" /> {numPeers} peers
                 </span>
@@ -326,6 +377,35 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
                 </span>
               )}
             </div>
+
+            {/* Debrid Status Telemetry */}
+            {debridStatus && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-950/30 border border-amber-800/40 text-xs text-amber-300 font-mono">
+                <Zap className="w-3.5 h-3.5 fill-current text-amber-400 animate-pulse" />
+                <span>{debridStatus}</span>
+              </div>
+            )}
+
+            {/* Debrid Online Swarm Banner (if not configured) */}
+            {!debridAudioService.isDebridConfigured() && (details.infoHash || details.url) && (
+              <div className="rounded-xl bg-gradient-to-r from-[#1e170c] via-[#1a1c23] to-[#121318] border border-amber-800/50 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                    <Zap className="w-4 h-4 fill-current" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Stream Swarm Online Without Running Local Server</p>
+                    <p className="text-[11px] text-slate-400">Connect Real-Debrid or Torbox to download from BitTorrent seedboxes directly to your browser.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowDebridModal(true)}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-lg transition shadow-md cursor-pointer whitespace-nowrap"
+                >
+                  Connect Debrid
+                </button>
+              </div>
+            )}
 
             {/* Tracks List */}
             <div className="bg-[#1e2025] rounded-sm border border-[#2a2c33] divide-y divide-[#2a2c33] max-h-72 overflow-y-auto">
@@ -369,6 +449,82 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Quick Debrid Key Entry Modal */}
+      {showDebridModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#14161b] border border-amber-500/40 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-400 fill-current" />
+                <h3 className="text-base font-black text-white">Cloud Swarm Streaming</h3>
+              </div>
+              <button
+                onClick={() => setShowDebridModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Enter your Real-Debrid or Torbox API token to instantly stream AudioBookBay swarms directly over 10Gbps CDN with zero local server needed.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Provider
+                </label>
+                <select
+                  value={debridProviderInput}
+                  onChange={(e) => setDebridProviderInput(e.target.value)}
+                  className="w-full bg-[#0d0e12] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                >
+                  <option value="realdebrid">Real-Debrid (api.real-debrid.com)</option>
+                  <option value="torbox">Torbox (api.torbox.app)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  API Token / Secret Key
+                </label>
+                <input
+                  type="password"
+                  placeholder="Paste your API key here..."
+                  value={debridKeyInput}
+                  onChange={(e) => setDebridKeyInput(e.target.value)}
+                  className="w-full bg-[#0d0e12] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  {debridProviderInput === 'torbox'
+                    ? 'Find your token at torbox.app/settings'
+                    : 'Find your token at real-debrid.com/apitoken'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDebridModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDebridKey}
+                disabled={!debridKeyInput.trim()}
+                className="px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl transition shadow-lg shadow-amber-500/20 cursor-pointer"
+              >
+                Save & Stream Swarm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
