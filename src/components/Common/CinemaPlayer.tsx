@@ -4,7 +4,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Maximize, Minimize,
   Volume2, VolumeX, Subtitles, Music, ChevronUp, ChevronDown,
   Loader2, AlertTriangle, RefreshCw, PictureInPicture2, Airplay,
-  Settings, X, Check, ChevronLeft, ArrowLeft, Tv, Zap
+  Settings, X, Check, ChevronLeft, ArrowLeft, Tv, Zap, Copy
 } from 'lucide-react';
 import type { DirectStreamSubtitle, DirectStreamAudioTrack } from '../../services/streamingService';
 import { watchHistoryService } from '../../services/watchHistoryService';
@@ -21,6 +21,8 @@ interface CinemaPlayerProps {
   season?: number;
   episode?: number;
   resumeTime?: number;
+  isDebrid?: boolean;
+  streamTitle?: string;
   onError?: () => void;        // fallback trigger
   onClose?: () => void;
   onSwitchToMirror?: () => void;
@@ -61,6 +63,8 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
   season,
   episode,
   resumeTime,
+  isDebrid,
+  streamTitle,
   onError,
   onClose,
   onSwitchToMirror,
@@ -97,7 +101,23 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
   const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const isMkv = streamUrl.toLowerCase().includes('.mkv') || streamUrl.toLowerCase().includes('.avi');
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const isDebridStream = isDebrid ||
+    streamUrl.includes('realdebrid') ||
+    streamUrl.includes('torrentio') ||
+    streamUrl.includes('torbox') ||
+    streamUrl.includes('alldebrid') ||
+    streamUrl.includes('premiumize');
+
+  const streamInfoText = `${streamTitle || ''} ${title || ''} ${streamUrl}`.toLowerCase();
+  const isMkv = streamInfoText.includes('.mkv') ||
+    streamInfoText.includes('.avi') ||
+    streamInfoText.includes('remux') ||
+    streamInfoText.includes('bluray') ||
+    streamInfoText.includes('hevc') ||
+    streamInfoText.includes('truehd') ||
+    streamInfoText.includes('dts');
 
   // ─── HLS Setup ───────────────────────────────────────────────
   useEffect(() => {
@@ -195,11 +215,27 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
       const onDirectError = (err: any) => {
         console.warn('[CinemaPlayer] Direct video error:', err);
         setLoading(false);
-        if (isMkv) {
-          setError('Web browsers cannot decode MKV or AC3 Dolby audio directly in HTML5.');
+
+        // If direct fetch fails (often CORS/Referrer on external CDN like Real-Debrid), attempt stream proxy fallback once
+        if (!video.src.includes('/api/proxy/stream') && streamUrl.startsWith('http')) {
+          console.log('[CinemaPlayer] Direct connection failed, switching to stream proxy fallback...');
+          const proxiedUrl = `/api/proxy/stream?url=${encodeURIComponent(streamUrl)}`;
+          video.src = proxiedUrl;
+          video.load();
+          video.play().catch(() => {});
+          return;
+        }
+
+        if (isDebridStream || isMkv) {
+          setError(
+            isMkv
+              ? 'Web browsers cannot decode MKV or AC3/Dolby Atmos audio directly in HTML5.'
+              : 'Direct Real-Debrid stream cannot be decoded in this browser.'
+          );
+          // Do not kick user to iframe automatically. Keep options open!
         } else {
           setError('Direct stream failed to load. Switching to mirror...');
-          setTimeout(() => onError?.(), 2500);
+          setTimeout(() => onError?.(), 3000);
         }
       };
 
@@ -667,7 +703,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         className={`w-full h-full ${aspectClass}`}
         playsInline
         autoPlay
-        crossOrigin="anonymous"
+        referrerPolicy="no-referrer"
         x-webkit-airplay="allow"
       />
 
@@ -687,12 +723,12 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
           </div>
           <div className="max-w-md space-y-1.5">
             <h3 className="text-base font-black text-white">
-              {isMkv ? 'MKV / High-Bitrate Remux Stream' : 'Stream Playback Issue'}
+              {isDebridStream || isMkv ? 'Real-Debrid Direct Stream' : 'Stream Playback Issue'}
             </h3>
             <p className="text-xs text-slate-300 leading-relaxed">{error}</p>
-            {isMkv && (
-              <p className="text-[11px] text-amber-300/80">
-                Torrentio Real-Debrid delivers untouched 4K remuxes. Launch in VLC/IINA for lossless 4K HDR, or switch to Web Mirror to watch inside the browser.
+            {(isDebridStream || isMkv) && (
+              <p className="text-[11px] text-amber-300/90 leading-normal">
+                Real-Debrid torrent streams are lossless uncompressed remuxes. Open in VLC / IINA / PotPlayer for native 4K HDR playback, or switch to Web Mirror to watch inside the browser.
               </p>
             )}
           </div>
@@ -708,18 +744,40 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
               </button>
             )}
 
+            {onOpenWvc && (
+              <button
+                onClick={onOpenWvc}
+                className="px-3.5 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/40 text-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Tv className="w-3.5 h-3.5" />
+                Cast via WVC
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(streamUrl);
+                setCopiedLink(true);
+                setTimeout(() => setCopiedLink(false), 2500);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-700"
+            >
+              {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedLink ? 'Copied Link!' : 'Copy Direct Link'}</span>
+            </button>
+
             {onSwitchToMirror && (
               <button
                 onClick={onSwitchToMirror}
-                className="px-4 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/40 text-purple-200 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-purple-600/40 hover:bg-purple-600/60 border border-purple-400/40 text-purple-200 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
               >
                 <span>Switch to Web Mirror</span>
               </button>
             )}
 
             <button
-              onClick={() => { setError(null); setRetryCount(c => c + 1); }}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              onClick={() => { setError(null); setLoading(true); setRetryCount(c => c + 1); }}
+              className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Retry

@@ -844,6 +844,8 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                 mediaId={effectiveTmdbId}
                 season={currentSeason}
                 episode={currentEpisode}
+                isDebrid={activeStremioStream?.isDebrid}
+                streamTitle={activeStremioStream?.title || activeStremioStream?.name}
                 resumeTime={watchHistoryService.getItem(
                   session.type === 'movie' ? `movie_${effectiveTmdbId}` :
                   session.type === 'tv' ? `tv_${effectiveTmdbId}` :

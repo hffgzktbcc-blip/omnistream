@@ -273,6 +273,88 @@ app.get('/api/proxy/audio', (req, res) => {
     res.status(400).send('Invalid audio URL');
   }
 });
+
+// -------------------------------------------------------------
+// HIGH-PERFORMANCE VIDEO & STREAM PROXY (Real-Debrid / CDN / Range)
+// -------------------------------------------------------------
+app.all(['/api/proxy/stream', '/api/proxy/video'], (req, res) => {
+  const targetUrl = req.query.url;
+  if (!targetUrl || typeof targetUrl !== 'string') {
+    return res.status(400).send('Missing url parameter');
+  }
+
+  // Handle CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  try {
+    const parsed = new URL(targetUrl);
+    const isHttps = parsed.protocol === 'https:';
+    const client = isHttps ? https : http;
+    const agent = isHttps ? httpsAgent : httpAgent;
+
+    const reqHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+      'Accept': '*/*'
+    };
+    if (req.headers.range) {
+      reqHeaders['Range'] = req.headers.range;
+    }
+
+    const proxyReq = client.request(
+      {
+        protocol: parsed.protocol,
+        hostname: parsed.hostname,
+        port: parsed.port || (isHttps ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method: req.method === 'HEAD' ? 'HEAD' : 'GET',
+        agent,
+        headers: reqHeaders
+      },
+      (proxyRes) => {
+        // Handle redirect (e.g. Torrentio -> Real-Debrid CDN)
+        if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+          const redirectUrl = new URL(proxyRes.headers.location, targetUrl).toString();
+          return res.redirect(`/api/proxy/stream?url=${encodeURIComponent(redirectUrl)}`);
+        }
+
+        res.status(proxyRes.statusCode);
+        const copyHeaders = [
+          'content-type',
+          'content-length',
+          'content-range',
+          'accept-ranges',
+          'cache-control',
+          'content-disposition'
+        ];
+        for (const h of copyHeaders) {
+          if (proxyRes.headers[h]) res.setHeader(h, proxyRes.headers[h]);
+        }
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        if (req.method === 'HEAD') {
+          return res.end();
+        }
+        proxyRes.pipe(res);
+      }
+    );
+
+    proxyReq.on('error', (err) => {
+      console.warn('[Stream Proxy Error]:', err.message);
+      if (!res.headersSent) res.status(502).send('Stream proxy connection failed');
+    });
+
+    proxyReq.end();
+  } catch (err) {
+    res.status(400).send('Invalid stream URL');
+  }
+});
 // -------------------------------------------------------------
 // DEBRID TOKEN VERIFICATION & DIAGNOSTIC ENDPOINT
 // -------------------------------------------------------------
