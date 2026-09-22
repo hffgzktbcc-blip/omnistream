@@ -998,13 +998,80 @@ export const api = {
   },
 
   async searchAudiobooks(query: string): Promise<Audiobook[]> {
-    const serverData = await safeFetchJson<Audiobook[]>(`${BASE_URL}/audiobooks/search?q=${encodeURIComponent(query)}`);
-    if (serverData && Array.isArray(serverData) && serverData.length > 0) {
-      return serverData;
-    }
+    const cleanQ = (query || '').trim();
+    if (!cleanQ) return [];
 
     try {
-      const q = encodeURIComponent(`mediatype:audio AND (collection:audio_bookspoetry OR collection:audio_book OR ${query}) AND ${query}`);
+      const serverData = await safeFetchJson<any>(`${BASE_URL}/audiobooks/search?q=${encodeURIComponent(cleanQ)}`);
+      if (serverData) {
+        if (Array.isArray(serverData) && serverData.length > 0) {
+          return serverData;
+        }
+        if (Array.isArray(serverData.items) && serverData.items.length > 0) {
+          return serverData.items;
+        }
+      }
+    } catch {}
+
+    // Fallback: Direct Apibay Torrent Swarm Search (Open CORS)
+    try {
+      const res = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(cleanQ)}&cat=100`);
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0 && list[0]?.id !== '0') {
+          const DEFAULT_TRACKERS = [
+            'wss://tracker.openwebtorrent.com',
+            'wss://tracker.btorrent.xyz',
+            'wss://tracker.fastcast.nz',
+            'udp://tracker.opentrackr.org:1337/announce',
+            'udp://open.stealth.si:80/announce',
+            'udp://tracker.torrent.eu.org:451/announce',
+            'udp://exodus.desync.com:6969/announce',
+            'udp://opentor.org:2710/announce',
+            'udp://tracker.dler.org:6969/announce',
+            'udp://bt1.archive.org:6969/announce'
+          ];
+          const trParam = DEFAULT_TRACKERS.map(t => `&tr=${encodeURIComponent(t)}`).join('');
+
+          return list
+            .filter((item: any) => item.id !== '0' && item.info_hash && !item.info_hash.startsWith('00000000'))
+            .map((item: any) => {
+              const hash = item.info_hash.toLowerCase();
+              let title = item.name;
+              let author = 'Full Cast / Swarm';
+              if (item.name.includes(' - ')) {
+                const parts = item.name.split(' - ');
+                title = parts[0].trim();
+                author = parts.slice(1).join(' - ').trim();
+              }
+              const sizeBytes = parseInt(item.size, 10) || 0;
+              const sizeFormatted = sizeBytes > 1024 * 1024 * 1024
+                ? `${(sizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+                : `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+
+              return {
+                id: `wt_${hash}`,
+                infoHash: hash,
+                rawTitle: item.name,
+                title,
+                author,
+                cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=400',
+                categories: ['Audiobook', 'Swarm Edition'],
+                format: 'M4B',
+                size: sizeFormatted,
+                seeders: parseInt(item.seeders, 10) || 0,
+                magnet: `magnet:?xt=urn:btih:${hash}&dn=${encodeURIComponent(item.name)}${trParam}`,
+                source: 'torrent',
+                platform: 'torrent'
+              };
+            });
+        }
+      }
+    } catch {}
+
+    // Fallback: Archive.org
+    try {
+      const q = encodeURIComponent(`mediatype:audio AND (collection:audio_bookspoetry OR collection:audio_book OR ${cleanQ}) AND ${cleanQ}`);
       const res = await fetch(`https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier,title,creator,description,year,downloads&sort[]=downloads+desc&rows=25&output=json`);
       if (res.ok) {
         const data = await res.json();

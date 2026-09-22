@@ -957,7 +957,14 @@ router.get('/search', async (req, res) => {
 
     // Step 2: Fall back to live WebTorrent Category 100 search
     console.log(`[AudiobookBay Fallback] Querying WebTorrent swarm for "${query}"...`);
-    const torrentBooks = await searchApibayAudiobooks(query);
+    let torrentBooks = await searchApibayAudiobooks(query);
+
+    // If query has > 2 words and returned 0, try relaxed query
+    const queryTokens = query.split(/\s+/).filter(t => t.length > 1);
+    if ((!torrentBooks || torrentBooks.length === 0) && queryTokens.length > 2) {
+      const relaxedQ = queryTokens.slice(0, 2).join(' ');
+      torrentBooks = await searchApibayAudiobooks(relaxedQ);
+    }
 
     if (torrentBooks && torrentBooks.length > 0) {
       const result = { items: torrentBooks, totalPages: 1, isTorrent: true };
@@ -965,20 +972,24 @@ router.get('/search', async (req, res) => {
       return res.json(result);
     }
 
-    // Step 3: Match Curated Fallback
-    const q = query.toLowerCase();
-    const filtered = CURATED_FALLBACK_AUDIOBOOKS.filter(b => 
-      b.title.toLowerCase().includes(q) || 
-      b.author.toLowerCase().includes(q)
-    );
+    // Step 3: Match Curated Fallback (token matching)
+    const filtered = CURATED_FALLBACK_AUDIOBOOKS.filter(b => {
+      const text = `${b.title} ${b.author} ${b.narrator || ''} ${(b.categories || []).join(' ')}`.toLowerCase();
+      if (text.includes(query)) return true;
+      if (queryTokens.length > 0 && queryTokens.every(tok => text.includes(tok))) return true;
+      return false;
+    });
     res.json({ items: filtered.length > 0 ? filtered : CURATED_FALLBACK_AUDIOBOOKS, totalPages: 1, isFallback: true });
   } catch (err) {
     console.warn('AudioBay search fatal fallback:', err.message);
     const q = (req.query.q || '').toLowerCase();
-    const filtered = CURATED_FALLBACK_AUDIOBOOKS.filter(b => 
-      b.title.toLowerCase().includes(q) || 
-      b.author.toLowerCase().includes(q)
-    );
+    const queryTokens = q.split(/\s+/).filter(t => t.length > 1);
+    const filtered = CURATED_FALLBACK_AUDIOBOOKS.filter(b => {
+      const text = `${b.title} ${b.author} ${b.narrator || ''} ${(b.categories || []).join(' ')}`.toLowerCase();
+      if (text.includes(q)) return true;
+      if (queryTokens.length > 0 && queryTokens.every(tok => text.includes(tok))) return true;
+      return false;
+    });
     res.json({ items: filtered.length > 0 ? filtered : CURATED_FALLBACK_AUDIOBOOKS, totalPages: 1, isFallback: true });
   }
 });
