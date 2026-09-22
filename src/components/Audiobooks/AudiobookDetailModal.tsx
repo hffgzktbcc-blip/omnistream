@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { X, Play, Download, Image as ImageIcon, Bookmark, Loader2, Users, FileAudio, ChevronDown, Zap, Key, ShieldCheck, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Audiobook, AudioTrack } from '../../types/audiobook';
 import { debridAudioService } from '../../services/debridAudioService';

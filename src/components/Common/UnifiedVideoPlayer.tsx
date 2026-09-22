@@ -403,7 +403,6 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
   const handleForceRefresh = () => {
     setExhaustedServers(false);
     setServersTried(0);
-    setVideoStarted(false);
     setReloadKey(Date.now());
   };
 
@@ -411,7 +410,6 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     setExhaustedServers(false);
     setServersTried(0);
     setSelectedServerIndex(0);
-    setVideoStarted(false);
     setReloadKey(Date.now());
   };
 

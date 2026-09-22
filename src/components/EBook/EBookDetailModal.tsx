@@ -17,7 +17,8 @@ import {
   Loader2,
   BookMarked,
   Tablet,
-  FolderOpen
+  FolderOpen,
+  Zap
 } from 'lucide-react';
 import { downloadEpubDirectly } from '../../services/epubDownloader';
 import { ebookStorage } from '../../services/ebookStorage';
