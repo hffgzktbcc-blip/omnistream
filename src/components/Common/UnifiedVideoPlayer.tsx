@@ -683,11 +683,12 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                         ? 'text-amber-300 hover:text-white hover:bg-slate-700/60'
                         : 'text-purple-300 hover:text-white hover:bg-slate-700/60 border border-purple-500/30'
                     }`}
-                    title={s.title || s.name}
+                    title={s.url ? `⚡ Real-Debrid Instant Cloud Stream (10Gbps CDN): ${s.title || s.name}` : (s.title || s.name)}
                   >
                     <span>{s.url ? '⚡' : '🧲'} {s.quality || '4K'}</span>
-                    {s.isDebrid && <span className="text-[9px] bg-black/40 text-amber-200 px-1 rounded">RD</span>}
-                    {!s.url && s.seeders ? <span className="text-[9px] text-purple-300/80">({s.seeders})</span> : null}
+                    {s.isDebrid && s.url && <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1 rounded font-bold">RD Cloud</span>}
+                    {s.isDebrid && !s.url && <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 rounded font-bold">RD P2P</span>}
+                    {!s.url && s.seeders ? <span className="text-[9px] text-purple-300/80">({s.seeders} seeds)</span> : null}
                     {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />}
                   </button>
                 );

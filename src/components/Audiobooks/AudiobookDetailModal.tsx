@@ -254,7 +254,7 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
           setTracks(debridRes.tracks);
           setIsDebridActive(true);
           setDebridStatus(debridRes.statusText || `⚡ ${providerName} 10Gbps CDN Active`);
-          setNumPeers(99);
+          setNumPeers(0);
           setLoadingTracks(false);
           return;
         } else if (debridRes.statusText) {
