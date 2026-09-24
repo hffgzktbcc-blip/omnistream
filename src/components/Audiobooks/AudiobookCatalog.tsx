@@ -30,6 +30,7 @@ import { Audiobook, AudioTrack, AudiobookListeningProgress } from '../../types/a
 import { audiobookStorage } from '../../services/audiobookStorage';
 import { api } from '../../services/api';
 import { stremioService } from '../../services/stremioService';
+import { debridAudioService } from '../../services/debridAudioService';
 import { StremioSettingsModal } from '../Common/StremioSettingsModal';
 
 interface AudiobookCatalogProps {
@@ -65,6 +66,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
 
   const genres = [
     { label: '🔥 All Releases', id: '' },
+    { label: '☁️ Debrid Vault', id: 'debrid_vault' },
     { label: '📚 My Bookshelf', id: 'my_bookshelf' },
     { label: '🚀 Sci-Fi & Cyberpunk', id: 'sci-fi' },
     { label: '⚔️ Fantasy & Magic', id: 'fantasy' },
@@ -82,6 +84,29 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
     setLoading(true);
     setErrorMsg(null);
     setCurrentPage(page);
+
+    // Debrid Vault Suite: Cloud Torrents Library
+    if (activeGenre === 'debrid_vault') {
+      try {
+        if (!debridAudioService.isDebridConfigured()) {
+          setIsDebridModalOpen(true);
+          setErrorMsg('Connect your Real-Debrid or Torbox key to access your personal Debrid Cloud Vault.');
+          setBooks([]);
+        } else {
+          const cloudBooks = await debridAudioService.getUserCloudAudiobooks();
+          setBooks(cloudBooks);
+          setTotalPages(1);
+          if (cloudBooks.length === 0) {
+            setErrorMsg('No audiobooks found in your cloud vault yet. Any audiobook torrents you add to Real-Debrid or Torbox will appear here.');
+          }
+        }
+      } catch (err: any) {
+        setErrorMsg('Failed to load your Debrid Cloud Vault.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     // Shelf Suite: Personal Bookshelf
     if (activeGenre === 'my_bookshelf') {

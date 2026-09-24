@@ -281,13 +281,26 @@ export async function onRequestPost(context: any) {
         }
       }
 
+      // Pageturner pattern: Filter out sample clips and natural numerical sort chapters
+      const nonSample = tracks.filter((t) => {
+        const lower = (t.name || '').toLowerCase();
+        return !lower.startsWith('sample') && !lower.includes('sample track');
+      });
+      const finalTracks = nonSample.length > 0 ? nonSample : tracks;
+      finalTracks.sort((a, b) =>
+        (a.path || a.name).localeCompare(b.path || b.name, undefined, { numeric: true, sensitivity: 'base' })
+      );
+      finalTracks.forEach((t, i) => {
+        t.index = i;
+      });
+
       return new Response(
         JSON.stringify({
-          success: tracks.length > 0,
+          success: finalTracks.length > 0,
           isCached: true,
           provider: 'realdebrid',
-          tracks,
-          statusText: `⚡ Loaded ${tracks.length} track(s) from Real-Debrid CDN`
+          tracks: finalTracks,
+          statusText: `⚡ Loaded ${finalTracks.length} chapter(s) from Real-Debrid CDN`
         }),
         { status: 200, headers: corsHeaders }
       );
