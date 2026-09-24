@@ -1069,9 +1069,9 @@ export const api = {
       }
     } catch {}
 
-    // Fallback: Archive.org
+    // Fallback: Archive.org (Open public domain & studio audiobooks)
     try {
-      const q = encodeURIComponent(`mediatype:audio AND (collection:audio_bookspoetry OR collection:audio_book OR ${cleanQ}) AND ${cleanQ}`);
+      const q = encodeURIComponent(`title:(${cleanQ}) AND mediatype:(audio)`);
       const res = await fetch(`https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier,title,creator,description,year,downloads&sort[]=downloads+desc&rows=25&output=json`);
       if (res.ok) {
         const data = await res.json();
@@ -1082,15 +1082,57 @@ export const api = {
           author: Array.isArray(doc.creator) ? doc.creator.join(', ') : (doc.creator || 'Classic Author'),
           cover: `https://archive.org/services/img/${doc.identifier}`,
           description: typeof doc.description === 'string' ? doc.description.slice(0, 300) : 'Archive Audiobook recording.',
-          duration: 'Multi-track',
+          duration: 'Multi-chapter',
           genre: 'Audiobook',
-          platform: 'archive'
+          platform: 'archive',
+          audioUrl: `https://archive.org/download/${doc.identifier}`
         }));
       }
     } catch (err) {
       console.error('Audiobooks search archive fallback error:', err);
     }
     return [];
+  },
+
+  async getArchiveTracks(identifier: string): Promise<AudioTrack[]> {
+    try {
+      const cleanId = identifier.replace(/^ia_/, '').trim();
+      const res = await fetch(`https://archive.org/metadata/${cleanId}/files`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      const files: any[] = data.result || [];
+      const audioFiles = files.filter((f: any) =>
+        f.name && !f.name.startsWith('.') && (
+          f.name.toLowerCase().endsWith('.mp3') ||
+          f.name.toLowerCase().endsWith('.m4b') ||
+          f.name.toLowerCase().endsWith('.m4a') ||
+          f.name.toLowerCase().endsWith('.ogg')
+        )
+      );
+
+      return audioFiles.map((f: any, idx: number) => {
+        const cleanName = f.title || f.name.replace(/^.*\//, '').replace(/\.(mp3|m4b|m4a|ogg)$/i, '');
+        const sizeBytes = parseInt(f.size || '0', 10);
+        const sizeFormatted = sizeBytes > 1024 * 1024
+          ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+          : 'Audio Track';
+        const streamUrl = `https://archive.org/download/${cleanId}/${encodeURI(f.name)}`;
+
+        return {
+          index: idx,
+          name: cleanName,
+          path: f.name,
+          length: Math.round(parseFloat(f.length || '1800')),
+          sizeFormatted,
+          streamUrl,
+          downloadUrl: streamUrl,
+          isDebrid: false
+        };
+      });
+    } catch (e) {
+      console.warn('Failed to fetch archive tracks:', e);
+      return [];
+    }
   },
 
   // 6. LIVE SPORTS API

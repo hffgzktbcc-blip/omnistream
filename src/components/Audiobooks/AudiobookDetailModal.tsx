@@ -210,6 +210,17 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
         if (data.infoHash && isHex40(data.infoHash)) {
           loadTorrentTracks(data.infoHash, data.magnet);
           return;
+        } else if (data.id?.startsWith('ia_') || data.platform === 'archive') {
+          const cleanId = data.id.replace(/^ia_/, '');
+          const archiveTracks = await api.getArchiveTracks(cleanId);
+          if (archiveTracks.length > 0) {
+            setTracks(archiveTracks);
+            setDebridStatus(`⚡ Streaming ${archiveTracks.length} chapter(s) from Archive Cloud`);
+            setLoadingMetadata(false);
+            return;
+          }
+          provideFallbackTrack(data);
+          return;
         } else if (data.audioUrl) {
           provideFallbackTrack(data);
           return;
@@ -315,7 +326,25 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
         }
       }
 
-      // 3. Fallback preview track
+      // 3. Tertiary fallback: Search Internet Archive cloud for studio recording
+      const titleSearch = (details?.title || book?.title || '').replace(/Audiobook.*$/i, '').replace(/ - .*$/, '').trim();
+      if (titleSearch) {
+        setDebridStatus('Checking Archive cloud for studio recording...');
+        const iaBooks = await api.searchAudiobooks(titleSearch);
+        const iaMatch = iaBooks.find((b) => b.id.startsWith('ia_'));
+        if (iaMatch) {
+          const cleanId = iaMatch.id.replace(/^ia_/, '');
+          const archiveTracks = await api.getArchiveTracks(cleanId);
+          if (archiveTracks.length > 0) {
+            setTracks(archiveTracks);
+            setDebridStatus(`⚡ Streaming ${archiveTracks.length} chapter(s) from Archive Cloud`);
+            setLoadingTracks(false);
+            return;
+          }
+        }
+      }
+
+      // 4. Fallback preview track
       provideFallbackTrack(details || (book as Audiobook));
     } catch (e: any) {
       console.warn('Torrent tracks fallback:', e);

@@ -845,6 +845,42 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         </button>
       )}
 
+      {/* ─── Surround Audio / Codec Compatibility Warning Banner ─── */}
+      {isSurround && !loading && !error && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-900/95 text-white text-xs border border-amber-500/50 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+            <Volume2 className="w-4 h-4" />
+            <span>{audioCodec || 'Surround 5.1'}</span>
+          </div>
+          <span className="hidden sm:inline text-slate-300 text-[11px]">
+            If silent in browser:
+          </span>
+          {onSwitchToMirror && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSwitchToMirror();
+              }}
+              className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] shadow transition-all cursor-pointer flex items-center gap-1"
+            >
+              <span>Switch to Mirror (Sound OK) 🔊</span>
+            </button>
+          )}
+          {onOpenVlc && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenVlc();
+              }}
+              className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1"
+            >
+              <Zap className="w-3 h-3 fill-current" />
+              <span>VLC</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ─── Seek Indicator (±10s) ──────────────────────── */}
       {seekIndicator.visible && (
         <div className={`absolute top-1/2 -translate-y-1/2 z-30 pointer-events-none animate-ping ${

@@ -130,28 +130,50 @@ export async function onRequestPost(context: any) {
       // -------------------------------------------------------------
       // Real-Debrid Resolution
       // -------------------------------------------------------------
-      const addBody = new URLSearchParams();
-      addBody.append('magnet', magnet);
+      // 1. Check existing torrents first to reuse an existing torrentId
+      let torrentId: string | null = null;
+      try {
+        const listRes = await fetch('https://api.real-debrid.com/rest/1.0/torrents?limit=50', {
+          headers: { Authorization: `Bearer ${apiKey}` }
+        });
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          if (Array.isArray(listData)) {
+            const existing = listData.find((t: any) =>
+              (infoHash && t.hash?.toLowerCase() === infoHash.toLowerCase()) ||
+              (t.filename && title && t.filename.toLowerCase().includes(title.toLowerCase().slice(0, 15)))
+            );
+            if (existing) {
+              torrentId = existing.id;
+            }
+          }
+        }
+      } catch {}
 
-      const addRes = await fetch('https://api.real-debrid.com/rest/1.0/torrents/addMagnet', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: addBody.toString()
-      });
+      if (!torrentId) {
+        const addBody = new URLSearchParams();
+        addBody.append('magnet', magnet);
 
-      if (!addRes.ok) {
-        const errText = await addRes.text();
-        return new Response(
-          JSON.stringify({ success: false, error: `Real-Debrid error (${addRes.status}): ${errText}` }),
-          { status: 200, headers: corsHeaders }
-        );
+        const addRes = await fetch('https://api.real-debrid.com/rest/1.0/torrents/addMagnet', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: addBody.toString()
+        });
+
+        if (!addRes.ok) {
+          const errText = await addRes.text();
+          return new Response(
+            JSON.stringify({ success: false, error: `Real-Debrid error (${addRes.status}): ${errText}` }),
+            { status: 200, headers: corsHeaders }
+          );
+        }
+
+        const addData = await addRes.json();
+        torrentId = addData.id;
       }
-
-      const addData = await addRes.json();
-      const torrentId = addData.id;
 
       const infoRes = await fetch(`https://api.real-debrid.com/rest/1.0/torrents/info/${torrentId}`, {
         headers: { Authorization: `Bearer ${apiKey}` }
@@ -175,11 +197,23 @@ export async function onRequestPost(context: any) {
           body: selectBody.toString()
         });
 
-        const updatedRes = await fetch(
-          `https://api.real-debrid.com/rest/1.0/torrents/info/${torrentId}`,
-          { headers: { Authorization: `Bearer ${apiKey}` } }
-        );
-        infoData = await updatedRes.json();
+        // Poll up to 6 times (with 400ms delay) to allow Real-Debrid to link the cached files
+        for (let attempt = 0; attempt < 6; attempt++) {
+          await new Promise((r) => setTimeout(r, 450));
+          const updatedRes = await fetch(
+            `https://api.real-debrid.com/rest/1.0/torrents/info/${torrentId}`,
+            { headers: { Authorization: `Bearer ${apiKey}` } }
+          );
+          if (updatedRes.ok) {
+            infoData = await updatedRes.json();
+            if (infoData.status === 'downloaded' && Array.isArray(infoData.links) && infoData.links.length > 0) {
+              break;
+            }
+            if (infoData.status === 'error' || infoData.status === 'dead') {
+              break;
+            }
+          }
+        }
       }
 
       if (infoData.status !== 'downloaded' || !Array.isArray(infoData.links) || infoData.links.length === 0) {

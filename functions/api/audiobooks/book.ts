@@ -158,7 +158,36 @@ export async function onRequestGet(context: any) {
     } catch {}
   }
 
-  // 5. Explicit 404 (Never disguise missing audiobooks as Harry Potter!)
+  // 5. Tertiary Search via Internet Archive (Free public & studio recordings)
+  if (searchTitle) {
+    try {
+      const cleanQ = searchTitle.replace(/Audiobook.*$/i, '').replace(/ - .*$/, '').trim();
+      const iaRes = await fetch(
+        `https://archive.org/advancedsearch.php?q=title:(${encodeURIComponent(cleanQ)})+AND+mediatype:(audio)&fl[]=identifier,title,creator,description&sort[]=downloads+desc&rows=1&output=json`
+      );
+      if (iaRes.ok) {
+        const iaData = await iaRes.json();
+        const doc = iaData.response?.docs?.[0];
+        if (doc?.identifier) {
+          return new Response(
+            JSON.stringify({
+              id: `ia_${doc.identifier}`,
+              title: doc.title || searchTitle,
+              author: doc.creator || 'Archive Recording',
+              cover: `https://archive.org/services/img/${doc.identifier}`,
+              audioUrl: `https://archive.org/download/${doc.identifier}`,
+              format: 'MP3',
+              platform: 'archive',
+              source: 'archive'
+            }),
+            { headers }
+          );
+        }
+      }
+    } catch {}
+  }
+
+  // 6. Explicit 404 (Never disguise missing audiobooks as Harry Potter!)
   return new Response(
     JSON.stringify({
       error: 'Audiobook swarm not found for this title',

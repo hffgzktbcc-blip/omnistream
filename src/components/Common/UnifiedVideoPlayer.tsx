@@ -321,23 +321,36 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
           return !u.includes('.mkv') && !u.includes('.avi') && !u.includes('.wmv');
         };
 
-        const topDirect = streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && s.isAAC && isBrowserPlayable(s.url))
-          || streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && !s.isSurround && isBrowserPlayable(s.url))
-          || streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && isBrowserPlayable(s.url))
-          || streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && s.isAAC)
-          || streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk)
-          || streams.find((s) => s.url && s.isDebrid)
-          || streams.find((s) => s.url);
+        // Only auto-switch to Cinema player if the stream has verified browser-compatible stereo audio!
+        // High-bitrate torrents with EAC3/DDP5.1/DTS audio or MKV containers will play silently in browsers.
+        // For those, keep Web Mirror active for sound, while leaving the Debrid stream selectable for VLC.
+        const verifiedBrowserStream = streams.find(
+          (s) => s.url && s.isDebrid && !s.isHighDmcaRisk && s.isAAC && isBrowserPlayable(s.url)
+        );
 
-        if (topDirect && topDirect.url) {
-          setActiveStremioStream(topDirect);
+        if (verifiedBrowserStream && verifiedBrowserStream.url) {
+          setActiveStremioStream(verifiedBrowserStream);
           setDirectStream({
             success: true,
-            streamUrl: topDirect.url,
-            qualities: [{ quality: topDirect.quality || 'Auto', url: topDirect.url }],
-            provider: topDirect.addonName
+            streamUrl: verifiedBrowserStream.url,
+            qualities: [{ quality: verifiedBrowserStream.quality || 'Auto', url: verifiedBrowserStream.url }],
+            provider: verifiedBrowserStream.addonName
           });
           setCinemaMode('cinema');
+        } else {
+          const topStream = streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk) || streams[0];
+          if (topStream) {
+            setActiveStremioStream(topStream);
+            if (topStream.url) {
+              setDirectStream({
+                success: true,
+                streamUrl: topStream.url,
+                qualities: [{ quality: topStream.quality || 'Auto', url: topStream.url }],
+                provider: topStream.addonName
+              });
+            }
+          }
+          setCinemaMode('iframe');
         }
       }
     }).catch((err) => {
