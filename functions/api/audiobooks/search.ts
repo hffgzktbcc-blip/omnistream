@@ -105,7 +105,30 @@ async function enrichBook(item: any) {
   const queryTerm = cleanReleaseForSearch(item.rawTitle || item.name || item.title || '');
   if (!queryTerm) return;
 
-  // 1. Try iTunes Audiobook API for official HD artwork & blurb
+  // 1. Primary Source: Audible Public Catalog API (Official Publisher art, Narrators, Runtime, Descriptions)
+  try {
+    const audibleUrl = `https://api.audible.com/1.0/catalog/products?title=${encodeURIComponent(queryTerm)}&num_results=1&products_sort_by=Relevance&response_groups=product_attrs,contributors,media`;
+    const audRes = await fetch(audibleUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } });
+    if (audRes.ok) {
+      const audData: any = await audRes.json();
+      const p = audData.products?.[0];
+      if (p) {
+        if (p.title) item.title = p.title;
+        if (p.authors?.length > 0) item.author = p.authors.map((a: any) => a.name).join(', ');
+        if (p.narrators?.length > 0) item.narrator = p.narrators.map((n: any) => n.name).join(', ');
+        if (p.runtime_length_min) {
+          const h = Math.floor(p.runtime_length_min / 60);
+          const m = p.runtime_length_min % 60;
+          item.duration = `${h} hrs and ${m} mins`;
+        }
+        if (p.product_images?.['500']) item.cover = p.product_images['500'];
+        if (p.merchandising_summary && !item.description) item.description = p.merchandising_summary;
+        return;
+      }
+    }
+  } catch {}
+
+  // 2. Secondary Source: iTunes Audiobook API for official HD artwork & blurb
   try {
     const itunesRes = await fetch(
       `https://itunes.apple.com/search?term=${encodeURIComponent(queryTerm)}&media=audiobook&limit=1`,
