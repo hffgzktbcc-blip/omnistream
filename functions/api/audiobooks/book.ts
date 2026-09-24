@@ -37,18 +37,24 @@ export async function onRequestGet(context: any) {
   ];
   const trackersParam = DEFAULT_TRACKERS.map(t => `&tr=${encodeURIComponent(t)}`).join('');
 
-  // 1. Direct WebTorrent ID (wt_<hash>)
-  if (bookId && bookId.startsWith('wt_')) {
-    const hash = bookId.replace('wt_', '').toLowerCase();
+  const isHex40 = (str?: string) => !!str && /^[a-fA-F0-9]{40}$/.test(str.trim());
+  const targetHash = isHex40(bookId)
+    ? bookId.toLowerCase()
+    : bookId?.startsWith('wt_') && isHex40(bookId.replace('wt_', ''))
+    ? bookId.replace('wt_', '').toLowerCase()
+    : '';
+
+  // 1. Direct WebTorrent ID or infoHash
+  if (targetHash) {
     const title = url.searchParams.get('title') || 'Audiobook Swarm';
     return new Response(
       JSON.stringify({
-        id: bookId,
-        infoHash: hash,
+        id: `wt_${targetHash}`,
+        infoHash: targetHash,
         title,
         author: url.searchParams.get('author') || 'Full Cast / Swarm',
         cover: url.searchParams.get('cover') || '',
-        magnet: `magnet:?xt=urn:btih:${hash}&dn=${encodeURIComponent(title)}${trackersParam}`,
+        magnet: `magnet:?xt=urn:btih:${targetHash}&dn=${encodeURIComponent(title)}${trackersParam}`,
         format: 'M4B',
         source: 'torrent'
       }),
@@ -56,11 +62,14 @@ export async function onRequestGet(context: any) {
     );
   }
 
-  // 2. Check MASTER_AUDIOBOOKS
+  const titleParam = (url.searchParams.get('title') || '').toLowerCase().trim();
+
+  // 2. Check MASTER_AUDIOBOOKS by id, url, or title
   const matched = MASTER_AUDIOBOOKS.find(
     (b) =>
       (bookId && (b.id === bookId || bookId.includes(b.id))) ||
-      (bookUrl && (b.url === bookUrl || bookUrl.includes(b.id) || b.url.includes(bookUrl)))
+      (bookUrl && (b.url === bookUrl || bookUrl.includes(b.id) || b.url.includes(bookUrl))) ||
+      (titleParam && (b.title.toLowerCase() === titleParam || b.title.toLowerCase().includes(titleParam)))
   );
 
   if (matched) {
@@ -120,13 +129,41 @@ export async function onRequestGet(context: any) {
     }
   }
 
-  // Fallback to first master book
-  const fallback = MASTER_AUDIOBOOKS[0];
+  // 4. Secondary Swarm Search via Apibay (cat=100 audiobooks) by Title
+  const searchTitle = url.searchParams.get('title') || url.searchParams.get('rawTitle') || '';
+  if (searchTitle) {
+    try {
+      const cleanQ = searchTitle.replace(/Audiobook.*$/i, '').replace(/ - .*$/, '').trim();
+      const apibayRes = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(cleanQ)}&cat=100`);
+      if (apibayRes.ok) {
+        const results = await apibayRes.json();
+        if (Array.isArray(results) && results.length > 0 && results[0].id !== '0' && results[0].info_hash) {
+          const top = results[0];
+          const infoHash = top.info_hash.toLowerCase();
+          return new Response(
+            JSON.stringify({
+              id: `wt_${infoHash}`,
+              title: searchTitle,
+              author: url.searchParams.get('author') || 'Swarm Release',
+              cover: url.searchParams.get('cover') || '',
+              infoHash,
+              magnet: `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(searchTitle)}${trackersParam}`,
+              format: 'M4B',
+              source: 'torrent'
+            }),
+            { headers }
+          );
+        }
+      }
+    } catch {}
+  }
+
+  // 5. Explicit 404 (Never disguise missing audiobooks as Harry Potter!)
   return new Response(
     JSON.stringify({
-      ...fallback,
-      magnet: `magnet:?xt=urn:btih:${fallback.infoHash}&dn=${encodeURIComponent(fallback.title)}${trackersParam}`
+      error: 'Audiobook swarm not found for this title',
+      success: false
     }),
-    { headers }
+    { status: 404, headers }
   );
 }

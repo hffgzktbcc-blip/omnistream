@@ -321,9 +321,11 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
           return !u.includes('.mkv') && !u.includes('.avi') && !u.includes('.wmv');
         };
 
-        const topDirect = streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && isBrowserPlayable(s.url))
+        const topDirect = streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && s.isAAC && isBrowserPlayable(s.url))
+          || streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && !s.isSurround && isBrowserPlayable(s.url))
+          || streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && isBrowserPlayable(s.url))
+          || streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && s.isAAC)
           || streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk)
-          || streams.find((s) => s.url && s.isDebrid && isBrowserPlayable(s.url))
           || streams.find((s) => s.url && s.isDebrid)
           || streams.find((s) => s.url);
 
@@ -555,7 +557,8 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
     }
     const currentIndex = stremioStreams.findIndex((s) => s.id === activeStremioStream.id);
     const remaining = stremioStreams.slice(currentIndex + 1);
-    const nextStream = remaining.find((s) => s.url && !s.isHighDmcaRisk)
+    const nextStream = remaining.find((s) => s.url && !s.isHighDmcaRisk && s.isAAC)
+      || remaining.find((s) => s.url && !s.isHighDmcaRisk)
       || remaining.find((s) => s.url)
       || stremioStreams.find((s) => s.url && s.id !== activeStremioStream.id);
 
@@ -717,6 +720,8 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                   >
                     <span>{s.url ? '⚡' : '🧲'} {s.quality || '4K'}</span>
                     {s.isDebrid && s.url && <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1 rounded font-bold">RD Cloud</span>}
+                    {s.isAAC && <span className="text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1 rounded font-bold">AAC</span>}
+                    {s.isSurround && !s.isAAC && <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1 rounded font-bold">5.1</span>}
                     {s.isDebrid && !s.url && <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 rounded font-bold">RD P2P</span>}
                     {!s.url && s.seeders ? <span className="text-[9px] text-purple-300/80">({s.seeders} seeds)</span> : null}
                     {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />}
@@ -875,6 +880,9 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                 episode={currentEpisode}
                 isDebrid={activeStremioStream?.isDebrid}
                 streamTitle={activeStremioStream?.title || activeStremioStream?.name}
+                isAAC={activeStremioStream?.isAAC}
+                isSurround={activeStremioStream?.isSurround}
+                audioCodec={activeStremioStream?.audioCodec}
                 resumeTime={watchHistoryService.getItem(
                   session.type === 'movie' ? `movie_${effectiveTmdbId}` :
                   session.type === 'tv' ? `tv_${effectiveTmdbId}` :

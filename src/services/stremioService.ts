@@ -26,6 +26,9 @@ export interface StremioStream {
   seeders?: number;
   sourceGroup?: string;
   isHighDmcaRisk?: boolean;
+  isAAC?: boolean;
+  isSurround?: boolean;
+  audioCodec?: string;
   behaviorHints?: any;
 }
 
@@ -344,6 +347,24 @@ class StremioService {
               const seedMatch = rawTitle.match(/👤\s*(\d+)/);
               const seeders = seedMatch ? parseInt(seedMatch[1]) : undefined;
 
+              // Extract audio codec tags & browser audio compatibility
+              let audioCodec: string | undefined;
+              let isAAC = false;
+              let isSurround = false;
+
+              if (/aac|mp3|opus|flac|stereo|2\.0|2ch/i.test(rawCombined)) {
+                isAAC = true;
+                audioCodec = 'AAC Stereo';
+              } else if (/atmos|truehd|dts[-_ ]?hd|dts|eac3|ddp|ac3|5\.1|7\.1|6ch|8ch/i.test(rawCombined)) {
+                isSurround = true;
+                if (/atmos/i.test(rawCombined)) audioCodec = 'Dolby Atmos';
+                else if (/truehd/i.test(rawCombined)) audioCodec = 'TrueHD';
+                else if (/dts/i.test(rawCombined)) audioCodec = 'DTS';
+                else if (/eac3|ddp/i.test(rawCombined)) audioCodec = 'DDP 5.1';
+                else if (/ac3/i.test(rawCombined)) audioCodec = 'AC3 5.1';
+                else audioCodec = 'Surround 5.1';
+              }
+
               const magnet = s.infoHash
                 ? `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(rawTitle || 'Stream')}`
                 : undefined;
@@ -363,6 +384,9 @@ class StremioService {
                 seeders,
                 sourceGroup,
                 isHighDmcaRisk,
+                isAAC,
+                isSurround,
+                audioCodec,
                 behaviorHints: s.behaviorHints
               });
             });
@@ -376,9 +400,10 @@ class StremioService {
     // Sort:
     // 1. Direct playable URLs first
     // 2. Clean releases first (push YTS/EZTV high DMCA risk to bottom)
-    // 3. Quality: 4K UHD -> 1080p HD -> 720p
-    // 4. File size descending (high bitrate uncompressed remuxes first)
-    // 5. Seeders descending
+    // 3. Browser-compatible audio first (AAC/Stereo) so HTML5 video plays with sound!
+    // 4. Quality: 4K UHD -> 1080p HD -> 720p
+    // 5. File size descending (high bitrate uncompressed remuxes first)
+    // 6. Seeders descending
     return streams.sort((a, b) => {
       if (a.url && !b.url) return -1;
       if (!a.url && b.url) return 1;
@@ -386,6 +411,11 @@ class StremioService {
       // Deprioritize high DMCA risk releases (e.g. YTS/EZTV) so users don't hit copyright removal notice
       if (a.isHighDmcaRisk !== b.isHighDmcaRisk) {
         return a.isHighDmcaRisk ? 1 : -1;
+      }
+
+      // Prioritize AAC / stereo browser audio compatibility so video plays with sound in HTML5
+      if (a.isAAC !== b.isAAC) {
+        return a.isAAC ? -1 : 1;
       }
 
       const qOrder: Record<string, number> = { '4K UHD': 3, '1080p HD': 2, '720p': 1 };

@@ -867,24 +867,6 @@ export const api = {
     // Curated Studio Audiobooks with Direct High-Quality Streams
     const curated: Audiobook[] = [
       {
-        id: "ia_harry-potter_20240930",
-        rawTitle: "Harry Potter and the Philosopher's Stone - J.K. Rowling",
-        title: "Harry Potter and the Philosopher's Stone",
-        author: "J.K. Rowling",
-        narrator: "Stephen Fry",
-        cover: "https://is1-ssl.mzstatic.com/image/thumb/Publication221/v4/6c/58/6b/6c586b29-afa0-4595-80ea-12bf914e33e2/9781781105900.jpg/1200x1200bb.jpg",
-        categories: ["Fantasy", "Young Adult"],
-        genre: "Fantasy",
-        duration: "8h 18m",
-        durationSeconds: 29880,
-        format: "MP3",
-        bitrate: "128 Kbps",
-        size: "240 MB",
-        platform: "archive",
-        audioUrl: "https://archive.org/download/harry-potter_20240930/HP1/HP1%20-%20CH01%20Philosopher%27s%20Stone.mp3",
-        description: "Harry Potter has never even heard of Hogwarts when the letters start dropping on the doormat at number four, Privet Drive. Complete unabridged narration by Stephen Fry."
-      },
-      {
         id: "ia_serkishobbit",
         rawTitle: "The Hobbit - J.R.R. Tolkien (Read by Andy Serkis)",
         title: "The Hobbit",
@@ -919,6 +901,24 @@ export const api = {
         platform: "archive",
         audioUrl: "https://archive.org/download/dune-part-ii/Dune%2C%20Book%201%20-%20Part%2001.mp3",
         description: "Set on the desert planet Arrakis, Dune is the story of Paul Atreides, heir to a noble family tasked with ruling an inhospitable world."
+      },
+      {
+        id: "ia_harry-potter_20240930",
+        rawTitle: "Harry Potter and the Philosopher's Stone - J.K. Rowling",
+        title: "Harry Potter and the Philosopher's Stone",
+        author: "J.K. Rowling",
+        narrator: "Stephen Fry",
+        cover: "https://is1-ssl.mzstatic.com/image/thumb/Publication221/v4/6c/58/6b/6c586b29-afa0-4595-80ea-12bf914e33e2/9781781105900.jpg/1200x1200bb.jpg",
+        categories: ["Fantasy", "Young Adult"],
+        genre: "Fantasy",
+        duration: "8h 18m",
+        durationSeconds: 29880,
+        format: "MP3",
+        bitrate: "128 Kbps",
+        size: "240 MB",
+        platform: "archive",
+        audioUrl: "https://archive.org/download/harry-potter_20240930/HP1/HP1%20-%20CH01%20Philosopher%27s%20Stone.mp3",
+        description: "Harry Potter has never even heard of Hogwarts when the letters start dropping on the doormat at number four, Privet Drive. Complete unabridged narration by Stephen Fry."
       },
       {
         id: "ia_1984_20220119",

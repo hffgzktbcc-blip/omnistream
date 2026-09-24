@@ -23,6 +23,9 @@ interface CinemaPlayerProps {
   resumeTime?: number;
   isDebrid?: boolean;
   streamTitle?: string;
+  isAAC?: boolean;
+  isSurround?: boolean;
+  audioCodec?: string;
   onError?: () => void;        // fallback trigger
   onClose?: () => void;
   onSwitchToMirror?: () => void;
@@ -66,6 +69,9 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
   resumeTime,
   isDebrid,
   streamTitle,
+  isAAC,
+  isSurround,
+  audioCodec,
   onError,
   onClose,
   onSwitchToMirror,
@@ -405,6 +411,10 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
+      if (video.muted) {
+        video.muted = false;
+        setMuted(false);
+      }
       video.play().catch(() => {});
     } else {
       video.pause();
@@ -416,6 +426,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
     const video = videoRef.current;
     if (!video) return;
     video.muted = !video.muted;
+    setMuted(video.muted);
   }, []);
 
   const toggleFullscreen = useCallback(() => {
@@ -673,7 +684,11 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         lastTapRef.current = { time: 0, x: 0 };
       } else {
         lastTapRef.current = { time: now, x: touch.clientX };
-        // Single tap → toggle HUD after short delay
+        // Single tap → un-mute if muted by autoplay, then toggle HUD
+        if (videoRef.current && (videoRef.current.muted || muted)) {
+          videoRef.current.muted = false;
+          setMuted(false);
+        }
         if (doubleTapTimerRef.current) clearTimeout(doubleTapTimerRef.current);
         doubleTapTimerRef.current = setTimeout(() => {
           showHudTemporarily();
@@ -682,7 +697,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
     }
 
     touchStartRef.current = null;
-  }, [seek, showHudTemporarily]);
+  }, [seek, showHudTemporarily, muted]);
 
   // ─── Aspect Ratio Toggle ──────────────────────────────────
   const cycleAspect = useCallback(() => {
@@ -713,7 +728,13 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
       className="relative w-full h-full bg-black select-none overflow-hidden"
       style={{ filter: `brightness(${brightnessOverlay})` }}
       onMouseMove={showHudTemporarily}
-      onClick={() => !isTouchDevice() && showHudTemporarily()}
+      onClick={() => {
+        if (videoRef.current && (videoRef.current.muted || muted)) {
+          videoRef.current.muted = false;
+          setMuted(false);
+        }
+        if (!isTouchDevice()) showHudTemporarily();
+      }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -807,6 +828,23 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
         </div>
       )}
 
+      {/* ─── Unmute Overlay (Autoplay Mute Banner) ─── */}
+      {muted && !loading && !error && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (videoRef.current) {
+              videoRef.current.muted = false;
+              setMuted(false);
+            }
+          }}
+          className="absolute top-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/95 hover:bg-purple-500 text-white font-bold text-xs shadow-2xl backdrop-blur-md border border-purple-400/50 transition-all hover:scale-105 animate-pulse cursor-pointer"
+        >
+          <VolumeX className="w-4 h-4 text-amber-300 animate-bounce" />
+          <span>Audio Muted by Browser • Click to Unmute 🔊</span>
+        </button>
+      )}
+
       {/* ─── Seek Indicator (±10s) ──────────────────────── */}
       {seekIndicator.visible && (
         <div className={`absolute top-1/2 -translate-y-1/2 z-30 pointer-events-none animate-ping ${
@@ -890,7 +928,21 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
               </button>
             )}
             <div>
-              <h3 className="text-sm font-bold text-white line-clamp-1">{title}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white line-clamp-1">{title}</h3>
+                {isAAC && (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[9px] font-bold">
+                    <Volume2 className="w-2.5 h-2.5" />
+                    AAC Stereo
+                  </span>
+                )}
+                {isSurround && !isAAC && (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-bold" title="Surround sound stream. If no audio in browser, use VLC.">
+                    <Volume2 className="w-2.5 h-2.5" />
+                    {audioCodec || '5.1 Surround'}
+                  </span>
+                )}
+              </div>
               {mediaType !== 'movie' && season != null && episode != null && (
                 <p className="text-[10px] text-white/60 font-medium">S{season} E{episode}</p>
               )}

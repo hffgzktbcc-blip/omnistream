@@ -181,27 +181,59 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
       return;
     }
 
+    const isHex40 = (str?: string) => !!str && /^[a-fA-F0-9]{40}$/.test(str.trim());
+    const hasDirectHash = isHex40(targetBook.infoHash) || (targetBook.id?.startsWith('wt_') && isHex40(targetBook.id.replace(/^wt_/, '')));
+
     // 3. WebTorrent Swarm Book (direct infoHash already present)
-    if (targetBook.infoHash || targetBook.id.startsWith('wt_') || targetBook.source === 'torrent') {
+    if (hasDirectHash) {
       setLoadingMetadata(false);
-      const hash = targetBook.infoHash || targetBook.id.replace(/^wt_/, '');
+      const hash = (targetBook.infoHash || targetBook.id.replace(/^wt_/, '')).trim().toLowerCase();
       loadTorrentTracks(hash, targetBook.magnet);
       return;
     }
 
-    // 4. AudioBay / Torrent Swarm (Lookup by page URL/ID)
+    // 4. AudioBay / Torrent Swarm (Lookup by page URL/ID/Title)
     setLoadingMetadata(true);
     try {
-      const res = await fetch(`/api/audiobooks/book?url=${encodeURIComponent(targetBook.url || targetBook.id)}`);
-      const data: Audiobook = await res.json();
-      setDetails((prev) => ({ ...(prev || targetBook), ...data }));
+      const queryParams = new URLSearchParams();
+      if (targetBook.url) queryParams.set('url', targetBook.url);
+      if (targetBook.id) queryParams.set('id', targetBook.id);
+      if (targetBook.title) queryParams.set('title', targetBook.title);
+      if (targetBook.author) queryParams.set('author', targetBook.author);
+      if (targetBook.cover) queryParams.set('cover', targetBook.cover);
 
-      if (data.infoHash) {
-        loadTorrentTracks(data.infoHash, data.magnet);
-      } else {
-        // Fallback mock track for immediate playback
-        provideFallbackTrack(data);
+      const res = await fetch(`/api/audiobooks/book?${queryParams.toString()}`);
+      if (res.ok) {
+        const data: Audiobook = await res.json();
+        setDetails((prev) => ({ ...(prev || targetBook), ...data }));
+
+        if (data.infoHash && isHex40(data.infoHash)) {
+          loadTorrentTracks(data.infoHash, data.magnet);
+          return;
+        } else if (data.audioUrl) {
+          provideFallbackTrack(data);
+          return;
+        }
       }
+
+      // If /api/audiobooks/book could not find hash, attempt client-side Apibay search directly
+      try {
+        const cleanTitle = (targetBook.title || '').replace(/Audiobook.*$/i, '').trim();
+        const apibayRes = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(cleanTitle)}&cat=100`);
+        if (apibayRes.ok) {
+          const results = await apibayRes.json();
+          if (Array.isArray(results) && results.length > 0 && results[0].id !== '0' && isHex40(results[0].info_hash)) {
+            const infoHash = results[0].info_hash.toLowerCase();
+            const trackers = 'wss://tracker.openwebtorrent.com,wss://tracker.btorrent.xyz,udp://tracker.opentrackr.org:1337/announce';
+            const magnet = `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(cleanTitle)}&tr=${trackers}`;
+            setDetails((prev) => ({ ...(prev || targetBook), infoHash, magnet }));
+            loadTorrentTracks(infoHash, magnet);
+            return;
+          }
+        }
+      } catch {}
+
+      provideFallbackTrack(targetBook);
     } catch (e: any) {
       console.warn('Book detail fetch fallback:', e);
       provideFallbackTrack(targetBook);
@@ -211,17 +243,21 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
   };
 
   const provideFallbackTrack = (target: Audiobook) => {
-    const stream = target.audioUrl || 'https://archive.org/download/harry-potter_20240930/HP1/HP1%20-%20CH01%20Philosopher%27s%20Stone.mp3';
-    const fallbackTrack: AudioTrack = {
-      index: 0,
-      name: `${target.title} - Chapter 1`,
-      path: 'audio_stream.mp3',
-      length: target.durationSeconds || 3600,
-      sizeFormatted: target.size || 'Audio Stream',
-      streamUrl: stream,
-      downloadUrl: stream
-    };
-    setTracks([fallbackTrack]);
+    if (target.audioUrl) {
+      const fallbackTrack: AudioTrack = {
+        index: 0,
+        name: `${target.title} - Chapter 1`,
+        path: 'audio_stream.mp3',
+        length: target.durationSeconds || 3600,
+        sizeFormatted: target.size || 'Audio Stream',
+        streamUrl: target.audioUrl,
+        downloadUrl: target.audioUrl
+      };
+      setTracks([fallbackTrack]);
+    } else {
+      setTracks([]);
+      setDebridStatus('⚠️ No cached cloud stream found for this title. Try another audiobook.');
+    }
   };
 
   const handleSaveDebridKey = async () => {
