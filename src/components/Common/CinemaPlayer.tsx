@@ -28,6 +28,7 @@ interface CinemaPlayerProps {
   onSwitchToMirror?: () => void;
   onOpenVlc?: () => void;
   onOpenWvc?: () => void;
+  onNextStream?: () => void;
 }
 
 type AspectMode = '16:9' | 'fill' | 'original';
@@ -70,6 +71,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
   onSwitchToMirror,
   onOpenVlc,
   onOpenWvc,
+  onNextStream,
 }) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -90,6 +92,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
   const [muted, setMuted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCopyrightNoticeOpen, setIsCopyrightNoticeOpen] = useState(false);
   const [showHud, setShowHud] = useState(true);
   const [showDrawer, setShowDrawer] = useState<'subtitles' | 'audio' | 'quality' | null>(null);
   const [selectedSubIdx, setSelectedSubIdx] = useState(-1); // -1 = off
@@ -126,6 +129,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
 
     setLoading(true);
     setError(null);
+    setIsCopyrightNoticeOpen(false);
 
     if (hlsRef.current) {
       hlsRef.current.destroy();
@@ -298,7 +302,22 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onTimeUpdate = () => setCurrentTime(video.currentTime);
-    const onDurationChange = () => setDuration(video.duration || 0);
+    const onDurationChange = () => {
+      const d = video.duration || 0;
+      setDuration(d);
+      // Real-Debrid serves a 10-25 second copyright warning video clip when a release has been removed
+      if (d > 0 && d <= 25 && isDebridStream) {
+        console.warn('[CinemaPlayer] Detected short duration video (<= 25s) on Debrid stream - Real-Debrid copyright notice.');
+        video.pause();
+        setIsCopyrightNoticeOpen(true);
+      }
+    };
+    const onEnded = () => {
+      if (video.currentTime > 0 && video.currentTime <= 25 && isDebridStream) {
+        console.warn('[CinemaPlayer] Video ended within 25 seconds on Debrid stream - Real-Debrid copyright notice.');
+        setIsCopyrightNoticeOpen(true);
+      }
+    };
     const onVolumeChange = () => {
       setVolume(video.volume);
       setMuted(video.muted);
@@ -310,6 +329,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
     video.addEventListener('pause', onPause);
     video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('durationchange', onDurationChange);
+    video.addEventListener('ended', onEnded);
     video.addEventListener('volumechange', onVolumeChange);
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
@@ -319,6 +339,7 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
       video.removeEventListener('pause', onPause);
       video.removeEventListener('timeupdate', onTimeUpdate);
       video.removeEventListener('durationchange', onDurationChange);
+      video.removeEventListener('ended', onEnded);
       video.removeEventListener('volumechange', onVolumeChange);
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
@@ -1075,6 +1096,53 @@ export const CinemaPlayer: React.FC<CinemaPlayerProps> = ({
               <p>OK Select • BACK Close</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Real-Debrid Copyright Notice Modal */}
+      {isCopyrightNoticeOpen && (
+        <div className="absolute inset-0 z-50 bg-black/92 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+          <div className="max-w-md w-full bg-[#0e101a] border border-amber-500/50 rounded-3xl p-6 sm:p-7 shadow-2xl text-center flex flex-col items-center">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mb-4 shadow-lg shadow-amber-500/10">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <h3 className="text-lg font-black text-white mb-1.5">Stream Unavailable</h3>
+            <p className="text-xs text-gray-300 leading-relaxed mb-5">
+              This specific release hash was removed from Real-Debrid due to a copyright notice. Clean alternative releases or free mirrors are ready to play!
+            </p>
+            <div className="w-full space-y-2.5">
+              {onNextStream && (
+                <button
+                  onClick={() => {
+                    setIsCopyrightNoticeOpen(false);
+                    onNextStream();
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
+                >
+                  <Play className="w-4 h-4 fill-black" />
+                  <span>Try Next Clean Release</span>
+                </button>
+              )}
+              {onSwitchToMirror && (
+                <button
+                  onClick={() => {
+                    setIsCopyrightNoticeOpen(false);
+                    onSwitchToMirror();
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 font-bold text-xs border border-purple-500/40 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4 text-purple-400" />
+                  <span>Switch to Free Mirrors</span>
+                </button>
+              )}
+              <button
+                onClick={() => setIsCopyrightNoticeOpen(false)}
+                className="w-full py-2 text-gray-400 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -317,6 +317,17 @@ export const StremioSettingsModal: React.FC<StremioSettingsModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Anti-Copyright Notice Info */}
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-left space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Notice on Real-Debrid "Removed for Copyright" Warnings</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Real-Debrid enforces court-ordered DMCA hash filtering, blocking certain public releases (e.g. YTS/EZTV). OmniStream now queries <strong>both Torrentio & Comet (DMCA-Safe)</strong> in parallel, purging uncached torrents and prioritizing clean releases (TorrentGalaxy, 1337x, Remuxes). If a stream shows copyright, the player automatically detects it and lets you jump to clean releases or free mirrors!
+                </p>
+              </div>
             </form>
           </div>
 

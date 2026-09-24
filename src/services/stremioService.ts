@@ -24,6 +24,8 @@ export interface StremioStream {
   isDebrid?: boolean;
   size?: string;
   seeders?: number;
+  sourceGroup?: string;
+  isHighDmcaRisk?: boolean;
   behaviorHints?: any;
 }
 
@@ -173,6 +175,34 @@ class StremioService {
   }
 
   // -------------------------------------------------------------
+  // Build Comet Stream URL with ElfHosted Anti-Copyright Filtering
+  // -------------------------------------------------------------
+  public buildCometStreamUrl(
+    rdKey: string,
+    type: 'movie' | 'tv' | 'anime',
+    stremioPath: string
+  ): string {
+    const cometConfig = {
+      maxResultsPerResolution: 0,
+      maxSize: 0,
+      cachedOnly: true,
+      removeTrash: true,
+      resultFormat: ['all'],
+      debridServices: [{ service: 'realdebrid', apiKey: rdKey.trim() }],
+      enableTorrent: false,
+      languages: { required: [], allowed: [], exclude: [], preferred: [] },
+      resolutions: {},
+      options: {
+        remove_ranks_under: 0,
+        allow_english_in_languages: true,
+        remove_unknown_languages: false,
+      },
+    };
+    const cometB64 = btoa(JSON.stringify(cometConfig));
+    return `https://comet.elfhosted.com/${cometB64}/stream/${stremioPath}`;
+  }
+
+  // -------------------------------------------------------------
   // Fetch Streams from Stremio Addons
   // -------------------------------------------------------------
   public async getStreams(params: {
@@ -200,21 +230,44 @@ class StremioService {
     const episode = params.episode || 1;
     const stremioPath = isSeries ? `series/${imdbId}:${season}:${episode}.json` : `movie/${imdbId}.json`;
 
+    const queryTargets: { id: string; name: string; url: string }[] = [];
+
+    activeAddons.forEach((addon) => {
+      let baseUrl = addon.url;
+      // If Torrentio and user configured debrid, inject cached-only anti-copyright configuration
+      if (addon.id === 'torrentio' && debridKey) {
+        const debridParam = `${debridProvider}=${debridKey.trim()}|qualityfilter=scr,cam|debridoptions=nodownloadlinks|sort=quality`;
+        baseUrl = `https://torrentio.strem.fun/${debridParam}`;
+      }
+      queryTargets.push({
+        id: addon.id,
+        name: addon.name,
+        url: `${baseUrl}/stream/${stremioPath}`
+      });
+    });
+
+    // Dual-engine query: Query Comet (DMCA-Safe) in parallel when Real-Debrid is enabled
+    if (debridKey && debridProvider === 'realdebrid') {
+      try {
+        queryTargets.push({
+          id: 'comet',
+          name: 'Comet (DMCA-Safe)',
+          url: this.buildCometStreamUrl(debridKey, params.type, stremioPath)
+        });
+      } catch (err) {
+        console.warn('Failed to build Comet stream URL:', err);
+      }
+    }
+
+    const seenUrls = new Set<string>();
+
     await Promise.allSettled(
-      activeAddons.map(async (addon) => {
+      queryTargets.map(async (target) => {
         try {
-          let baseUrl = addon.url;
-
-          // If Torrentio and user configured debrid, inject debrid configuration
-          if (addon.id === 'torrentio' && debridKey) {
-            const debridParam = `${debridProvider}=${debridKey}`;
-            baseUrl = `https://torrentio.strem.fun/${debridParam}`;
-          }
-
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 6000);
+          const timer = setTimeout(() => controller.abort(), 7000);
 
-          const res = await fetch(`${baseUrl}/stream/${stremioPath}`, {
+          const res = await fetch(target.url, {
             headers: { Accept: 'application/json' },
             signal: controller.signal
           });
@@ -226,11 +279,60 @@ class StremioService {
           if (Array.isArray(data.streams)) {
             data.streams.forEach((s: any, idx: number) => {
               const rawTitle = s.title || s.name || '';
-              const isDebrid = s.name?.includes('[RD+]') || s.name?.includes('[TB+]') || s.name?.includes('[AD+]') || !!debridKey;
+              const rawCombined = `${s.name || ''} ${s.title || ''} ${s.description || ''} ${s.url || ''}`.toLowerCase();
+
+              // 1. Purge Real-Debrid copyright error notices, placeholders, and broken links
+              if (
+                rawCombined.includes('rd error') ||
+                rawCombined.includes('invalid') ||
+                rawCombined.includes('failed_access') ||
+                rawCombined.includes('infringing') ||
+                rawCombined.includes('copyright') ||
+                rawCombined.includes('takedown') ||
+                rawCombined.includes('unavailable for legal') ||
+                rawCombined.includes('file_unavailable') ||
+                rawCombined.includes('[rd download]') ||
+                rawCombined.includes('[❌]') ||
+                rawCombined.includes('[⛔️]')
+              ) {
+                return;
+              }
+
+              // Deduplicate streams by URL
+              if (s.url && seenUrls.has(s.url)) {
+                return;
+              }
+              if (s.url) {
+                seenUrls.add(s.url);
+              }
+
+              const isDebrid = s.name?.includes('[RD+]') || s.name?.includes('[TB+]') || s.name?.includes('[AD+]') || !!s.url || !!debridKey;
+
+              // Detect source group and flag high DMCA risk hashes
+              let sourceGroup = target.name;
+              let isHighDmcaRisk = false;
+
+              if (/torrentgalaxy|\[tgx\]/i.test(rawCombined)) {
+                sourceGroup = 'TorrentGalaxy';
+              } else if (/1337x/i.test(rawCombined)) {
+                sourceGroup = '1337x';
+              } else if (/thepiratebay|tpb/i.test(rawCombined)) {
+                sourceGroup = 'ThePirateBay';
+              } else if (/framestor|flux|chdbits|remux|bdremux/i.test(rawCombined)) {
+                sourceGroup = 'Remux / Scene';
+              } else if (/yts|yify/i.test(rawCombined)) {
+                sourceGroup = 'YTS';
+                isHighDmcaRisk = true; // YTS public hashes are heavily targeted by French court DMCA orders on Real-Debrid
+              } else if (/eztv/i.test(rawCombined)) {
+                sourceGroup = 'EZTV';
+                isHighDmcaRisk = true;
+              } else if (/comet/i.test(target.id) || /comet/i.test(s.name || '')) {
+                sourceGroup = 'Comet (DMCA-Safe)';
+              }
 
               // Parse quality label
               let quality = '1080p';
-              if (/4k|2160p|uhd/i.test(rawTitle) || /4k|2160p/i.test(s.name || '')) quality = '4K UHD';
+              if (/4k|2160p|uhd|remux/i.test(rawTitle) || /4k|2160p/i.test(s.name || '')) quality = '4K UHD';
               else if (/1080p|fhd/i.test(rawTitle) || /1080p/i.test(s.name || '')) quality = '1080p HD';
               else if (/720p|hd/i.test(rawTitle)) quality = '720p';
 
@@ -247,37 +349,59 @@ class StremioService {
                 : undefined;
 
               streams.push({
-                id: `${addon.id}_${idx}_${Date.now()}`,
-                name: s.name || addon.name,
+                id: `${target.id}_${idx}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                name: s.name || target.name,
                 title: rawTitle,
                 url: s.url,
                 magnet,
                 infoHash: s.infoHash,
                 fileIdx: s.fileIdx,
                 quality,
-                addonName: addon.name,
+                addonName: target.name,
                 isDebrid,
                 size,
                 seeders,
+                sourceGroup,
+                isHighDmcaRisk,
                 behaviorHints: s.behaviorHints
               });
             });
           }
         } catch (e) {
-          console.warn(`Failed to fetch streams from addon ${addon.name}:`, e);
+          console.warn(`Failed to fetch streams from addon ${target.name}:`, e);
         }
       })
     );
 
-    // Sort: Direct playable URLs first, then 4K -> 1080p -> 720p, then highest seeders
+    // Sort:
+    // 1. Direct playable URLs first
+    // 2. Clean releases first (push YTS/EZTV high DMCA risk to bottom)
+    // 3. Quality: 4K UHD -> 1080p HD -> 720p
+    // 4. File size descending (high bitrate uncompressed remuxes first)
+    // 5. Seeders descending
     return streams.sort((a, b) => {
       if (a.url && !b.url) return -1;
       if (!a.url && b.url) return 1;
+
+      // Deprioritize high DMCA risk releases (e.g. YTS/EZTV) so users don't hit copyright removal notice
+      if (a.isHighDmcaRisk !== b.isHighDmcaRisk) {
+        return a.isHighDmcaRisk ? 1 : -1;
+      }
 
       const qOrder: Record<string, number> = { '4K UHD': 3, '1080p HD': 2, '720p': 1 };
       const qA = qOrder[a.quality || '1080p HD'] || 0;
       const qB = qOrder[b.quality || '1080p HD'] || 0;
       if (qA !== qB) return qB - qA;
+
+      const parseBytes = (str?: string) => {
+        if (!str) return 0;
+        const num = parseFloat(str);
+        if (str.toUpperCase().includes('GB')) return num * 1024;
+        return num;
+      };
+      const sizeA = parseBytes(a.size);
+      const sizeB = parseBytes(b.size);
+      if (sizeA !== sizeB && sizeA > 0 && sizeB > 0) return sizeB - sizeA;
 
       return (b.seeders || 0) - (a.seeders || 0);
     });

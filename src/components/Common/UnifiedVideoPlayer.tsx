@@ -321,7 +321,9 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
           return !u.includes('.mkv') && !u.includes('.avi') && !u.includes('.wmv');
         };
 
-        const topDirect = streams.find((s) => s.url && s.isDebrid && isBrowserPlayable(s.url))
+        const topDirect = streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk && isBrowserPlayable(s.url))
+          || streams.find((s) => s.url && s.isDebrid && !s.isHighDmcaRisk)
+          || streams.find((s) => s.url && s.isDebrid && isBrowserPlayable(s.url))
           || streams.find((s) => s.url && s.isDebrid)
           || streams.find((s) => s.url);
 
@@ -542,6 +544,34 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
       window.location.href = wvcUrl;
     } catch {
       // Ignored
+    }
+  };
+
+  const handlePlayNextStream = () => {
+    if (!activeStremioStream || stremioStreams.length <= 1) {
+      setCinemaFailed(true);
+      setCinemaMode('iframe');
+      return;
+    }
+    const currentIndex = stremioStreams.findIndex((s) => s.id === activeStremioStream.id);
+    const remaining = stremioStreams.slice(currentIndex + 1);
+    const nextStream = remaining.find((s) => s.url && !s.isHighDmcaRisk)
+      || remaining.find((s) => s.url)
+      || stremioStreams.find((s) => s.url && s.id !== activeStremioStream.id);
+
+    if (nextStream && nextStream.url) {
+      setActiveStremioStream(nextStream);
+      setDirectStream({
+        success: true,
+        streamUrl: nextStream.url,
+        qualities: [{ quality: nextStream.quality || 'Auto', url: nextStream.url }],
+        provider: nextStream.addonName
+      });
+      setCinemaFailed(false);
+      setCinemaMode('cinema');
+    } else {
+      setCinemaFailed(true);
+      setCinemaMode('iframe');
     }
   };
 
@@ -860,6 +890,7 @@ export const UnifiedVideoPlayer: React.FC<UnifiedVideoPlayerProps> = ({
                 }}
                 onOpenVlc={handleOpenVlc}
                 onOpenWvc={handleOpenWvc}
+                onNextStream={handlePlayNextStream}
                 onClose={onClose}
               />
             ) : (
