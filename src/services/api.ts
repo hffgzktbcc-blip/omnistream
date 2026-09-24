@@ -1094,6 +1094,39 @@ export const api = {
     return [];
   },
 
+  async searchArchiveDirect(query: string): Promise<Audiobook[]> {
+    const cleanQ = (query || '').replace(/Audiobook.*$/i, '').replace(/ - .*$/, '').trim();
+    if (!cleanQ) return [];
+
+    try {
+      const q = encodeURIComponent(`(title:(${cleanQ}) OR (${cleanQ})) AND mediatype:(audio)`);
+      const res = await fetch(
+        `https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier,title,creator,description,year,downloads&sort[]=downloads+desc&rows=15&output=json`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const docs = data.response?.docs || [];
+        if (docs.length > 0) {
+          return docs.map((doc: any) => ({
+            id: `ia_${doc.identifier}`,
+            title: doc.title || cleanQ,
+            author: Array.isArray(doc.creator) ? doc.creator.join(', ') : (doc.creator || 'Archive Recording'),
+            cover: `https://archive.org/services/img/${doc.identifier}`,
+            description: typeof doc.description === 'string' ? doc.description.slice(0, 300) : 'Archive Audiobook recording.',
+            duration: 'Multi-chapter',
+            genre: 'Audiobook',
+            platform: 'archive',
+            source: 'archive',
+            audioUrl: `https://archive.org/download/${doc.identifier}`
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Direct archive search error:', err);
+    }
+    return [];
+  },
+
   async getArchiveTracks(identifier: string): Promise<AudioTrack[]> {
     try {
       const cleanId = identifier.replace(/^ia_/, '').trim();
@@ -1109,6 +1142,14 @@ export const api = {
           f.name.toLowerCase().endsWith('.ogg')
         )
       );
+
+      // Natural numerical chapter sort
+      audioFiles.sort((a: any, b: any) => {
+        const trackA = parseInt(a.track || '0', 10);
+        const trackB = parseInt(b.track || '0', 10);
+        if (trackA && trackB) return trackA - trackB;
+        return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
 
       return audioFiles.map((f: any, idx: number) => {
         const cleanName = f.title || f.name.replace(/^.*\//, '').replace(/\.(mp3|m4b|m4a|ogg)$/i, '');

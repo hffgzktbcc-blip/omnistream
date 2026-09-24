@@ -202,23 +202,59 @@ export async function onRequestGet(context: any) {
     }
   })();
 
-  await Promise.allSettled([apibayPromise, abbPromise]);
+  // 4. Query Internet Archive Audio Collection (Instant HTTP chapter streaming)
+  const iaItems: any[] = [];
+  const iaPromise = (async () => {
+    try {
+      const qClean = q.replace(/audiobooks?/gi, '').trim();
+      const iaUrl = `https://archive.org/advancedsearch.php?q=(${encodeURIComponent(qClean)})+AND+mediatype:(audio)&fl[]=identifier,title,creator,description,downloads&sort[]=downloads+desc&rows=8&output=json`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(iaUrl, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data: any = await res.json();
+        const docs = data.response?.docs || [];
+        for (const doc of docs) {
+          if (!doc.identifier) continue;
+          iaItems.push({
+            id: `ia_${doc.identifier}`,
+            title: doc.title || qClean,
+            author: Array.isArray(doc.creator) ? doc.creator.join(', ') : (doc.creator || 'Archive Studio Recording'),
+            cover: `https://archive.org/services/img/${doc.identifier}`,
+            description: typeof doc.description === 'string' ? doc.description.slice(0, 300) : 'Archive.org Studio Audiobook',
+            categories: ['Audiobook', 'Archive Cloud'],
+            format: 'MP3',
+            size: 'Cloud Stream',
+            source: 'archive',
+            platform: 'archive',
+            audioUrl: `https://archive.org/download/${doc.identifier}`
+          });
+        }
+      }
+    } catch (e: any) {
+      console.warn('Archive edge search error:', e.message);
+    }
+  })();
 
-  // Combine items: Master matches first, then AudioBookBay, then Apibay swarms
+  await Promise.allSettled([apibayPromise, abbPromise, iaPromise]);
+
+  // Combine items: Swarm torrents first (so specific searches get exact swarm/full cast matches), then master matches, ABB, and Archive
   const combined: any[] = [];
-  const seenTitles = new Set<string>();
+  const seenKeys = new Set<string>();
 
   const addUnique = (item: any) => {
-    const key = (item.title || item.rawTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (key && !seenTitles.has(key)) {
-      seenTitles.add(key);
+    const key = (item.infoHash || `${item.title}_${item.id}`).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (key && !seenKeys.has(key)) {
+      seenKeys.add(key);
       combined.push(item);
     }
   };
 
+  torrentItems.forEach(addUnique);
   masterMatches.forEach(addUnique);
   abbItems.forEach(addUnique);
-  torrentItems.forEach(addUnique);
+  iaItems.forEach(addUnique);
 
   // If still empty, fall back to master library items matching any token
   if (combined.length === 0 && queryTokens.length > 0) {
@@ -230,7 +266,7 @@ export async function onRequestGet(context: any) {
     });
   }
 
-  // 4. Enrich top 6 items missing covers with Apple Books / iTunes artwork
+  // 5. Enrich top 6 items missing covers with Apple Books / iTunes artwork
   const enrichPromises = combined.slice(0, 6).map(async (book) => {
     if (!book.cover || book.cover.includes('unsplash.com') || book.cover === '') {
       try {

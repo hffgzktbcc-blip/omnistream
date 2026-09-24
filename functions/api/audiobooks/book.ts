@@ -65,12 +65,23 @@ export async function onRequestGet(context: any) {
   const titleParam = (url.searchParams.get('title') || '').toLowerCase().trim();
 
   // 2. Check MASTER_AUDIOBOOKS by id, url, or title
-  const matched = MASTER_AUDIOBOOKS.find(
+  let matched = MASTER_AUDIOBOOKS.find(
     (b) =>
       (bookId && (b.id === bookId || bookId.includes(b.id))) ||
-      (bookUrl && (b.url === bookUrl || bookUrl.includes(b.id) || b.url.includes(bookUrl))) ||
-      (titleParam && (b.title.toLowerCase() === titleParam || b.title.toLowerCase().includes(titleParam)))
+      (bookUrl && (b.url === bookUrl || bookUrl.includes(b.id) || b.url.includes(bookUrl)))
   );
+
+  if (!matched && titleParam) {
+    if (titleParam.includes('full cast') || titleParam.includes('full-cast')) {
+      matched = MASTER_AUDIOBOOKS.find(b => b.id === 'hpfullcast' || b.id === 'sandman1');
+    }
+    if (!matched) {
+      matched = MASTER_AUDIOBOOKS.find(
+        (b) => b.title.toLowerCase() === titleParam ||
+               (b.title.length > 5 && titleParam.includes(b.title.toLowerCase()))
+      );
+    }
+  }
 
   if (matched) {
     return new Response(

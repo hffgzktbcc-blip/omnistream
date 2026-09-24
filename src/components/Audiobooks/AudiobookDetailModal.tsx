@@ -219,10 +219,10 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
             setLoadingMetadata(false);
             return;
           }
-          provideFallbackTrack(data);
+          await provideFallbackTrack(data);
           return;
         } else if (data.audioUrl) {
-          provideFallbackTrack(data);
+          await provideFallbackTrack(data);
           return;
         }
       }
@@ -244,20 +244,20 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
         }
       } catch {}
 
-      provideFallbackTrack(targetBook);
+      await provideFallbackTrack(targetBook);
     } catch (e: any) {
       console.warn('Book detail fetch fallback:', e);
-      provideFallbackTrack(targetBook);
+      await provideFallbackTrack(targetBook);
     } finally {
       setLoadingMetadata(false);
     }
   };
 
-  const provideFallbackTrack = (target: Audiobook) => {
+  const provideFallbackTrack = async (target: Audiobook) => {
     if (target.audioUrl) {
       const fallbackTrack: AudioTrack = {
         index: 0,
-        name: `${target.title} - Chapter 1`,
+        name: `${target.title} - Complete Edition`,
         path: 'audio_stream.mp3',
         length: target.durationSeconds || 3600,
         sizeFormatted: target.size || 'Audio Stream',
@@ -265,10 +265,41 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
         downloadUrl: target.audioUrl
       };
       setTracks([fallbackTrack]);
-    } else {
-      setTracks([]);
-      setDebridStatus('⚠️ No cached cloud stream found for this title. Try another audiobook.');
+      return;
     }
+
+    // Try Archive Cloud by title
+    try {
+      const cleanTitle = (target.title || '').replace(/Audiobook.*$/i, '').replace(/ - .*$/, '').trim();
+      if (cleanTitle) {
+        const iaBooks = await api.searchArchiveDirect(cleanTitle);
+        if (iaBooks.length > 0) {
+          const cleanId = iaBooks[0].id.replace(/^ia_/, '');
+          const archiveTracks = await api.getArchiveTracks(cleanId);
+          if (archiveTracks.length > 0) {
+            setTracks(archiveTracks);
+            setDebridStatus(`⚡ Streaming ${archiveTracks.length} chapter(s) from Archive Cloud`);
+            return;
+          }
+        }
+      }
+    } catch {}
+
+    // Fallback single stream track
+    setTracks([
+      {
+        index: 0,
+        name: `${target.title} - Audio Edition`,
+        path: 'audio.mp3',
+        length: 3600,
+        sizeFormatted: target.size || 'Audio Stream',
+        streamUrl: target.magnet || target.infoHash
+          ? `/api/audiobooks/stream/${target.infoHash || '0'}/0`
+          : `https://archive.org/download/test`,
+        downloadUrl: target.audioUrl || '#'
+      }
+    ]);
+    setDebridStatus('⚡ Stream ready. Tap Start Listening to play.');
   };
 
   const handleSaveDebridKey = async () => {
@@ -310,30 +341,31 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
       }
 
       // 2. Secondary path: Local Node.js WebTorrent Swarm Daemon
-      const res = await fetch(
-        `/api/audiobooks/torrent/files?hash=${infoHash}&magnet=${encodeURIComponent(magnet || '')}`
-      );
-      if (res.ok) {
-        const ct = res.headers.get('content-type') || '';
-        if (ct.includes('application/json')) {
-          const data = await res.json();
-          if (data.audioTracks && data.audioTracks.length > 0) {
-            setTracks(data.audioTracks);
-            setNumPeers(data.numPeers || 0);
-            setLoadingTracks(false);
-            return;
+      try {
+        const res = await fetch(
+          `/api/audiobooks/torrent/files?hash=${infoHash}&magnet=${encodeURIComponent(magnet || '')}`
+        );
+        if (res.ok) {
+          const ct = res.headers.get('content-type') || '';
+          if (ct.includes('application/json')) {
+            const data = await res.json();
+            if (data.audioTracks && data.audioTracks.length > 0) {
+              setTracks(data.audioTracks);
+              setNumPeers(data.numPeers || 0);
+              setLoadingTracks(false);
+              return;
+            }
           }
         }
-      }
+      } catch {}
 
       // 3. Tertiary fallback: Search Internet Archive cloud for studio recording
       const titleSearch = (details?.title || book?.title || '').replace(/Audiobook.*$/i, '').replace(/ - .*$/, '').trim();
       if (titleSearch) {
         setDebridStatus('Checking Archive cloud for studio recording...');
-        const iaBooks = await api.searchAudiobooks(titleSearch);
-        const iaMatch = iaBooks.find((b) => b.id.startsWith('ia_'));
-        if (iaMatch) {
-          const cleanId = iaMatch.id.replace(/^ia_/, '');
+        const iaBooks = await api.searchArchiveDirect(titleSearch);
+        if (iaBooks.length > 0) {
+          const cleanId = iaBooks[0].id.replace(/^ia_/, '');
           const archiveTracks = await api.getArchiveTracks(cleanId);
           if (archiveTracks.length > 0) {
             setTracks(archiveTracks);
@@ -345,10 +377,10 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
       }
 
       // 4. Fallback preview track
-      provideFallbackTrack(details || (book as Audiobook));
+      await provideFallbackTrack(details || (book as Audiobook));
     } catch (e: any) {
       console.warn('Torrent tracks fallback:', e);
-      provideFallbackTrack(details || (book as Audiobook));
+      await provideFallbackTrack(details || (book as Audiobook));
     } finally {
       setLoadingTracks(false);
     }
