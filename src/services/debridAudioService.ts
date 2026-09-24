@@ -185,38 +185,53 @@ class DebridAudioService {
       }
 
       const selectedFiles = (infoData.files || []).filter((f: any) => f.selected === 1);
-      const unrestrictPromises = infoData.links.map(async (link: string, idx: number) => {
-        try {
-          const uBody = new URLSearchParams();
-          uBody.append('link', link);
-          const uRes = await fetch('https://api.real-debrid.com/rest/1.0/unrestrict/link', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: uBody.toString()
-          });
-          if (!uRes.ok) return null;
-          const uData = await uRes.json();
-          const file = selectedFiles[idx] || {};
-          const filename = uData.filename || file.path?.replace(/^\//, '') || `Track ${idx + 1}`;
-          return {
-            index: idx,
-            name: filename.replace(/\.(mp3|m4b|m4a|aac|flac|ogg)$/i, ''),
-            path: file.path || filename,
-            length: 3600,
-            sizeFormatted: formatBytes(uData.filesize || file.bytes || 0),
-            streamUrl: uData.download,
-            downloadUrl: uData.download,
-            isDebrid: true
-          } as AudioTrack;
-        } catch {
-          return null;
-        }
-      });
+      const links = infoData.links || [];
+      const tracks: AudioTrack[] = [];
+      const BATCH_SIZE = 5;
 
-      const tracks = (await Promise.all(unrestrictPromises)).filter(Boolean) as AudioTrack[];
+      for (let i = 0; i < links.length; i += BATCH_SIZE) {
+        if (i >= 30 && tracks.length > 0) break;
+
+        const batch = links.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (link: string, batchIdx: number) => {
+            const idx = i + batchIdx;
+            try {
+              const uBody = new URLSearchParams();
+              uBody.append('link', link);
+              const uRes = await fetch('https://api.real-debrid.com/rest/1.0/unrestrict/link', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                  'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: uBody.toString()
+              });
+              if (!uRes.ok) return null;
+              const uData = await uRes.json();
+              const file = selectedFiles[idx] || {};
+              const filename = uData.filename || file.path?.replace(/^\//, '') || `Track ${idx + 1}`;
+              return {
+                index: idx,
+                name: filename.replace(/\.(mp3|m4b|m4a|aac|flac|ogg)$/i, ''),
+                path: file.path || filename,
+                length: 3600,
+                sizeFormatted: formatBytes(uData.filesize || file.bytes || 0),
+                streamUrl: uData.download,
+                downloadUrl: uData.download,
+                isDebrid: true
+              } as AudioTrack;
+            } catch {
+              return null;
+            }
+          })
+        );
+        tracks.push(...(batchResults.filter(Boolean) as AudioTrack[]));
+        if (i + BATCH_SIZE < links.length && i < 30) {
+          await new Promise((r) => setTimeout(r, 60));
+        }
+      }
+
       return {
         success: tracks.length > 0,
         isCached: true,

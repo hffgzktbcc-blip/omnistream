@@ -546,8 +546,21 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
             {/* Tracks List */}
             <div className="bg-[#1e2025] rounded-sm border border-[#2a2c33] divide-y divide-[#2a2c33] max-h-72 overflow-y-auto">
               {tracks.length === 0 && !loadingTracks && (
-                <div className="p-6 text-center text-slate-400 text-sm">
-                  Preparing stream tracks... Click "Start Listening" to begin.
+                <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Zap className="w-6 h-6 fill-current" />
+                  </div>
+                  <p className="text-sm font-bold text-white">Stream Swarm via Cloud Seedbox</p>
+                  <p className="text-xs text-slate-400 max-w-md">
+                    This title is seeded on BitTorrent swarms. Connect your Real-Debrid or Torbox API key to stream direct 10Gbps CDN audio in your browser.
+                  </p>
+                  <button
+                    onClick={() => setShowDebridModal(true)}
+                    className="mt-2 px-5 py-2 rounded-full bg-[#f69931] hover:bg-[#e08929] text-black font-black text-xs transition cursor-pointer flex items-center gap-1.5 shadow-lg shadow-[#f69931]/20"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    <span>Connect Debrid Key</span>
+                  </button>
                 </div>
               )}
 
