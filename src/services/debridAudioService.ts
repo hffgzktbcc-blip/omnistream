@@ -366,77 +366,21 @@ class DebridAudioService {
     const provider = this.getDebridProvider();
 
     try {
-      if (provider === 'torbox') {
-        const res = await fetch('https://api.torbox.app/v1/api/torrents/mylist', {
-          headers: { Authorization: `Bearer ${apiKey}` }
-        });
-        if (!res.ok) return [];
+      const res = await fetch('/api/audiobooks/debrid/vault', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, provider })
+      });
+      if (res.ok) {
         const data = await res.json();
-        const list = data.data || [];
-        const VIDEO_PATTERNS = /\b(1080p|2160p|720p|480p|s\d{2}e\d{2}|complete\.season|season\.\d+|bluray|web-dl|x264|x265|hevc|repack)\b/i;
-        return list
-          .filter((t: any) => !VIDEO_PATTERNS.test(t.name || ''))
-          .map((t: any) => {
-            const rawTitle = t.name || 'Torbox Audiobook';
-            let title = rawTitle;
-            let author = 'Torbox Vault';
-            if (rawTitle.includes(' - ')) {
-              const parts = rawTitle.split(' - ');
-              title = parts[1]?.trim() || parts[0].trim();
-              author = parts[0].trim();
-            }
-            return {
-              id: `wt_${(t.hash || t.id).toLowerCase()}`,
-              infoHash: (t.hash || '').toLowerCase(),
-              rawTitle,
-              title,
-              author,
-              cover: '',
-              categories: ['Audiobook', 'Debrid Vault'],
-              format: 'M4B',
-              size: `${((t.size || 0) / (1024 * 1024)).toFixed(1)} MB`,
-              source: 'torrent',
-              platform: 'torrent'
-            } as Audiobook;
-          });
-      } else {
-        const res = await fetch('https://api.real-debrid.com/rest/1.0/torrents?limit=100', {
-          headers: { Authorization: `Bearer ${apiKey}` }
-        });
-        if (!res.ok) return [];
-        const list = await res.json();
-        if (!Array.isArray(list)) return [];
-
-        const VIDEO_PATTERNS = /\b(1080p|2160p|720p|480p|s\d{2}e\d{2}|complete\.season|season\.\d+|bluray|web-dl|x264|x265|hevc|repack)\b/i;
-        return list
-          .filter((t: any) => !VIDEO_PATTERNS.test(t.filename || ''))
-          .map((t: any) => {
-            const rawTitle = t.filename || 'Cloud Audiobook';
-            let title = rawTitle;
-            let author = 'Debrid Vault';
-            if (rawTitle.includes(' - ')) {
-              const parts = rawTitle.split(' - ');
-              title = parts[1]?.trim() || parts[0].trim();
-              author = parts[0].trim();
-            }
-            return {
-              id: `wt_${(t.hash || t.id).toLowerCase()}`,
-              infoHash: (t.hash || '').toLowerCase(),
-              rawTitle,
-              title,
-              author,
-              cover: '',
-              categories: ['Audiobook', 'Debrid Vault'],
-              format: 'M4B',
-              size: `${((t.bytes || 0) / (1024 * 1024)).toFixed(1)} MB`,
-              source: 'torrent',
-              platform: 'torrent'
-            } as Audiobook;
-          });
+        if (data.success && Array.isArray(data.items)) {
+          return data.items;
+        }
       }
-    } catch {
-      return [];
+    } catch (e) {
+      console.warn('Debrid vault server fetch error:', e);
     }
+    return [];
   }
 }
 

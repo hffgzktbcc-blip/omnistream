@@ -166,22 +166,33 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   useEffect(() => {
     if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
 
-    const coverUrl = book.cover
-      ? book.cover.startsWith("http")
-        ? book.cover
-        : `${window.location.origin}${book.cover}`
-      : "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=500";
+    let artworkSrc = "";
+    if (book.cover) {
+      if (book.cover.startsWith("http://") || book.cover.startsWith("https://")) {
+        artworkSrc = book.cover;
+      } else if (book.cover.startsWith("/") && !book.cover.startsWith("//")) {
+        artworkSrc = `${window.location.origin}${book.cover}`;
+      }
+    }
 
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentTrack?.name || book.title,
-      artist: book.author,
-      album: book.title,
-      artwork: [
-        { src: coverUrl, sizes: "96x96", type: "image/jpeg" },
-        { src: coverUrl, sizes: "256x256", type: "image/jpeg" },
-        { src: coverUrl, sizes: "512x512", type: "image/jpeg" },
-      ],
-    });
+    try {
+      const artwork = artworkSrc
+        ? [
+            { src: artworkSrc, sizes: "96x96", type: "image/jpeg" },
+            { src: artworkSrc, sizes: "256x256", type: "image/jpeg" },
+            { src: artworkSrc, sizes: "512x512", type: "image/jpeg" },
+          ]
+        : [];
+
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack?.name || book.title,
+        artist: book.author,
+        album: book.title,
+        artwork,
+      });
+    } catch (e) {
+      console.warn("MediaSession metadata error:", e);
+    }
 
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
 
@@ -459,7 +470,10 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
     return `${mins}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  const coverUrl = book.cover || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300";
+  const fallbackBarSvg = `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="8" fill="#18181b"/><circle cx="50" cy="50" r="20" fill="rgba(245,158,11,0.2)"/><text x="50" y="55" text-anchor="middle" fill="#f59e0b" font-family="sans-serif" font-size="12" font-weight="bold">AUDIO</text></svg>`
+  )}`;
+  const coverUrl = book.cover && !book.cover.includes("unsplash.com") ? book.cover : fallbackBarSvg;
 
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 

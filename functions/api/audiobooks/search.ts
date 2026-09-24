@@ -89,6 +89,16 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 1200): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function enrichBook(item: any) {
   if (
     item.cover &&
@@ -108,7 +118,7 @@ async function enrichBook(item: any) {
   // 1. Primary Source: Audible Public Catalog API (Official Publisher art, Narrators, Runtime, Descriptions)
   try {
     const audibleUrl = `https://api.audible.com/1.0/catalog/products?title=${encodeURIComponent(queryTerm)}&num_results=1&products_sort_by=Relevance&response_groups=product_attrs,contributors,media`;
-    const audRes = await fetch(audibleUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } });
+    const audRes = await fetchWithTimeout(audibleUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } }, 1200);
     if (audRes.ok) {
       const audData: any = await audRes.json();
       const p = audData.products?.[0];
@@ -130,9 +140,10 @@ async function enrichBook(item: any) {
 
   // 2. Secondary Source: iTunes Audiobook API for official HD artwork & blurb
   try {
-    const itunesRes = await fetch(
+    const itunesRes = await fetchWithTimeout(
       `https://itunes.apple.com/search?term=${encodeURIComponent(queryTerm)}&media=audiobook&limit=1`,
-      { headers: { 'User-Agent': 'OmniStream/1.0' } }
+      { headers: { 'User-Agent': 'OmniStream/1.0' } },
+      1000
     );
     if (itunesRes.ok) {
       const itunesData: any = await itunesRes.json();
@@ -148,11 +159,13 @@ async function enrichBook(item: any) {
     }
   } catch {}
 
-  // 2. Try Open Library for book cover
+  // 3. Try Open Library for book cover
   try {
-    const olRes = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(queryTerm)}&limit=1`, {
-      headers: { 'User-Agent': 'OmniStream/1.0' }
-    });
+    const olRes = await fetchWithTimeout(
+      `https://openlibrary.org/search.json?q=${encodeURIComponent(queryTerm)}&limit=1`,
+      { headers: { 'User-Agent': 'OmniStream/1.0' } },
+      1000
+    );
     if (olRes.ok) {
       const olData: any = await olRes.json();
       const doc = olData.docs?.[0];
@@ -171,7 +184,7 @@ async function enrichBook(item: any) {
     }
   } catch {}
 
-  // 3. Fallback to clean SVG badge (Never use generic coffee cup photo)
+  // 4. Fallback to clean SVG badge (Never use generic coffee cup photo)
   if (!item.cover || item.cover.includes('unsplash.com')) {
     item.cover = generateBookSvgCover(item.title, item.author);
   }
@@ -214,7 +227,7 @@ export async function onRequestGet(context: any) {
   const apibayPromise = (async () => {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6000);
+      const timer = setTimeout(() => controller.abort(), 3500);
       
       // Query cat=102 (Audio books only, prevents music albums/bands from leaking)
       const res = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(q)}&cat=102`, {
@@ -229,9 +242,9 @@ export async function onRequestGet(context: any) {
       if ((!Array.isArray(list) || list.length === 0 || list[0]?.id === '0') && queryTokens.length > 2) {
         const relaxedQ = queryTokens.slice(0, 2).join(' ');
         try {
-          const rRes = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(relaxedQ)}&cat=102`, {
+          const rRes = await fetchWithTimeout(`https://apibay.org/q.php?q=${encodeURIComponent(relaxedQ)}&cat=102`, {
             headers: { 'User-Agent': 'OmniStream/1.0' }
-          });
+          }, 1500);
           if (rRes.ok) {
             const rList = await rRes.json();
             if (Array.isArray(rList) && rList.length > 0 && rList[0]?.id !== '0') {
@@ -275,11 +288,11 @@ export async function onRequestGet(context: any) {
     }
   })();
 
-  // 3. Query AudioBookBay Live Mirror
+  // 3. Query AudioBookBay Live Mirror (ABB may challenge Cloudflare workers; strict 1200ms timeout)
   const abbPromise = (async () => {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6500);
+      const timer = setTimeout(() => controller.abort(), 1200);
 
       const res = await fetch(`https://audiobookbay.lu/?s=${encodeURIComponent(q)}`, {
         headers: {
@@ -338,7 +351,7 @@ export async function onRequestGet(context: any) {
       const qClean = q.replace(/audiobooks?/gi, '').trim();
       const iaUrl = `https://archive.org/advancedsearch.php?q=(${encodeURIComponent(qClean)})+AND+mediatype:(audio)&fl[]=identifier,title,creator,description,downloads&sort[]=downloads+desc&rows=8&output=json`;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
+      const timer = setTimeout(() => controller.abort(), 2000);
       const res = await fetch(iaUrl, { signal: controller.signal });
       clearTimeout(timer);
       if (res.ok) {
@@ -395,13 +408,9 @@ export async function onRequestGet(context: any) {
     });
   }
 
-  // 5. Enrich up to 20 items in parallel chunks of 5 with Apple Books / Open Library artwork
-  const BATCH_SIZE = 5;
-  const toEnrich = combined.slice(0, 20);
-  for (let i = 0; i < toEnrich.length; i += BATCH_SIZE) {
-    const chunk = toEnrich.slice(i, i + BATCH_SIZE);
-    await Promise.allSettled(chunk.map((item) => enrichBook(item)));
-  }
+  // 5. Fast parallel metadata enrichment for top 6 items (Audible, iTunes, OpenLibrary)
+  const toEnrich = combined.slice(0, 6);
+  await Promise.allSettled(toEnrich.map(item => enrichBook(item)));
 
   return new Response(
     JSON.stringify({
