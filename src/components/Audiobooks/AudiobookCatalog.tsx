@@ -291,11 +291,14 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
 
   const renderBookCard = (book: Audiobook) => {
     const isSaved = savedIds.has(book.id);
-    const coverUrl = book.cover
+    const fallbackSvg = `data:image/svg+xml;utf8,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#18181b"/><stop offset="100%" stop-color="#09090b"/></linearGradient></defs><rect width="400" height="400" rx="16" fill="url(#bg)"/><rect x="16" y="16" width="368" height="368" rx="12" fill="none" stroke="rgba(245,158,11,0.3)" stroke-width="1.5"/><circle cx="200" cy="130" r="36" fill="rgba(245,158,11,0.15)"/><text x="200" y="220" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="20" font-weight="bold">${(book.title || 'Audiobook').replace(/&/g, '&amp;').slice(0, 30)}</text><text x="200" y="260" text-anchor="middle" fill="#94a3b8" font-family="sans-serif" font-size="14">${(book.author || 'Unabridged').replace(/&/g, '&amp;').slice(0, 24)}</text><text x="200" y="335" text-anchor="middle" fill="#f59e0b" font-family="sans-serif" font-size="11" font-weight="bold" letter-spacing="3">AUDIOBOOK</text></svg>`
+    )}`;
+    const coverUrl = book.cover && !book.cover.includes('unsplash.com')
       ? book.cover.startsWith('http')
         ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(book.cover)}`
         : book.cover
-      : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=400';
+      : fallbackSvg;
 
     const handleToggleShelf = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -331,8 +334,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=400';
+              (e.target as HTMLImageElement).src = fallbackSvg;
             }}
           />
 
@@ -599,11 +601,14 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
           </div>
           <div className="flex overflow-x-auto gap-4 pb-3 snap-x snap-mandatory scrollbar-none -mx-4 sm:-mx-8 px-4 sm:px-8">
             {continueList.map((item) => {
-              const coverUrl = item.cover
+              const fallbackItemSvg = `data:image/svg+xml;utf8,${encodeURIComponent(
+                `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="8" fill="#18181b"/><circle cx="50" cy="50" r="20" fill="rgba(245,158,11,0.2)"/><text x="50" y="55" text-anchor="middle" fill="#f59e0b" font-family="sans-serif" font-size="12" font-weight="bold">AUDIO</text></svg>`
+              )}`;
+              const coverUrl = item.cover && !item.cover.includes('unsplash.com')
                 ? item.cover.startsWith('http')
                   ? `/api/audiobooks/proxy-image?url=${encodeURIComponent(item.cover)}`
                   : item.cover
-                : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
+                : fallbackItemSvg;
 
               return (
                 <div
@@ -616,8 +621,7 @@ export const AudiobookCatalog: React.FC<AudiobookCatalogProps> = ({
                     alt=""
                     className="w-16 h-16 object-cover rounded-xl shadow-md shrink-0"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
+                      (e.target as HTMLImageElement).src = fallbackItemSvg;
                     }}
                   />
                   <div className="flex-1 min-w-0 flex flex-col justify-center">

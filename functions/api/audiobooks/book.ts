@@ -140,12 +140,12 @@ export async function onRequestGet(context: any) {
     }
   }
 
-  // 4. Secondary Swarm Search via Apibay (cat=100 audiobooks) by Title
+  // 4. Secondary Swarm Search via Apibay (cat=102 audiobooks) by Title
   const searchTitle = url.searchParams.get('title') || url.searchParams.get('rawTitle') || '';
   if (searchTitle) {
     try {
       const cleanQ = searchTitle.replace(/Audiobook.*$/i, '').replace(/ - .*$/, '').trim();
-      const apibayRes = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(cleanQ)}&cat=100`);
+      const apibayRes = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(cleanQ)}&cat=102`);
       if (apibayRes.ok) {
         const results = await apibayRes.json();
         if (Array.isArray(results) && results.length > 0 && results[0].id !== '0' && results[0].info_hash) {

@@ -227,10 +227,10 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
         }
       }
 
-      // If /api/audiobooks/book could not find hash, attempt client-side Apibay search directly
+      // If /api/audiobooks/book could not find hash, attempt client-side Apibay search directly (cat=102 audiobooks)
       try {
         const cleanTitle = (targetBook.title || '').replace(/Audiobook.*$/i, '').trim();
-        const apibayRes = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(cleanTitle)}&cat=100`);
+        const apibayRes = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(cleanTitle)}&cat=102`);
         if (apibayRes.ok) {
           const results = await apibayRes.json();
           if (Array.isArray(results) && results.length > 0 && results[0].id !== '0' && isHex40(results[0].info_hash)) {
@@ -388,7 +388,10 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
 
   if (!isOpen || !details) return null;
 
-  const coverUrl = details.cover || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
+  const fallbackSvgCover = `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#18181b"/><stop offset="100%" stop-color="#09090b"/></linearGradient></defs><rect width="400" height="400" rx="16" fill="url(#bg)"/><rect x="16" y="16" width="368" height="368" rx="12" fill="none" stroke="rgba(245,158,11,0.3)" stroke-width="1.5"/><circle cx="200" cy="130" r="36" fill="rgba(245,158,11,0.15)"/><text x="200" y="220" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="20" font-weight="bold">${(details?.title || 'Audiobook').replace(/&/g, '&amp;').slice(0, 30)}</text><text x="200" y="260" text-anchor="middle" fill="#94a3b8" font-family="sans-serif" font-size="14">${(details?.author || 'Unabridged').replace(/&/g, '&amp;').slice(0, 24)}</text><text x="200" y="335" text-anchor="middle" fill="#f59e0b" font-family="sans-serif" font-size="11" font-weight="bold" letter-spacing="3">AUDIOBOOK</text></svg>`
+  )}`;
+  const coverUrl = details.cover && !details.cover.includes('unsplash.com') ? details.cover : fallbackSvgCover;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-sm">
@@ -418,7 +421,7 @@ export const AudiobookDetailModal: React.FC<AudiobookDetailModalProps> = ({
                 alt={details.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=300';
+                  (e.target as HTMLImageElement).src = fallbackSvgCover;
                 }}
               />
               <button

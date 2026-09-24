@@ -1013,9 +1013,9 @@ export const api = {
       }
     } catch {}
 
-    // Fallback: Direct Apibay Torrent Swarm Search (Open CORS)
+    // Fallback: Direct Apibay Torrent Swarm Search (Category 102: Audio - Audio books)
     try {
-      const res = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(cleanQ)}&cat=100`);
+      const res = await fetch(`https://apibay.org/q.php?q=${encodeURIComponent(cleanQ)}&cat=102`);
       if (res.ok) {
         const list = await res.json();
         if (Array.isArray(list) && list.length > 0 && list[0]?.id !== '0') {
@@ -1038,16 +1038,22 @@ export const api = {
             .map((item: any) => {
               const hash = item.info_hash.toLowerCase();
               let title = item.name;
-              let author = 'Full Cast / Swarm';
+              let author = 'Swarm Edition';
               if (item.name.includes(' - ')) {
                 const parts = item.name.split(' - ');
-                title = parts[0].trim();
-                author = parts.slice(1).join(' - ').trim();
+                title = parts[1]?.trim() || parts[0].trim();
+                author = parts[0].trim();
               }
               const sizeBytes = parseInt(item.size, 10) || 0;
               const sizeFormatted = sizeBytes > 1024 * 1024 * 1024
                 ? `${(sizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
                 : `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+
+              const safeTitle = (title || 'Audiobook').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').slice(0, 32);
+              const safeAuthor = (author || 'Unabridged').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').slice(0, 24);
+              const svgCover = `data:image/svg+xml;utf8,${encodeURIComponent(
+                `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#18181b"/><stop offset="100%" stop-color="#09090b"/></linearGradient></defs><rect width="400" height="400" rx="16" fill="url(#bg)"/><rect x="16" y="16" width="368" height="368" rx="12" fill="none" stroke="rgba(245,158,11,0.3)" stroke-width="1.5"/><circle cx="200" cy="130" r="36" fill="rgba(245,158,11,0.15)"/><text x="200" y="220" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="20" font-weight="bold">${safeTitle}</text><text x="200" y="260" text-anchor="middle" fill="#94a3b8" font-family="sans-serif" font-size="14">${safeAuthor}</text><text x="200" y="335" text-anchor="middle" fill="#f59e0b" font-family="sans-serif" font-size="11" font-weight="bold" letter-spacing="3">AUDIOBOOK</text></svg>`
+              )}`;
 
               return {
                 id: `wt_${hash}`,
@@ -1055,7 +1061,7 @@ export const api = {
                 rawTitle: item.name,
                 title,
                 author,
-                cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=400',
+                cover: svgCover,
                 categories: ['Audiobook', 'Swarm Edition'],
                 format: 'M4B',
                 size: sizeFormatted,
