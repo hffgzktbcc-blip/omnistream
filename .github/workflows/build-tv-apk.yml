@@ -32,7 +32,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install --include=dev
 
       - name: Build Web Production Assets
         run: npm run build
@@ -64,9 +64,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.3
-          name: "OmniStream Android TV & Mobile Release v1.0.3 (0ms Native Bundling, Focus Overhaul, 2026 Mirrors & Shelf Suite)"
-          body: "Official Android TV & Mobile APK for OmniStream with 0ms local asset performance, high-visibility D-pad remote focus, verified 2026 streaming mirrors, unified cross-media watch history, mobile bottom navigation, and full Audiobook Shelf Suite."
+          tag_name: v1.0.4
+          name: "OmniStream Android TV & Mobile Release v1.0.4 (High-Speed Navigation & Hardware Acceleration)"
+          body: "Official Android TV & Mobile APK for OmniStream featuring 0ms tab navigation, GPU hardware acceleration, in-memory catalog caching, D-pad remote spatial navigation, verified 2026 streaming mirrors, and full Audiobook Shelf Suite."
           files: output/OmniStream-AndroidTV.apk
           make_latest: true
           overwrite: true
