@@ -145,7 +145,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   liveSports = []
 }) => {
   const [activeSpotlight, setActiveSpotlight] = useState(0);
-  const [progressPercent, setProgressPercent] = useState(0);
   const [spotlightList, setSpotlightList] = useState<any[]>(SPOTLIGHT_ITEMS);
   const [continueWatchingAnime, setContinueWatchingAnime] = useState<any[]>([]);
   const [recentComics, setRecentComics] = useState<any[]>([]);
@@ -217,25 +216,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     }
   }, []);
 
-  // Spotlight Auto-Rotation with Animated Progress Indicator
+  // Spotlight Auto-Rotation (Smooth 6s interval; zero React re-renders between slides)
   useEffect(() => {
-    setProgressPercent(0);
-    const interval = 50;
-    const totalDuration = 6000;
-    const step = (interval / totalDuration) * 100;
-
     const timer = setInterval(() => {
-      setProgressPercent((prev) => {
-        if (prev >= 100) {
-          setActiveSpotlight((s) => (s + 1) % (spotlightList.length || 1));
-          return 0;
-        }
-        return prev + step;
-      });
-    }, interval);
+      setActiveSpotlight((s) => (s + 1) % (spotlightList.length || 1));
+    }, 6000);
 
     return () => clearInterval(timer);
-  }, [activeSpotlight, spotlightList.length]);
+  }, [spotlightList.length]);
 
   const currentHero = spotlightList[activeSpotlight] || spotlightList[0] || SPOTLIGHT_ITEMS[0];
 
@@ -326,18 +314,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {spotlightList.map((item, idx) => (
             <button
               key={item.id}
-              onClick={() => {
-                setActiveSpotlight(idx);
-                setProgressPercent(0);
-              }}
+              onClick={() => setActiveSpotlight(idx)}
               className={`relative h-2 rounded-full overflow-hidden transition-all duration-300 cursor-pointer ${
                 idx === activeSpotlight ? 'w-10 bg-slate-700' : 'w-2.5 bg-slate-800 hover:bg-slate-600'
               }`}
             >
               {idx === activeSpotlight && (
                 <div
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-400 to-amber-300 rounded-full transition-all"
-                  style={{ width: `${progressPercent}%` }}
+                  key={`progress-${activeSpotlight}`}
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-400 to-amber-300 rounded-full animate-spotlight-progress"
                 />
               )}
             </button>

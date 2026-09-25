@@ -4,10 +4,10 @@
 Milestone 1 — HLS Manifest Rewriter & Proxy (`/api/proxy/hls`) Architecture & Implementation Strategy.
 
 ## Context
-Authoritative Request: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Project Scope Document: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
-Prior Survey Report: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_1/handoff.md
-Working Directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2
+Authoritative Request: ./.agents/ORIGINAL_REQUEST.md
+Project Scope Document: ./.agents/orchestrator_1/PROJECT.md
+Prior Survey Report: ./.agents/explorer_survey_1/handoff.md
+Working Directory: ./.agents/explorer_m1_2
 Role: teamwork_preview_explorer
 
 ## Task
@@ -21,15 +21,15 @@ Role: teamwork_preview_explorer
      - Resolving relative URLs against the base manifest URI.
    - Injecting required CORS headers (`Access-Control-Allow-Origin: *`, `Access-Control-Allow-Headers: *`) and `Content-Type: application/vnd.apple.mpegurl`.
 3. Provide concrete code structure and recommendation for the implementation Worker (do not modify source code yourself).
-4. Write handoff report to /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2/handoff.md.
+4. Write handoff report to ./.agents/explorer_m1_2/handoff.md.
 
 ## 2026-09-06T20:02:36Z
 You are Milestone 1 Explorer 2 for the Cinema Video Player integration.
-Your working directory is: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2
-Codebase location: /Users/nathanaelgovender/Developer/comic-reader
-Read your dispatch file at: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2/DISPATCH.md
-Read the authoritative user request at: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Read the project scope at: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
+Your working directory is: ./.agents/explorer_m1_2
+Codebase location: .
+Read your dispatch file at: ./.agents/explorer_m1_2/DISPATCH.md
+Read the authoritative user request at: ./.agents/ORIGINAL_REQUEST.md
+Read the project scope at: ./.agents/orchestrator_1/PROJECT.md
 
 Task:
 1. Investigate the implementation design for `/api/proxy/hls`:
@@ -38,4 +38,4 @@ Task:
    - Resolving relative URLs against base manifest URI.
    - Adding required CORS headers and content type `application/vnd.apple.mpegurl`.
 2. Provide concrete implementation recommendation and file structure for the implementation Worker (do not edit source code yourself).
-3. Write handoff report to /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2/handoff.md and report back via send_message.
+3. Write handoff report to ./.agents/explorer_m1_2/handoff.md and report back via send_message.

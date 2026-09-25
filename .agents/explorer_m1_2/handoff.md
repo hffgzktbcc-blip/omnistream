@@ -1,7 +1,7 @@
 # Handoff Report — Milestone 1 Explorer 2: HLS Manifest Rewriter & Proxy (`/api/proxy/hls`)
 
 **Role**: Milestone 1 Explorer 2 (Teamwork Explorer)  
-**Working Directory**: `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2`  
+**Working Directory**: `./.agents/explorer_m1_2`  
 **Target Requirement**: R1 (Direct Stream Resolution & CORS Proxy) — Feature 3: `/api/proxy/hls`  
 **Date**: 2026-09-06  
 

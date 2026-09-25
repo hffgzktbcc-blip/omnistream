@@ -6,7 +6,7 @@ Investigate streaming architecture, resolvers, CORS proxy, and backend APIs for 
 ## 🔒 My Identity
 - Archetype: teamwork_preview_explorer
 - Roles: explorer, investigator, synthesizer
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_1
+- Working directory: ./.agents/explorer_survey_1
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: Cinema Video Player Survey - Stream Resolvers & Proxy
 
@@ -39,9 +39,9 @@ Investigate streaming architecture, resolvers, CORS proxy, and backend APIs for 
 - **Unexplored areas**: None within survey scope.
 
 ## Key Decisions Made
-- Completed thorough architectural investigation and generated comprehensive handoff report at `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_1/handoff.md`.
+- Completed thorough architectural investigation and generated comprehensive handoff report at `./.agents/explorer_survey_1/handoff.md`.
 
 ## Artifact Index
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_1/handoff.md` — Authoritative final survey report
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_1/progress.md` — Liveness heartbeat
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_1/BRIEFING.md` — Persistent working memory
+- `./.agents/explorer_survey_1/handoff.md` — Authoritative final survey report
+- `./.agents/explorer_survey_1/progress.md` — Liveness heartbeat
+- `./.agents/explorer_survey_1/BRIEFING.md` — Persistent working memory

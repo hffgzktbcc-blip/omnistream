@@ -37,3 +37,21 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+@keyframes spotlightProgress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.animate-spotlight-progress {
+  animation: spotlightProgress 6s linear forwards;
+}
+
+/* Hardware accelerated smooth scrolling for carousels and lists */
+.hardware-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform;
+}
+

@@ -7,22 +7,54 @@ import { SportsMatch } from '../types/sports';
 
 const BASE_URL = '/api';
 
+// In-Memory Catalog & Feed Cache (5-minute TTL for lightning-fast Stremio-grade navigation)
+const apiMemoryCache = new Map<string, { timestamp: number; data: any }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+export function getApiCache<T = any>(key: string): T | null {
+  const item = apiMemoryCache.get(key);
+  if (!item) return null;
+  if (Date.now() - item.timestamp > CACHE_TTL_MS) {
+    apiMemoryCache.delete(key);
+    return null;
+  }
+  return item.data as T;
+}
+
+export function setApiCache<T = any>(key: string, data: T): void {
+  if (apiMemoryCache.size > 150) {
+    const firstKey = apiMemoryCache.keys().next().value;
+    if (firstKey) apiMemoryCache.delete(firstKey);
+  }
+  apiMemoryCache.set(key, { timestamp: Date.now(), data });
+}
+
 async function safeFetchJson<T = any>(url: string, init?: RequestInit): Promise<T | null> {
+  const isGet = !init || !init.method || init.method.toUpperCase() === 'GET';
+  if (isGet) {
+    const cached = getApiCache<T>(url);
+    if (cached) return cached;
+  }
+
   try {
     const res = await fetch(url, init);
     if (!res.ok) return null;
     const contentType = res.headers.get('content-type') || '';
+    let result: T | null = null;
     if (contentType.includes('application/json')) {
-      return await res.json();
-    }
-    if (contentType.includes('text/html')) {
+      result = await res.json();
+    } else if (contentType.includes('text/html')) {
       return null;
+    } else {
+      const text = await res.text();
+      if (text.startsWith('{') || text.startsWith('[')) {
+        result = JSON.parse(text);
+      }
     }
-    const text = await res.text();
-    if (text.startsWith('{') || text.startsWith('[')) {
-      return JSON.parse(text);
+    if (result && isGet) {
+      setApiCache(url, result);
     }
-    return null;
+    return result;
   } catch {
     return null;
   }
@@ -31,8 +63,13 @@ async function safeFetchJson<T = any>(url: string, init?: RequestInit): Promise<
 export const api = {
   // 1. COMICS API
   async getPopularComics(category: string = 'all'): Promise<Comic[]> {
+    const cacheKey = `comics_popular_${category}`;
+    const cached = getApiCache<Comic[]>(cacheKey);
+    if (cached && cached.length > 0) return cached;
+
     const serverData = await safeFetchJson<Comic[]>(`${BASE_URL}/comics/popular?category=${category}`);
     if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+      setApiCache(cacheKey, serverData);
       return serverData;
     }
 
@@ -60,7 +97,10 @@ export const api = {
             chapters: []
           };
         });
-        if (list.length > 0) return list;
+        if (list.length > 0) {
+          setApiCache(cacheKey, list);
+          return list;
+        }
       }
     } catch (err) {
       console.warn('MangaDex fallback error:', err);
@@ -255,12 +295,20 @@ export const api = {
 
   // 2. ANIME API
   async getTrendingAnime(category: string = 'trending'): Promise<Anime[]> {
+    const cacheKey = `anime_trending_${category}`;
+    const cached = getApiCache<Anime[]>(cacheKey);
+    if (cached && cached.length > 0) return cached;
+
     try {
       const res = await fetch(`${BASE_URL}/anime/trending?category=${category}`);
       if (res.ok) {
         const text = await res.text();
         if (text.startsWith('[') || text.startsWith('{')) {
-          return JSON.parse(text);
+          const list = JSON.parse(text);
+          if (Array.isArray(list) && list.length > 0) {
+            setApiCache(cacheKey, list);
+            return list;
+          }
         }
       }
     } catch {}
@@ -294,7 +342,11 @@ export const api = {
       });
       if (res.ok) {
         const d = await res.json();
-        return d.data?.Page?.media || [];
+        const list = d.data?.Page?.media || [];
+        if (list.length > 0) {
+          setApiCache(cacheKey, list);
+        }
+        return list;
       }
     } catch (err) {
       console.error('Anime trending AniList fallback error:', err);
@@ -466,12 +518,20 @@ export const api = {
 
   // 3. MOVIES & TV API
   async getTrendingMedia(category: string = 'trending'): Promise<MediaItem[]> {
+    const cacheKey = `media_trending_${category}`;
+    const cached = getApiCache<MediaItem[]>(cacheKey);
+    if (cached && cached.length > 0) return cached;
+
     try {
       const res = await fetch(`${BASE_URL}/media/trending?category=${category}`);
       if (res.ok) {
         const text = await res.text();
         if (text.startsWith('[') || text.startsWith('{')) {
-          return JSON.parse(text);
+          const list = JSON.parse(text);
+          if (Array.isArray(list) && list.length > 0) {
+            setApiCache(cacheKey, list);
+            return list;
+          }
         }
       }
     } catch {}
@@ -503,7 +563,11 @@ export const api = {
       const tmdbRes = await fetch(tmdbUrl);
       if (tmdbRes.ok) {
         const data = await tmdbRes.json();
-        return (data.results || []).filter((r: any) => r.poster_path || r.backdrop_path);
+        const list = (data.results || []).filter((r: any) => r.poster_path || r.backdrop_path);
+        if (list.length > 0) {
+          setApiCache(cacheKey, list);
+        }
+        return list;
       }
     } catch (err) {
       console.error('Media trending TMDB fallback error:', err);

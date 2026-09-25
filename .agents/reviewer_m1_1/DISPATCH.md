@@ -4,12 +4,12 @@
 Review Milestone 1: Direct Stream Resolution & CORS Proxy (Features 1–5).
 
 ## Context
-Authoritative Request: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Project Scope Document: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
-Test Readiness Certificate: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/TEST_READY.md
-Worker Handoff Report: /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1/handoff.md
-Codebase: /Users/nathanaelgovender/Developer/comic-reader
-Working Directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1
+Authoritative Request: ./.agents/ORIGINAL_REQUEST.md
+Project Scope Document: ./.agents/orchestrator_1/PROJECT.md
+Test Readiness Certificate: ./.agents/orchestrator_1/TEST_READY.md
+Worker Handoff Report: ./.agents/worker_m1/handoff.md
+Codebase: .
+Working Directory: ./.agents/reviewer_m1_1
 Role: teamwork_preview_reviewer
 
 ## Task
@@ -32,20 +32,20 @@ Role: teamwork_preview_reviewer
    node tests/e2e/runner.js --live --tier=2
    node tests/e2e/runner.js --live --tier=3
    ```
-5. Document your explicit verdict: `APPROVE` or `REQUEST_CHANGES` in your handoff report at `/Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1/handoff.md` and send message back.
+5. Document your explicit verdict: `APPROVE` or `REQUEST_CHANGES` in your handoff report at `./.agents/reviewer_m1_1/handoff.md` and send message back.
 
 ## 2026-09-06T20:17:52Z
 You are Reviewer 1 for Milestone 1 (Direct Stream Resolution & CORS Proxy).
-Your working directory is: /Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1
-Codebase location: /Users/nathanaelgovender/Developer/comic-reader
-Read your dispatch file at: /Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1/DISPATCH.md
-Read the authoritative user request at: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Read the project scope at: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
-Read worker_m1 handoff at: /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1/handoff.md
+Your working directory is: ./.agents/reviewer_m1_1
+Codebase location: .
+Read your dispatch file at: ./.agents/reviewer_m1_1/DISPATCH.md
+Read the authoritative user request at: ./.agents/ORIGINAL_REQUEST.md
+Read the project scope at: ./.agents/orchestrator_1/PROJECT.md
+Read worker_m1 handoff at: ./.agents/worker_m1/handoff.md
 
 Task:
 1. Objectively review code changes in server/streamResolver.js, server/streamProxy.js, server/index.js, src/services/streamingService.ts.
 2. Verify against Requirement R1 and acceptance criteria.
 3. Run tests via `node tests/e2e/runner.js --live --tier=1` and `node tests/e2e/runner.js --live --tier=2`.
-4. State your explicit verdict (APPROVE or REQUEST_CHANGES) in /Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1/handoff.md and report back via send_message.
+4. State your explicit verdict (APPROVE or REQUEST_CHANGES) in ./.agents/reviewer_m1_1/handoff.md and report back via send_message.
 

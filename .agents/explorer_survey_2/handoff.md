@@ -2,7 +2,7 @@
 
 **Explorer**: Survey Explorer 2  
 **Target**: Milestone 1 Codebase Survey & Gap Analysis for Requirement R2  
-**Working Directory**: `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_2`  
+**Working Directory**: `./.agents/explorer_survey_2`  
 **Date**: 2026-09-06T19:58:00Z  
 
 ---

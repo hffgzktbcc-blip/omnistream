@@ -6,7 +6,7 @@ Execute exhaustive forensic integrity audit on Milestone 1 deliverables (Direct 
 ## 🔒 My Identity
 - Archetype: forensic_auditor
 - Roles: critic, specialist, auditor
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/auditor_m1
+- Working directory: ./.agents/auditor_m1
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Target: Milestone 1 (Direct Stream Resolution & CORS Proxy)
 
@@ -46,10 +46,10 @@ Execute exhaustive forensic integrity audit on Milestone 1 deliverables (Direct 
 - Prioritize independent live test execution with real HTTP calls rather than relying on worker claims.
 
 ## Artifact Index
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/auditor_m1/DISPATCH.md` — Audit assignment
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/auditor_m1/BRIEFING.md` — Working memory
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/auditor_m1/progress.md` — Liveness heartbeat
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/auditor_m1/handoff.md` — Final audit report & verdict
+- `./.agents/auditor_m1/DISPATCH.md` — Audit assignment
+- `./.agents/auditor_m1/BRIEFING.md` — Working memory
+- `./.agents/auditor_m1/progress.md` — Liveness heartbeat
+- `./.agents/auditor_m1/handoff.md` — Final audit report & verdict
 
 ## Attack Surface
 - **Hypotheses tested**: [TBD]

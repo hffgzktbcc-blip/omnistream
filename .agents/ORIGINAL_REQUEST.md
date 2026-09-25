@@ -4,7 +4,7 @@
 
 Build and integrate a high-performance cross-platform Cinema Video Player for OmniStream with direct HLS stream extraction, a 10-foot Android TV D-Pad HUD, mobile touch gestures (iOS/Android), exact-second resume tracking, and native player hardware acceleration bridges.
 
-Working directory: /Users/nathanaelgovender/Developer/comic-reader
+Working directory: .
 Integrity mode: development
 
 ## Requirements

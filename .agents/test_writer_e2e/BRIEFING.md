@@ -6,7 +6,7 @@ Design and implement comprehensive E2E Test Suite (Tiers 1-4) for OmniStream Cin
 ## 🔒 My Identity
 - Archetype: Test Writer
 - Roles: specialist, qa
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/test_writer_e2e
+- Working directory: ./.agents/test_writer_e2e
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: M_E2E
 
@@ -17,7 +17,7 @@ Design and implement comprehensive E2E Test Suite (Tiers 1-4) for OmniStream Cin
   - Tier 2: Boundary & Corner Cases (>=5 tests per feature)
   - Tier 3: Cross-Feature Combinations (pairwise coverage)
   - Tier 4: Real-World Application Scenarios (end-to-end user workflows)
-- Test scripts and runners in `/Users/nathanaelgovender/Developer/comic-reader/tests/e2e/`.
+- Test scripts and runners in `./tests/e2e/`.
 - Provide TEST_INFRA.md and TEST_READY.md in `.agents/orchestrator_1/` and `tests/`.
 - Run tests and report pass/fail in handoff.md and send_message.
 
@@ -28,8 +28,8 @@ Design and implement comprehensive E2E Test Suite (Tiers 1-4) for OmniStream Cin
 ## Task Summary
 - **What to build**: Comprehensive 4-Tier E2E test suite for Cinema Video Player integration.
 - **Success criteria**: All 24 features covered across Tiers 1-4, test runner cleanly executes, TEST_INFRA.md and TEST_READY.md created, handoff report written.
-- **Interface contracts**: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
-- **Code layout**: /Users/nathanaelgovender/Developer/comic-reader/tests/e2e/
+- **Interface contracts**: ./.agents/orchestrator_1/PROJECT.md
+- **Code layout**: ./tests/e2e/
 
 ## Loaded Skills
 - None specified by orchestrator
@@ -46,17 +46,17 @@ Design and implement comprehensive E2E Test Suite (Tiers 1-4) for OmniStream Cin
 - Published `TEST_INFRA.md` and `TEST_READY.md` both in `tests/` and `.agents/orchestrator_1/`.
 
 ## Artifact Index
-- /Users/nathanaelgovender/Developer/comic-reader/tests/harness/contracts.js — Interface contracts and schema validators
-- /Users/nathanaelgovender/Developer/comic-reader/tests/harness/mock-server.js — Reference mock stream & proxy server
-- /Users/nathanaelgovender/Developer/comic-reader/tests/harness/player-simulator.js — Headless Cinema Player state machine
-- /Users/nathanaelgovender/Developer/comic-reader/tests/harness/test-utils.js — Test runner helpers and report generator
-- /Users/nathanaelgovender/Developer/comic-reader/tests/e2e/tier1-feature-coverage.test.js — Tier 1 test suite (120 tests)
-- /Users/nathanaelgovender/Developer/comic-reader/tests/e2e/tier2-boundary-corner.test.js — Tier 2 test suite (120 tests)
-- /Users/nathanaelgovender/Developer/comic-reader/tests/e2e/tier3-combinations.test.js — Tier 3 test suite (30 tests)
-- /Users/nathanaelgovender/Developer/comic-reader/tests/e2e/tier4-scenarios.test.js — Tier 4 test suite (15 tests)
-- /Users/nathanaelgovender/Developer/comic-reader/tests/e2e/runner.js — Master CLI test runner
-- /Users/nathanaelgovender/Developer/comic-reader/tests/run-all.js — Master test entry point
-- /Users/nathanaelgovender/Developer/comic-reader/tests/test-report.md — Execution report
-- /Users/nathanaelgovender/Developer/comic-reader/tests/TEST_INFRA.md & .agents/orchestrator_1/TEST_INFRA.md — Infrastructure specification
-- /Users/nathanaelgovender/Developer/comic-reader/tests/TEST_READY.md & .agents/orchestrator_1/TEST_READY.md — Readiness certificate
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/test_writer_e2e/handoff.md — Handoff report
+- ./tests/harness/contracts.js — Interface contracts and schema validators
+- ./tests/harness/mock-server.js — Reference mock stream & proxy server
+- ./tests/harness/player-simulator.js — Headless Cinema Player state machine
+- ./tests/harness/test-utils.js — Test runner helpers and report generator
+- ./tests/e2e/tier1-feature-coverage.test.js — Tier 1 test suite (120 tests)
+- ./tests/e2e/tier2-boundary-corner.test.js — Tier 2 test suite (120 tests)
+- ./tests/e2e/tier3-combinations.test.js — Tier 3 test suite (30 tests)
+- ./tests/e2e/tier4-scenarios.test.js — Tier 4 test suite (15 tests)
+- ./tests/e2e/runner.js — Master CLI test runner
+- ./tests/run-all.js — Master test entry point
+- ./tests/test-report.md — Execution report
+- ./tests/TEST_INFRA.md & .agents/orchestrator_1/TEST_INFRA.md — Infrastructure specification
+- ./tests/TEST_READY.md & .agents/orchestrator_1/TEST_READY.md — Readiness certificate
+- ./.agents/test_writer_e2e/handoff.md — Handoff report

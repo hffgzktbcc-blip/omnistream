@@ -1,8 +1,8 @@
 # Handoff Report — Milestone 1 Explorer 3: Segment & Subtitle Proxy Architecture
 
 **Role**: Milestone 1 Explorer 3 (Teamwork Explorer)  
-**Working Directory**: `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_3`  
-**Codebase**: `/Users/nathanaelgovender/Developer/comic-reader`  
+**Working Directory**: `./.agents/explorer_m1_3`  
+**Codebase**: `.`  
 **Target Scope**: `/api/proxy/segment` (Binary Segment Streaming & HTTP Range) & `/api/proxy/subtitles` (WebVTT / SubRip Subtitle Proxying)  
 **Date**: 2026-09-06  
 

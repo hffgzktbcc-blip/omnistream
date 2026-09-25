@@ -4,7 +4,7 @@ Last visited: 2026-09-06T19:58:30Z
 
 ## Current Status
 - Milestone 1 investigation complete.
-- Handoff report written and verified at `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_2/handoff.md`.
+- Handoff report written and verified at `./.agents/explorer_survey_2/handoff.md`.
 - BRIEFING.md updated. Ready to notify orchestrator.
 
 ## Completed Steps

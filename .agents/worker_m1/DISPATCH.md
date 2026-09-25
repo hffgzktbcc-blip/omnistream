@@ -4,13 +4,13 @@
 Implement Milestone 1: Direct Stream Resolution & CORS Proxy (Requirement R1, Features 1–5).
 
 ## Context
-Authoritative Request: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Project Scope Document: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
+Authoritative Request: ./.agents/ORIGINAL_REQUEST.md
+Project Scope Document: ./.agents/orchestrator_1/PROJECT.md
 Explorer Reports:
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_1/handoff.md (Stream Resolver & Sample ID Fixtures)
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2/handoff.md (HLS Manifest Rewriter & Proxy)
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_3/handoff.md (Segment Streaming & Subtitle Proxy)
-Working Directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1
+- ./.agents/explorer_m1_1/handoff.md (Stream Resolver & Sample ID Fixtures)
+- ./.agents/explorer_m1_2/handoff.md (HLS Manifest Rewriter & Proxy)
+- ./.agents/explorer_m1_3/handoff.md (Segment Streaming & Subtitle Proxy)
+Working Directory: ./.agents/worker_m1
 Role: teamwork_preview_worker
 
 ## File Write Ownership
@@ -42,22 +42,22 @@ The Worker exclusively owns and may modify/create:
    - Proxy `.vtt` subtitles with `Content-Type: text/vtt; charset=utf-8` and CORS headers.
    - Auto-convert SubRip (`.srt`) to WebVTT.
 6. Verify your implementation by running tests, verifying endpoints with curl or node test scripts, ensuring the server runs without errors.
-7. Write your handoff report to `/Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1/handoff.md`.
+7. Write your handoff report to `./.agents/worker_m1/handoff.md`.
 
 ## Mandatory Integrity Warning
 DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
 ## 2026-09-06T20:08:29Z
 You are the Milestone 1 Worker for the Cinema Video Player integration for OmniStream.
-Your working directory is: /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1
-Codebase location: /Users/nathanaelgovender/Developer/comic-reader
-Read your dispatch file at: /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1/DISPATCH.md
-Read the authoritative user request at: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Read the project scope at: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
+Your working directory is: ./.agents/worker_m1
+Codebase location: .
+Read your dispatch file at: ./.agents/worker_m1/DISPATCH.md
+Read the authoritative user request at: ./.agents/ORIGINAL_REQUEST.md
+Read the project scope at: ./.agents/orchestrator_1/PROJECT.md
 Read the three Explorer handoff reports:
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_1/handoff.md
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2/handoff.md
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_3/handoff.md
+- ./.agents/explorer_m1_1/handoff.md
+- ./.agents/explorer_m1_2/handoff.md
+- ./.agents/explorer_m1_3/handoff.md
 
 Your exclusive file write ownership:
 - server/streamResolver.js
@@ -72,5 +72,5 @@ Task:
 1. Implement the stream resolver, HLS manifest rewriter/proxy, segment streaming proxy, and subtitle proxy as designed by the Explorers.
 2. Ensure endpoints handle sample IDs (Movie 27205, TV 1399, Anime 21 & 151807) with valid HLS manifests and subtitles.
 3. Test your endpoints and ensure server starts cleanly without errors.
-4. Write your complete handoff report to /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1/handoff.md.
+4. Write your complete handoff report to ./.agents/worker_m1/handoff.md.
 5. Once complete, send a message back to the orchestrator with your results.

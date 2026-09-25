@@ -1,7 +1,7 @@
 # Milestone 1 Worker Handoff Report: Direct Stream Resolution & CORS Proxy
 
 **Worker**: Milestone 1 Implementer & QA  
-**Working Directory**: `/Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1`  
+**Working Directory**: `./.agents/worker_m1`  
 **Date**: 2026-09-06  
 **Scope**: Requirement R1 (Direct Stream Resolution & CORS Proxy) — Features 1 to 5  
 

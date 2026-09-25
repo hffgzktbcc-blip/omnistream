@@ -2,7 +2,7 @@
 
 **Date:** August 27, 2026  
 **Project:** OmniStream All-in-One Entertainment Suite  
-**Repository:** `/Users/nathanaelgovender/Developer/comic-reader`  
+**Repository:** `.`  
 **Conversation Reference:** [Open Conversation Log](conversation://d82dc652-dd8f-47f7-9264-4f378dceea68)
 
 ---
@@ -15,7 +15,7 @@ During this session, we added full **In-App Multi-Source Book Search & Direct EP
 
 ## 📚 E-Book Direct In-App Search & EPUB Downloader
 
-### 1. ⚡ Direct In-App EPUB Downloads ([`epubDownloader.ts`](file:///Users/nathanaelgovender/Developer/comic-reader/src/services/epubDownloader.ts), [`server/index.js`](file:///Users/nathanaelgovender/Developer/comic-reader/server/index.js))
+### 1. ⚡ Direct In-App EPUB Downloads ([`epubDownloader.ts`](file://./src/services/epubDownloader.ts), [`server/index.js`](file://./server/index.js))
 - **Universal EPUB 3.0 Packager & Downloader:**
   - Built-in `JSZip` client-side & server-side packaging engine that outputs 100% compliant `.epub` files (with `mimetype`, `META-INF/container.xml`, `content.opf`, `toc.ncx`, and styled XHTML chapters).
   - Backend endpoint `GET /api/ebooks/download-epub` proxies direct upstream binaries from Gutenberg and Internet Archive, while compiling custom and web novels into authentic `.epub` files on demand.
@@ -26,7 +26,7 @@ During this session, we added full **In-App Multi-Source Book Search & Direct EP
   - Clicking **"Read Now"** fetches book chapters, saves them directly into the user's browser **📚 My Bookshelf** storage, and launches the full-screen **`EBookReader`** with Bionic Reading mode, Text-to-Speech audio, and customizable fonts/themes.
   - Clicking **"⚡ Download EPUB"** on any card or detail modal saves the `.epub` directly to disk and adds the book to the personal library with 1 click.
 
-### 3. 🔍 Multi-Source Global Search Engine ([`EBookCatalog.tsx`](file:///Users/nathanaelgovender/Developer/comic-reader/src/components/EBook/EBookCatalog.tsx))
+### 3. 🔍 Multi-Source Global Search Engine ([`EBookCatalog.tsx`](file://./src/components/EBook/EBookCatalog.tsx))
 - Real-time parallel search across:
   - **#BookTok Sensations** & Curated Bestsellers
   - **The New York Times** Fiction & Non-Fiction
@@ -41,7 +41,7 @@ During this session, we added full **In-App Multi-Source Book Search & Direct EP
 ## 🚀 How to Run the Application
 
 ```bash
-cd /Users/nathanaelgovender/Developer/comic-reader
+cd .
 
 # Start Express Backend (:3001) and Vite Frontend (:5200) with hot reload
 npm run dev

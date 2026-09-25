@@ -6,7 +6,7 @@ Empirical adversarial verification of Milestone 1: HLS manifest rewriter, subtit
 ## 🔒 My Identity
 - Archetype: empirical_challenger
 - Roles: critic, specialist
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/challenger_m1_2
+- Working directory: ./.agents/challenger_m1_2
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: M1
 - Instance: 2 of 2

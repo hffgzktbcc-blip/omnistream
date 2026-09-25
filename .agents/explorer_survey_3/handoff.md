@@ -3,7 +3,7 @@
 ## 1. Observation
 
 ### 1.1 Existing Watch History Architecture & Services
-* **Primary Service File**: `/Users/nathanaelgovender/Developer/comic-reader/src/services/watchHistoryService.ts`
+* **Primary Service File**: `./src/services/watchHistoryService.ts`
   * **Storage Key**: `const STORAGE_KEY = 'omnistream_unified_history_v1';` (line 26).
   * **Persistence Mechanism**: Pure browser `localStorage` (`localStorage.getItem` / `localStorage.setItem`). Cap is hardcoded to 40 items (`this.saveStore(items.slice(0, 40));` line 200).
   * **No Cloud Synchronization**: `watchHistoryService.ts` contains zero network calls, zero server endpoints, and zero cloud sync logic.
@@ -36,33 +36,33 @@
     * `getItem(id: string): UnifiedHistoryItem | undefined` (line 53) — *Fetches by composite id (`movie_${id}`, `tv_${id}`, `anime_${id}`, etc.).*
 
 ### 1.2 Video Player Progress Tracking & Playback Lifecycle
-* **Player Implementation**: `/Users/nathanaelgovender/Developer/comic-reader/src/components/Common/UnifiedVideoPlayer.tsx`
+* **Player Implementation**: `./src/components/Common/UnifiedVideoPlayer.tsx`
   * **Mount Hook** (lines 148–172):
     Calls `watchHistoryService.saveMovie(item)` / `saveTv(item, season, episode)` / `saveAnime(...)` strictly once on mount.
   * **Tracking Interval**: **0s (None)**. There is no `setInterval` or heartbeat persisting playback position during playback in `UnifiedVideoPlayer.tsx`.
   * **Current Rendering Engine**: Renders external embed mirrors via `<iframe>` (`streamUrl = getStreamUrl(currentServer)`, lines 487–496) from third-party domains (`vidlink.pro`, `vidsrc.to`, `vidsrc.su`, `videasy.to`, `multiembed.mov`, `2embed.cc`, `vidsrc.pm`, `smashystream.com`).
   * **Cross-Origin Security Boundary**: Because an `<iframe>` is used for video playback, the host application cannot access HTMLMediaElement properties (`video.currentTime`, `video.duration`, `video.paused`) due to cross-origin iframe sandboxing.
-  * **Audiobook Comparison**: In contrast, `/Users/nathanaelgovender/Developer/comic-reader/src/components/Audiobooks/AudioPlayerBar.tsx` (lines 115–136) implements a 4-second interval (`setInterval(..., 4000)`) updating `audiobookStorage` and `watchHistoryService.saveAudiobook`.
+  * **Audiobook Comparison**: In contrast, `./src/components/Audiobooks/AudioPlayerBar.tsx` (lines 115–136) implements a 4-second interval (`setInterval(..., 4000)`) updating `audiobookStorage` and `watchHistoryService.saveAudiobook`.
 
 ### 1.3 Resume Modal & Behavior
-* **Media Detail Modal**: `/Users/nathanaelgovender/Developer/comic-reader/src/components/Media/MediaDetailModal.tsx` (lines 163, 173):
+* **Media Detail Modal**: `./src/components/Media/MediaDetailModal.tsx` (lines 163, 173):
   * Button always reads `"Stream Full Movie"` or `"Stream Season X Ep 1"`.
   * Invokes `onPlayMedia(item, season, 1)` with no resume check or resume timestamp.
-* **Anime Detail Modal**: `/Users/nathanaelgovender/Developer/comic-reader/src/components/Anime/AnimeDetailModal.tsx` (lines 256, 267):
+* **Anime Detail Modal**: `./src/components/Anime/AnimeDetailModal.tsx` (lines 256, 267):
   * Button reads `"Resume Ep X"` or `"Start Episode 1"`. Only resumes at the episode level; start position is always 0.
-* **Home Dashboard**: `/Users/nathanaelgovender/Developer/comic-reader/src/components/Home/HomeDashboard.tsx` (lines 344–395):
+* **Home Dashboard**: `./src/components/Home/HomeDashboard.tsx` (lines 344–395):
   * Renders recent items from `watchHistoryService.getRecent(10)`.
   * Displays progress bar via `item.progressPercent`.
   * Clicking an item invokes `onSelectMedia(item.rawItem)` or `onSelectAnime(item.rawItem)` (lines 366–374), opening the detail modal or player without resume timestamps.
 * **Resume Modal in Video Player**: **Missing entirely**. There is currently no dialog, toast, or auto-resume mechanism offering exact-second resume when reopening a previously watched movie, episode, or anime.
 
 ### 1.4 Backend Cloud Persistence Architecture
-* **Server File**: `/Users/nathanaelgovender/Developer/comic-reader/server/index.js`
-  * **Existing Pattern**: Lines 1697–1729 define `/api/anime/watchlist` GET and POST, saving items to `/Users/nathanaelgovender/Developer/comic-reader/server/data/anime_watchlist.json`.
+* **Server File**: `./server/index.js`
+  * **Existing Pattern**: Lines 1697–1729 define `/api/anime/watchlist` GET and POST, saving items to `./server/data/anime_watchlist.json`.
   * **Watch History Endpoints**: `/api/watch-history` **does not exist**. No cloud or server endpoints exist for saving or retrieving unified watch history.
 
 ### 1.5 Build & Packaging Pipeline
-* **Package Scripts** (`/Users/nathanaelgovender/Developer/comic-reader/package.json`):
+* **Package Scripts** (`./package.json`):
   ```json
   "scripts": {
     "clean": "lsof -ti:5200,3001 | xargs kill -9 2>/dev/null || true",
@@ -80,7 +80,7 @@
   * Note: `package.json` has iOS scripts (`ios:build`, `ios:open`, `ios:sync`), but **zero Android scripts** (`android:sync`, `android:copy`, `android:build`).
   * Note: `"build": "vite build"` does not run `tsc --noEmit`. Vite relies on esbuild to strip types, so `npm run build` succeeds while hiding TypeScript errors.
 * **TypeScript Compilation (`npx tsc --noEmit`)**:
-  * Executed `npx tsc --noEmit` in `/Users/nathanaelgovender/Developer/comic-reader`.
+  * Executed `npx tsc --noEmit` in `.`.
   * Result: **Exited with code 2 (48 TypeScript errors)** across 11 files:
     1. `src/App.tsx`: Lines 353, 355, 370, 376 (missing `cover` in `UnifiedPlayerSession`, `idMalformed` on `Anime`, `imdb_id` on `MediaItem`).
     2. `src/components/Common/UnifiedVideoPlayer.tsx`: Lines 151, 158 (inline media objects missing `overview` required by `MediaItem`).
@@ -106,7 +106,7 @@
   * Dependencies bundled: `hls.js` (^1.7.1), `framer-motion` (^12.4.10), `webtorrent` (^3.0.21), `jszip` (^3.10.1), `lucide-react` (^1.16.0), `react` / `react-dom` (^19.0.0).
 
 ### 1.6 Capacitor Configuration & Android Platform Assets
-* **Capacitor Config**: `/Users/nathanaelgovender/Developer/comic-reader/capacitor.config.ts`:
+* **Capacitor Config**: `./capacitor.config.ts`:
   ```ts
   import type { CapacitorConfig } from '@capacitor/cli';
   const config: CapacitorConfig = {
@@ -125,7 +125,7 @@
   };
   export default config;
   ```
-* **Android Manifest**: `/Users/nathanaelgovender/Developer/comic-reader/android/app/src/main/AndroidManifest.xml`:
+* **Android Manifest**: `./android/app/src/main/AndroidManifest.xml`:
   * Configured for Android TV with `<category android:name="android.intent.category.LEANBACK_LAUNCHER" />` (line 24).
   * Has `<uses-feature android:name="android.software.leanback" android:required="false" />` and `<uses-feature android:name="android.hardware.touchscreen" android:required="false" />` (lines 42–43).
   * Missing: `android:hardwareAccelerated="true"` in `<application>` / `<activity>`.
@@ -234,7 +234,7 @@ To independently verify all findings and test fixes:
 
 1. **TypeScript Typecheck Command**:
    ```bash
-   cd /Users/nathanaelgovender/Developer/comic-reader
+   cd .
    npx tsc --noEmit
    ```
    * *Baseline Result*: Exits with code 2 (48 errors).
@@ -242,7 +242,7 @@ To independently verify all findings and test fixes:
 
 2. **Production Build Command**:
    ```bash
-   cd /Users/nathanaelgovender/Developer/comic-reader
+   cd .
    npm run build
    ```
    * *Baseline Result*: Vite builds in 2.01s with chunks warning (`index-JWfB2rg7.js: 1,390.89 kB`).
@@ -250,7 +250,7 @@ To independently verify all findings and test fixes:
 
 3. **Capacitor Android Copy & Sync Commands**:
    ```bash
-   cd /Users/nathanaelgovender/Developer/comic-reader
+   cd .
    npx cap copy android
    npx cap sync android
    ```

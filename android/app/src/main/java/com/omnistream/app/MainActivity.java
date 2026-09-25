@@ -47,16 +47,22 @@ public class MainActivity extends BridgeActivity {
             WebView webView = getBridge().getWebView();
             WebSettings settings = webView.getSettings();
             
+            // Enforce hardware acceleration on WebView layer
+            webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
+
             // Allow media playback without requiring user touch gesture (critical for Android TV)
             settings.setMediaPlaybackRequiresUserGesture(false);
             
             // Enable spatial navigation for D-pad directional navigation
             settings.setSupportSpatialNavigation(true);
             
-            // Enable DOM storage and JS
+            // Enable DOM storage, database and JS caching for high-speed navigation
             settings.setDomStorageEnabled(true);
+            settings.setDatabaseEnabled(true);
             settings.setJavaScriptEnabled(true);
             settings.setJavaScriptCanOpenWindowsAutomatically(false);
+            settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
             // Block all unrequested downloads to prevent Downloader app from opening
             webView.setDownloadListener(new DownloadListener() {

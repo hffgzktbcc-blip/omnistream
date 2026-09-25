@@ -6,6 +6,8 @@ class TVNavigationService {
   private activeElement: HTMLElement | null = null;
   private initialized: boolean = false;
   private focusRingStyleElement: HTMLStyleElement | null = null;
+  private cardObserver: MutationObserver | null = null;
+  private observerScheduled: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -47,6 +49,10 @@ class TVNavigationService {
   public cleanup() {
     window.removeEventListener('keydown', this.handleKeyDown, { capture: true });
     window.removeEventListener('focusin', this.handleFocusIn);
+    if (this.cardObserver) {
+      this.cardObserver.disconnect();
+      this.cardObserver = null;
+    }
     if (this.focusRingStyleElement) {
       this.focusRingStyleElement.remove();
       this.focusRingStyleElement = null;
@@ -138,16 +144,23 @@ class TVNavigationService {
 
   private setupCardAccessibilityObserver() {
     if (typeof MutationObserver === 'undefined') return;
-    const observer = new MutationObserver(() => {
-      const clickables = document.querySelectorAll<HTMLElement>('.cursor-pointer:not([tabindex]), [data-focusable="true"]:not([tabindex])');
-      clickables.forEach((el) => {
-        el.setAttribute('tabindex', '0');
-        if (!el.getAttribute('role')) {
-          el.setAttribute('role', 'button');
-        }
+    this.cardObserver = new MutationObserver(() => {
+      if (this.observerScheduled) return;
+      this.observerScheduled = true;
+      requestAnimationFrame(() => {
+        this.observerScheduled = false;
+        const clickables = document.querySelectorAll<HTMLElement>(
+          '.cursor-pointer:not([tabindex]), [data-focusable="true"]:not([tabindex])'
+        );
+        clickables.forEach((el) => {
+          el.setAttribute('tabindex', '0');
+          if (!el.getAttribute('role')) {
+            el.setAttribute('role', 'button');
+          }
+        });
       });
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    this.cardObserver.observe(document.body, { childList: true, subtree: true });
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
@@ -444,31 +457,22 @@ class TVNavigationService {
       'textarea:not([disabled])',
       '[tabindex]:not([tabindex="-1"])',
       '[role="button"]',
-      '[data-focusable="true"]',
-      '.cursor-pointer:not([data-non-focusable])'
+      '[data-focusable="true"]'
     ].join(', ');
 
-    const elements = Array.from(scopeRoot.querySelectorAll<HTMLElement>(selector)).filter((el) => {
+    const nodes = scopeRoot.querySelectorAll<HTMLElement>(selector);
+    const elements: HTMLElement[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      const el = nodes[i];
       if (el.hasAttribute('disabled') || el.getAttribute('aria-hidden') === 'true') {
-        return false;
+        continue;
       }
-      const style = window.getComputedStyle(el);
-      if (
-        style.display === 'none' ||
-        style.visibility === 'hidden' ||
-        style.opacity === '0' ||
-        el.offsetParent === null
-      ) {
-        return false;
+      // offsetParent check is orders of magnitude faster than window.getComputedStyle and avoids forced layout flushes
+      if (el.offsetParent === null && el !== document.body && !modal) {
+        continue;
       }
-
-      // Ensure tabindex="0" for native focus compatibility
-      if (!el.hasAttribute('tabindex')) {
-        el.setAttribute('tabindex', '0');
-      }
-
-      return true;
-    });
+      elements.push(el);
+    }
 
     return elements;
   }

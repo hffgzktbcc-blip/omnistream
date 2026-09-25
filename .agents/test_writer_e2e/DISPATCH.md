@@ -4,10 +4,10 @@
 Design and implement the comprehensive E2E Test Suite (Tiers 1-4) for OmniStream Cinema Video Player integration.
 
 ## Context
-Authoritative Request: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Project Scope Document: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
-Codebase: /Users/nathanaelgovender/Developer/comic-reader
-Working Directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/test_writer_e2e
+Authoritative Request: ./.agents/ORIGINAL_REQUEST.md
+Project Scope Document: ./.agents/orchestrator_1/PROJECT.md
+Codebase: .
+Working Directory: ./.agents/test_writer_e2e
 Role: teamwork_preview_test_writer
 
 ## Requirements
@@ -17,9 +17,9 @@ Role: teamwork_preview_test_writer
    - Tier 2: Boundary & Corner Cases (>=5 tests per feature)
    - Tier 3: Cross-Feature Combinations (pairwise coverage)
    - Tier 4: Real-World Application Scenarios (end-to-end user workflows)
-3. Implement test scripts and runners in `/Users/nathanaelgovender/Developer/comic-reader/tests/` (e.g. standalone node/vitest executable test suite with clean exit codes).
+3. Implement test scripts and runners in `./tests/` (e.g. standalone node/vitest executable test suite with clean exit codes).
 4. Create `TEST_INFRA.md` and `TEST_READY.md` documenting runner command and coverage.
-5. Write your handoff report to /Users/nathanaelgovender/Developer/comic-reader/.agents/test_writer_e2e/handoff.md.
+5. Write your handoff report to ./.agents/test_writer_e2e/handoff.md.
 
 ## 2026-09-06T20:02:36Z
 Task:
@@ -28,7 +28,7 @@ Task:
    - Tier 2: Boundary & Corner Cases (>=5 tests per feature)
    - Tier 3: Cross-Feature Combinations (pairwise coverage)
    - Tier 4: Real-World Application Scenarios (end-to-end user workflows)
-2. Implement test scripts and runners in /Users/nathanaelgovender/Developer/comic-reader/tests/e2e/ (e.g., node-based test suite that exercises stream resolution endpoints, manifests, subtitle format, player control contracts, watch history intervals, and build commands).
-3. Create TEST_INFRA.md and TEST_READY.md at /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/ (and in tests/ if appropriate).
+2. Implement test scripts and runners in ./tests/e2e/ (e.g., node-based test suite that exercises stream resolution endpoints, manifests, subtitle format, player control contracts, watch history intervals, and build commands).
+3. Create TEST_INFRA.md and TEST_READY.md at ./.agents/orchestrator_1/ (and in tests/ if appropriate).
 4. Run your tests, ensure the runner executes cleanly, and document commands and pass/fail status.
-5. Write your handoff report to /Users/nathanaelgovender/Developer/comic-reader/.agents/test_writer_e2e/handoff.md and report back via send_message.
+5. Write your handoff report to ./.agents/test_writer_e2e/handoff.md and report back via send_message.

@@ -6,7 +6,7 @@ Implement Milestone 1 (Direct Stream Resolution & CORS Proxy) including /api/str
 ## 🔒 My Identity
 - Archetype: worker
 - Roles: implementer, qa, specialist
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1
+- Working directory: ./.agents/worker_m1
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: Milestone 1 (Direct Stream Resolution & CORS Proxy)
 
@@ -36,8 +36,8 @@ Implement Milestone 1 (Direct Stream Resolution & CORS Proxy) including /api/str
   - GET /api/proxy/subtitles proxies WebVTT subtitles and auto-converts SubRip (.srt).
   - resolveDirectStream client helper added to src/services/streamingService.ts with full TypeScript types.
   - Server runs cleanly without errors.
-- **Interface contracts**: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md § Interface Contracts
-- **Code layout**: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md § Code Layout
+- **Interface contracts**: ./.agents/orchestrator_1/PROJECT.md § Interface Contracts
+- **Code layout**: ./.agents/orchestrator_1/PROJECT.md § Code Layout
 
 ## Key Decisions Made
 - Implemented `server/streamResolver.js` with verified sample fixtures (Movie 27205, TV 1399, Anime 21, 151807), TMDB/AniList aliasing, and sub/dub audio priority.

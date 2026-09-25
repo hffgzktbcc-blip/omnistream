@@ -1,8 +1,8 @@
 # Handoff Report — Survey Explorer 1: Streaming Architecture, Resolvers & CORS Proxy
 
 **Role**: Teamwork Explorer (Survey Explorer 1)  
-**Working Directory**: `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_1`  
-**Codebase**: `/Users/nathanaelgovender/Developer/comic-reader`  
+**Working Directory**: `./.agents/explorer_survey_1`  
+**Codebase**: `.`  
 **Target Requirement**: R1 (Direct Stream Resolution & CORS Proxy) and related acceptance criteria  
 **Date**: 2026-09-06  
 
@@ -191,13 +191,13 @@ To independently verify the findings in this report, execute the following steps
 
 1. **Verify Absence of Stream Endpoints**:
    ```bash
-   grep -En "/api/stream|/api/proxy/hls|/api/proxy/segment" /Users/nathanaelgovender/Developer/comic-reader/server/index.js
+   grep -En "/api/stream|/api/proxy/hls|/api/proxy/segment" ./server/index.js
    ```
    *Expected result*: No matches found (confirming endpoints do not exist).
 
 2. **Verify UnifiedVideoPlayer is Purely Iframe**:
    ```bash
-   grep -En "<video|<track|hls.js" /Users/nathanaelgovender/Developer/comic-reader/src/components/Common/UnifiedVideoPlayer.tsx
+   grep -En "<video|<track|hls.js" ./src/components/Common/UnifiedVideoPlayer.tsx
    ```
    *Expected result*: No matches found (confirming player has no `<video>` or `hls.js`).
 

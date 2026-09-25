@@ -6,7 +6,7 @@ Thoroughly investigate OmniStream's video player components, HTML5/HLS architect
 ## 🔒 My Identity
 - Archetype: teamwork_preview_explorer
 - Roles: Survey Explorer 2
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_2
+- Working directory: ./.agents/explorer_survey_2
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: Milestone 1 Survey & Investigation
 
@@ -34,6 +34,6 @@ Thoroughly investigate OmniStream's video player components, HTML5/HLS architect
 - Outlined dual-mode Cinema Player architecture (Direct HLS + Sanitized Iframe Fallback).
 
 ## Artifact Index
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_2/BRIEFING.md` — Persistent working memory
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_2/progress.md` — Liveness heartbeat
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_2/handoff.md` — Final survey & gap analysis report
+- `./.agents/explorer_survey_2/BRIEFING.md` — Persistent working memory
+- `./.agents/explorer_survey_2/progress.md` — Liveness heartbeat
+- `./.agents/explorer_survey_2/handoff.md` — Final survey & gap analysis report

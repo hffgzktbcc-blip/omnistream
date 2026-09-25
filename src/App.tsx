@@ -47,6 +47,16 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     'home' | 'browse' | 'anime' | 'media' | 'sports' | 'library' | 'audiobooks'
   >('home');
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set(['home']));
+
+  useEffect(() => {
+    setVisitedTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
 
   // Audiobooks State (AudioBay & Shelf)
   const [selectedAudiobook, setSelectedAudiobook] = useState<Audiobook | null>(null);
@@ -234,33 +244,33 @@ const AppContent: React.FC = () => {
     loadSports('all');
   }, []);
 
-  // Load comics
+  // Load comics only when category changes
   useEffect(() => {
-    if (activeTab === 'browse' || activeTab === 'home') {
+    if (activeTab === 'browse') {
       loadComics(activeCategory);
     }
-  }, [activeCategory, activeTab]);
+  }, [activeCategory]);
 
-  // Load anime
+  // Load anime only when category changes
   useEffect(() => {
-    if (activeTab === 'anime' || activeTab === 'home') {
+    if (activeTab === 'anime') {
       loadAnime(activeAnimeCategory);
     }
-  }, [activeAnimeCategory, activeTab]);
+  }, [activeAnimeCategory]);
 
-  // Load Movies & TV
+  // Load Movies & TV only when category changes
   useEffect(() => {
-    if (activeTab === 'media' || activeTab === 'home') {
+    if (activeTab === 'media') {
       loadMedia(activeMediaCategory);
     }
-  }, [activeMediaCategory, activeTab]);
+  }, [activeMediaCategory]);
 
-  // Load Sports
+  // Load Sports only when sport filter changes
   useEffect(() => {
-    if (activeTab === 'sports' || activeTab === 'home') {
+    if (activeTab === 'sports') {
       loadSports(activeSport);
     }
-  }, [activeSport, activeTab]);
+  }, [activeSport]);
 
   const loadComics = async (category: string) => {
     if (category === 'uploads') {
@@ -608,126 +618,140 @@ const AppContent: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 pb-20 md:pb-6">
         {/* 0. UNIFIED HOME DASHBOARD */}
-        {activeTab === 'home' && (
-          <HomeDashboard
-            onNavigateTab={(tab) => {
-              setActiveTab(tab);
-              setSearchQuery('');
-            }}
-            onSelectComic={(c) => setSelectedComic(c)}
-            onSelectAnime={(a) => setSelectedAnime(a)}
-            onSelectMedia={(item) => setSelectedMedia(item)}
-            onSelectSportsMatch={(m) => setSelectedSportsMatch(m)}
-            trendingComics={comics}
-            trendingAnime={animeList}
-            trendingMedia={mediaList}
-            liveSports={sportsMatches}
-          />
+        {visitedTabs.has('home') && (
+          <div className={activeTab === 'home' ? 'contents' : 'hidden'}>
+            <HomeDashboard
+              onNavigateTab={(tab) => {
+                setActiveTab(tab);
+                setSearchQuery('');
+              }}
+              onSelectComic={(c) => setSelectedComic(c)}
+              onSelectAnime={(a) => setSelectedAnime(a)}
+              onSelectMedia={(item) => setSelectedMedia(item)}
+              onSelectSportsMatch={(m) => setSelectedSportsMatch(m)}
+              trendingComics={comics}
+              trendingAnime={animeList}
+              trendingMedia={mediaList}
+              liveSports={sportsMatches}
+            />
+          </div>
         )}
 
         {/* 1. COMICS & WEBTOONS */}
-        {activeTab === 'browse' && (
-          <ComicCatalog
-            comics={comics}
-            loading={loadingComics}
-            onSelectComic={(c) => setSelectedComic(c)}
-            onSelectCategory={(cat) => {
-              setActiveCategory(cat);
-              setSearchQuery('');
-            }}
-            activeCategory={activeCategory}
-            searchQuery={searchQuery}
-            onSearchQuery={handleSearch}
-            onOpenSample={handleLaunchSample}
-            onOpenUpload={() => fileInputRef.current?.click()}
-            onOpenUrlModal={() => setShowUrlModal(true)}
-          />
+        {visitedTabs.has('browse') && (
+          <div className={activeTab === 'browse' ? 'contents' : 'hidden'}>
+            <ComicCatalog
+              comics={comics}
+              loading={loadingComics}
+              onSelectComic={(c) => setSelectedComic(c)}
+              onSelectCategory={(cat) => {
+                setActiveCategory(cat);
+                setSearchQuery('');
+              }}
+              activeCategory={activeCategory}
+              searchQuery={searchQuery}
+              onSearchQuery={handleSearch}
+              onOpenSample={handleLaunchSample}
+              onOpenUpload={() => fileInputRef.current?.click()}
+              onOpenUrlModal={() => setShowUrlModal(true)}
+            />
+          </div>
         )}
 
         {/* 2. ANIME STREAMING */}
-        {activeTab === 'anime' && (
-          <AnimeCatalog
-            animeList={animeList}
-            loading={loadingAnime}
-            onSelectAnime={(a) => setSelectedAnime(a)}
-            onPlayEpisode={handlePlayAnimeEpisode}
-            onSelectCategory={(cat) => {
-              setActiveAnimeCategory(cat);
-              setSearchQuery('');
-            }}
-            activeCategory={activeAnimeCategory}
-            searchQuery={searchQuery}
-            onSearchQuery={handleSearch}
-          />
+        {visitedTabs.has('anime') && (
+          <div className={activeTab === 'anime' ? 'contents' : 'hidden'}>
+            <AnimeCatalog
+              animeList={animeList}
+              loading={loadingAnime}
+              onSelectAnime={(a) => setSelectedAnime(a)}
+              onPlayEpisode={handlePlayAnimeEpisode}
+              onSelectCategory={(cat) => {
+                setActiveAnimeCategory(cat);
+                setSearchQuery('');
+              }}
+              activeCategory={activeAnimeCategory}
+              searchQuery={searchQuery}
+              onSearchQuery={handleSearch}
+            />
+          </div>
         )}
 
         {/* 3. MOVIES & TV SHOWS */}
-        {activeTab === 'media' && (
-          <MediaCatalog
-            mediaList={mediaList}
-            loading={loadingMedia}
-            onSelectMedia={(item) => setSelectedMedia(item)}
-            onSelectCategory={(cat) => {
-              setActiveMediaCategory(cat);
-              setSearchQuery('');
-            }}
-            activeCategory={activeMediaCategory}
-            searchQuery={searchQuery}
-            onSearchQuery={handleSearch}
-          />
+        {visitedTabs.has('media') && (
+          <div className={activeTab === 'media' ? 'contents' : 'hidden'}>
+            <MediaCatalog
+              mediaList={mediaList}
+              loading={loadingMedia}
+              onSelectMedia={(item) => setSelectedMedia(item)}
+              onSelectCategory={(cat) => {
+                setActiveMediaCategory(cat);
+                setSearchQuery('');
+              }}
+              activeCategory={activeMediaCategory}
+              searchQuery={searchQuery}
+              onSearchQuery={handleSearch}
+            />
+          </div>
         )}
 
         {/* 4. LIVE SPORTS STREAMING HUB */}
-        {activeTab === 'sports' && (
-          <SportsCatalog
-            matches={sportsMatches}
-            loading={loadingSports}
-            onWatchMatch={(match) => setSelectedSportsMatch(match)}
-            activeSport={activeSport}
-            onSelectSport={(sport) => {
-              setActiveSport(sport);
-              setSearchQuery('');
-            }}
-            activeFilter={activeSportsFilter}
-            onSelectFilter={setActiveSportsFilter}
-            searchQuery={searchQuery}
-            onSearchQuery={handleSearch}
-          />
+        {visitedTabs.has('sports') && (
+          <div className={activeTab === 'sports' ? 'contents' : 'hidden'}>
+            <SportsCatalog
+              matches={sportsMatches}
+              loading={loadingSports}
+              onWatchMatch={(match) => setSelectedSportsMatch(match)}
+              activeSport={activeSport}
+              onSelectSport={(sport) => {
+                setActiveSport(sport);
+                setSearchQuery('');
+              }}
+              activeFilter={activeSportsFilter}
+              onSelectFilter={setActiveSportsFilter}
+              searchQuery={searchQuery}
+              onSearchQuery={handleSearch}
+            />
+          </div>
         )}
 
         {/* 5. USER LIBRARY */}
-        {activeTab === 'library' && (
-          <LibraryView
-            onOpenComic={(comic, chapterId, pageNum, panelIdx) => {
-              const ch = comic.chapters?.find((c) => c.id === chapterId) || comic.chapters?.[0] || {
-                id: chapterId || 'ch1',
-                chapter: '1',
-                title: comic.title
-              };
-              handleStartReading(comic, ch, pageNum || 1, panelIdx || 0);
-            }}
-            onOpenEBook={() => {}}
-          />
+        {visitedTabs.has('library') && (
+          <div className={activeTab === 'library' ? 'contents' : 'hidden'}>
+            <LibraryView
+              onOpenComic={(comic, chapterId, pageNum, panelIdx) => {
+                const ch = comic.chapters?.find((c) => c.id === chapterId) || comic.chapters?.[0] || {
+                  id: chapterId || 'ch1',
+                  chapter: '1',
+                  title: comic.title
+                };
+                handleStartReading(comic, ch, pageNum || 1, panelIdx || 0);
+              }}
+              onOpenEBook={() => {}}
+            />
+          </div>
         )}
 
         {/* 6. AUDIOBOOKS HUB (AudioBay + Shelf) */}
-        {activeTab === 'audiobooks' && (
-          <AudiobookCatalog
-            onSelectBook={(book) => setSelectedAudiobook(book)}
-            onResumeListening={(progress) => {
-              // Build a minimal Audiobook from progress and re-open detail
-              const resumeBook: Audiobook = {
-                id: progress.bookId,
-                title: progress.title,
-                author: progress.author,
-                cover: progress.cover,
-                description: '',
-                narrator: '',
-                categories: []
-              };
-              setSelectedAudiobook(resumeBook);
-            }}
-          />
+        {visitedTabs.has('audiobooks') && (
+          <div className={activeTab === 'audiobooks' ? 'contents' : 'hidden'}>
+            <AudiobookCatalog
+              onSelectBook={(book) => setSelectedAudiobook(book)}
+              onResumeListening={(progress) => {
+                // Build a minimal Audiobook from progress and re-open detail
+                const resumeBook: Audiobook = {
+                  id: progress.bookId,
+                  title: progress.title,
+                  author: progress.author,
+                  cover: progress.cover,
+                  description: '',
+                  narrator: '',
+                  categories: []
+                };
+                setSelectedAudiobook(resumeBook);
+              }}
+            />
+          </div>
         )}
       </main>
 

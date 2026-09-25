@@ -73,7 +73,7 @@
 ## 🚀 Running the App
 
 ```bash
-cd /Users/nathanaelgovender/Developer/comic-reader
+cd .
 
 # Install dependencies (if needed)
 npm install

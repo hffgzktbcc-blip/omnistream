@@ -1,8 +1,8 @@
 # Handoff Report — Milestone 1 Explorer 1: Direct Stream Resolution (`/api/stream/resolve`) Architecture & Strategy
 
 **Role**: Teamwork Explorer (Milestone 1 Explorer 1)  
-**Working Directory**: `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_1`  
-**Codebase**: `/Users/nathanaelgovender/Developer/comic-reader`  
+**Working Directory**: `./.agents/explorer_m1_1`  
+**Codebase**: `.`  
 **Target Requirement**: R1 (Direct Stream Resolution & CORS Proxy) — Feature 1 (`/api/stream/resolve`) & Feature 2 (Sample ID Verification Fixtures)  
 **Date**: 2026-09-06  
 

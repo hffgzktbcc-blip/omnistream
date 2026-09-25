@@ -6,7 +6,7 @@ Objective, evidence-based quality & adversarial review of Milestone 1 (Direct St
 ## 🔒 My Identity
 - Archetype: reviewer
 - Roles: reviewer, critic
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1
+- Working directory: ./.agents/reviewer_m1_1
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: M1 (Direct Stream Resolution & CORS Proxy)
 - Instance: 1 of 1
@@ -49,7 +49,7 @@ Objective, evidence-based quality & adversarial review of Milestone 1 (Direct St
 - Initializing review workspace and briefing.
 
 ## Artifact Index
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1/DISPATCH.md` — Dispatch record
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1/BRIEFING.md` — Situational awareness
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1/progress.md` — Liveness heartbeat
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_1/handoff.md` — Final review handoff
+- `./.agents/reviewer_m1_1/DISPATCH.md` — Dispatch record
+- `./.agents/reviewer_m1_1/BRIEFING.md` — Situational awareness
+- `./.agents/reviewer_m1_1/progress.md` — Liveness heartbeat
+- `./.agents/reviewer_m1_1/handoff.md` — Final review handoff

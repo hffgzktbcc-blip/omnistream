@@ -1,6 +1,6 @@
 # Task: fix confirmed bugs in the OmniComic/OmniStream reader
 
-Repo: `/Users/nathanaelgovender/Developer/comic-reader`
+Repo: `.`
 Stack: React 19 + Vite + Tailwind 4 frontend (`src/`), Express backend (`server/index.js`, ~1,876 lines).
 Run with `npm run dev` — Vite on :5173, API on :3001, `/api` proxied.
 

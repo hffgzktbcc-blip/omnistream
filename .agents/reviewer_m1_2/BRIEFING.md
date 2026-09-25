@@ -6,7 +6,7 @@ Conduct an independent, adversarial code and security review of Milestone 1 (Dir
 ## 🔒 My Identity
 - Archetype: reviewer_critic
 - Roles: reviewer, critic
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_2
+- Working directory: ./.agents/reviewer_m1_2
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: Milestone 1 Review
 - Instance: 2 of 2
@@ -28,7 +28,7 @@ Conduct an independent, adversarial code and security review of Milestone 1 (Dir
   - `server/streamProxy.js`
   - `server/index.js`
   - `src/services/streamingService.ts`
-- **Interface contracts**: `/Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md`
+- **Interface contracts**: `./.agents/orchestrator_1/PROJECT.md`
 - **Review criteria**: Correctness, security (SSRF, IPv6/mapped, IP spoofing), memory safety (chunk streaming vs buffering), Range header semantics (206/416), WebVTT spec conformance, CORS compliance, integrity.
 
 ## Review Checklist

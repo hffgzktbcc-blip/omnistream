@@ -6,7 +6,7 @@ Investigate watchHistoryService, exact-second resume, build/packaging pipeline, 
 ## 🔒 My Identity
 - Archetype: explorer
 - Roles: Teamwork explorer, teamwork_preview_explorer
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_3
+- Working directory: ./.agents/explorer_survey_3
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: Survey & Architecture Analysis
 
@@ -38,7 +38,7 @@ Investigate watchHistoryService, exact-second resume, build/packaging pipeline, 
 - Prepared comprehensive 5-component handoff report for the orchestrator and implementer agents.
 
 ## Artifact Index
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_3/DISPATCH.md — Dispatch instructions
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_3/BRIEFING.md — Persistent working memory
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_3/progress.md — Liveness and progress heartbeat
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_survey_3/handoff.md — Final handoff report
+- ./.agents/explorer_survey_3/DISPATCH.md — Dispatch instructions
+- ./.agents/explorer_survey_3/BRIEFING.md — Persistent working memory
+- ./.agents/explorer_survey_3/progress.md — Liveness and progress heartbeat
+- ./.agents/explorer_survey_3/handoff.md — Final handoff report

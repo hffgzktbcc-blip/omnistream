@@ -4,12 +4,12 @@
 Independent Review of Milestone 1: Direct Stream Resolution & CORS Proxy (Features 1–5).
 
 ## Context
-Authoritative Request: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Project Scope Document: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
-Test Readiness Certificate: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/TEST_READY.md
-Worker Handoff Report: /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1/handoff.md
-Codebase: /Users/nathanaelgovender/Developer/comic-reader
-Working Directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_2
+Authoritative Request: ./.agents/ORIGINAL_REQUEST.md
+Project Scope Document: ./.agents/orchestrator_1/PROJECT.md
+Test Readiness Certificate: ./.agents/orchestrator_1/TEST_READY.md
+Worker Handoff Report: ./.agents/worker_m1/handoff.md
+Codebase: .
+Working Directory: ./.agents/reviewer_m1_2
 Role: teamwork_preview_reviewer
 
 ## Task
@@ -21,4 +21,4 @@ Role: teamwork_preview_reviewer
    node tests/e2e/runner.js --live --tier=1
    node tests/e2e/runner.js --live --tier=2
    ```
-5. Document your explicit verdict: `APPROVE` or `REQUEST_CHANGES` in your handoff report at `/Users/nathanaelgovender/Developer/comic-reader/.agents/reviewer_m1_2/handoff.md` and send message back.
+5. Document your explicit verdict: `APPROVE` or `REQUEST_CHANGES` in your handoff report at `./.agents/reviewer_m1_2/handoff.md` and send message back.

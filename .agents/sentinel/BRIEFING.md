@@ -5,7 +5,7 @@ Oversee execution of the Cinema Video Player integration for OmniStream and inde
 
 ## 🔒 My Identity
 - Archetype: sentinel
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/sentinel
+- Working directory: ./.agents/sentinel
 - Orchestrator: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Victory Auditor: to be spawned on victory claim
 
@@ -34,8 +34,8 @@ Oversee execution of the Cinema Video Player integration for OmniStream and inde
 - Rationale: Standard multi-part software engineering project encompassing stream extraction backend, video player frontend UI/UX, D-pad navigation, gesture handling, watch history, and native Capacitor build verification.
 
 ## Artifact Index
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md — Authoritative user request
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/progress.md — Orchestrator progress tracking
+- ./.agents/ORIGINAL_REQUEST.md — Authoritative user request
+- ./.agents/orchestrator_1/progress.md — Orchestrator progress tracking
 
 ## Active Crons
 - Task 24: Progress Reporting (*/8 * * * *)

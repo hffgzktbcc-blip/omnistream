@@ -6,7 +6,7 @@ Investigate and produce concrete implementation designs and file structures for 
 ## 🔒 My Identity
 - Archetype: explorer
 - Roles: teamwork_preview_explorer
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_3
+- Working directory: ./.agents/explorer_m1_3
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: Milestone 1 (M1) — Segment & Subtitle Proxy
 

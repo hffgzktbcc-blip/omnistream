@@ -6,7 +6,7 @@ Investigate and produce the concrete architectural design and implementation spe
 ## 🔒 My Identity
 - Archetype: explorer
 - Roles: investigation, synthesis
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2
+- Working directory: ./.agents/explorer_m1_2
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: M1 (Direct Stream Resolution & CORS Proxy)
 
@@ -40,7 +40,7 @@ Investigate and produce the concrete architectural design and implementation spe
 - Recommended dedicated modular file `server/hlsProxy.js` exporting `rewriteHlsManifest` and `handleHlsProxy` for direct unit testability and clean architecture.
 
 ## Artifact Index
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2/DISPATCH.md` — Dispatch directives
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2/BRIEFING.md` — Persistent memory
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2/progress.md` — Liveness heartbeat
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_2/handoff.md` — Final handoff report
+- `./.agents/explorer_m1_2/DISPATCH.md` — Dispatch directives
+- `./.agents/explorer_m1_2/BRIEFING.md` — Persistent memory
+- `./.agents/explorer_m1_2/progress.md` — Liveness heartbeat
+- `./.agents/explorer_m1_2/handoff.md` — Final handoff report

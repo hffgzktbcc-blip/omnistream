@@ -6,13 +6,13 @@ Build and integrate a high-performance cross-platform Cinema Video Player for Om
 ## 🔒 My Identity
 - Archetype: orchestrator
 - Roles: orchestrator, user_liaison, human_reporter, successor
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1
+- Working directory: ./.agents/orchestrator_1
 - Original parent: parent
 - Original parent conversation ID: 758ba4b0-8607-45ce-b59a-e0327147567b
 
 ## 🔒 My Workflow
 - **Pattern**: Project Pattern (Dual Track: Implementation Track + E2E Testing Track)
-- **Scope document**: /Users/nathanaelgovender/Developer/comic-reader/PROJECT.md
+- **Scope document**: ./PROJECT.md
 1. **Survey**: Spawn 3 Explorers in parallel to map full scope, existing video player, endpoints, stream providers, Android TV HUD, touch gestures, watch progress, and build config. Deduplicate into PROJECT.md § Feature Inventory.
 2. **Decompose & Delegate**: Establish milestones (R1 Direct Stream Resolution, R2 Cross-Platform Cinema Video Player & Controls, R3 Exact-Second Watch Progress & Resume, R4 Production Build & Packaging) and spawn E2E Testing track in parallel.
 3. **Dispatch & Execute**:
@@ -79,7 +79,7 @@ Build and integrate a high-performance cross-platform Cinema Video Player for Om
 - On context truncation: run `manage_task(Action="list")` — re-create if missing
 
 ## Artifact Index
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md — Authoritative User Request
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/DISPATCH.md — Dispatch instructions
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/plan.md — Project execution plan
-- /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/progress.md — Liveness heartbeat and milestone tracking
+- ./.agents/ORIGINAL_REQUEST.md — Authoritative User Request
+- ./.agents/orchestrator_1/DISPATCH.md — Dispatch instructions
+- ./.agents/orchestrator_1/plan.md — Project execution plan
+- ./.agents/orchestrator_1/progress.md — Liveness heartbeat and milestone tracking

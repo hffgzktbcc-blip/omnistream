@@ -4,11 +4,11 @@
 Forensic Integrity Audit of Milestone 1 Implementation (Direct Stream Resolution & CORS Proxy).
 
 ## Context
-Authoritative Request: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Project Scope Document: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
-Worker Handoff Report: /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1/handoff.md
-Codebase: /Users/nathanaelgovender/Developer/comic-reader
-Working Directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/auditor_m1
+Authoritative Request: ./.agents/ORIGINAL_REQUEST.md
+Project Scope Document: ./.agents/orchestrator_1/PROJECT.md
+Worker Handoff Report: ./.agents/worker_m1/handoff.md
+Codebase: .
+Working Directory: ./.agents/auditor_m1
 Role: teamwork_preview_auditor
 
 ## Task
@@ -28,12 +28,12 @@ Role: teamwork_preview_auditor
 
 <USER_REQUEST>
 You are the Forensic Auditor for Milestone 1 (Direct Stream Resolution & CORS Proxy).
-Your working directory is: /Users/nathanaelgovender/Developer/comic-reader/.agents/auditor_m1
-Codebase location: /Users/nathanaelgovender/Developer/comic-reader
-Read your dispatch file at: /Users/nathanaelgovender/Developer/comic-reader/.agents/auditor_m1/DISPATCH.md
-Read the authoritative user request at: /Users/nathanaelgovender/Developer/comic-reader/.agents/ORIGINAL_REQUEST.md
-Read the project scope at: /Users/nathanaelgovender/Developer/comic-reader/.agents/orchestrator_1/PROJECT.md
-Read worker_m1 handoff at: /Users/nathanaelgovender/Developer/comic-reader/.agents/worker_m1/handoff.md
+Your working directory is: ./.agents/auditor_m1
+Codebase location: .
+Read your dispatch file at: ./.agents/auditor_m1/DISPATCH.md
+Read the authoritative user request at: ./.agents/ORIGINAL_REQUEST.md
+Read the project scope at: ./.agents/orchestrator_1/PROJECT.md
+Read worker_m1 handoff at: ./.agents/worker_m1/handoff.md
 
 Task:
 1. Perform a thorough forensic integrity audit on all Milestone 1 code changes:
@@ -42,5 +42,5 @@ Task:
    - server/index.js
    - src/services/streamingService.ts
 2. Verify that there are NO dummy stubs, NO hardcoded test results designed to cheat tests, NO fake facades, and that stream resolution, manifest rewriting, binary chunk piping, and subtitle conversion are authentic.
-3. State your explicit binary verdict: CLEAN or INTEGRITY VIOLATION in /Users/nathanaelgovender/Developer/comic-reader/.agents/auditor_m1/handoff.md and report back via send_message.
+3. State your explicit binary verdict: CLEAN or INTEGRITY VIOLATION in ./.agents/auditor_m1/handoff.md and report back via send_message.
 </USER_REQUEST>

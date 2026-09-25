@@ -1,6 +1,6 @@
 # Task: fix the video player failure modes and harden the app
 
-Repo: `/Users/nathanaelgovender/Developer/comic-reader` (package name `omnistream`)
+Repo: `.` (package name `omnistream`)
 Stack: React 19 + Vite + Tailwind 4 (`src/`), Express backend (`server/index.js`).
 Run with `npm run dev` — Vite on :5200, API on :3001, `/api` proxied.
 Not a git repo. **Before changing anything, run `git init && git add -A && git commit -m "baseline"`**

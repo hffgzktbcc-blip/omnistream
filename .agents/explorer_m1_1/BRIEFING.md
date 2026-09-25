@@ -6,7 +6,7 @@ Investigate and design the implementation strategy for `/api/stream/resolve` sup
 ## 🔒 My Identity
 - Archetype: explorer
 - Roles: teamwork_preview_explorer
-- Working directory: /Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_1
+- Working directory: ./.agents/explorer_m1_1
 - Original parent: f0a3b5ce-139c-46a5-b0fb-c2a6aa7531f1
 - Milestone: Milestone 1 - Direct Stream Resolution (/api/stream/resolve)
 
@@ -31,10 +31,10 @@ Investigate and design the implementation strategy for `/api/stream/resolve` sup
 ## Key Decisions Made
 - Architecture recommendation: Modular `server/streamResolver.js` exporting an Express router mounted at `app.use('/api/stream', streamResolverRouter)`.
 - Client recommendation: Extend `src/services/streamingService.ts` with typed `resolveDirectStream()` method.
-- Complete handoff report generated at `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_1/handoff.md`.
+- Complete handoff report generated at `./.agents/explorer_m1_1/handoff.md`.
 
 ## Artifact Index
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_1/DISPATCH.md` — Incoming tasks and instructions
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_1/BRIEFING.md` — Working memory and context
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_1/progress.md` — Liveness heartbeat
-- `/Users/nathanaelgovender/Developer/comic-reader/.agents/explorer_m1_1/handoff.md` — Complete M1 Explorer 1 handoff report
+- `./.agents/explorer_m1_1/DISPATCH.md` — Incoming tasks and instructions
+- `./.agents/explorer_m1_1/BRIEFING.md` — Working memory and context
+- `./.agents/explorer_m1_1/progress.md` — Liveness heartbeat
+- `./.agents/explorer_m1_1/handoff.md` — Complete M1 Explorer 1 handoff report

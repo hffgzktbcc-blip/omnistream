@@ -6,11 +6,11 @@ Deliver a high-performance cross-platform Cinema Video Player for OmniStream wit
 ## Phases
 
 ### Phase 0: Survey & Codebase Investigation
-- Spawn 3 parallel Explorers to inspect the repository at `/Users/nathanaelgovender/Developer/comic-reader`.
+- Spawn 3 parallel Explorers to inspect the repository at `.`.
   - **Explorer 1 (Streams & Backend)**: Inspect existing streaming routes, proxies, extractors, video sources (Movies, TV, Anime), API endpoints.
   - **Explorer 2 (Player UI & Controls)**: Inspect existing video player components, hls.js setup, D-Pad / remote navigation hooks, mobile gesture handlers, subtitle/audio drawers.
   - **Explorer 3 (Persistence & Build/Native)**: Inspect `watchHistoryService`, progress tracking, resume logic, Capacitor config, Android assets, package.json build scripts.
-- Synthesize all findings into `/Users/nathanaelgovender/Developer/comic-reader/PROJECT.md` with a complete Feature Inventory and Architecture.
+- Synthesize all findings into `./PROJECT.md` with a complete Feature Inventory and Architecture.
 
 ### Phase 1: Dual-Track Initialization
 - **E2E Testing Track**:
